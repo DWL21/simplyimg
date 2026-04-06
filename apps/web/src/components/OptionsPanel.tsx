@@ -2,7 +2,7 @@ import type { ToolName, OutputFormat, CropOptions } from '../types/image';
 
 export interface OptionsPanelState {
   compress: { quality: number; format: OutputFormat | undefined };
-  resize: { width: number; height: number };
+  resize: { width: number; height: number; crop?: CropOptions };
   convert: { to: OutputFormat; quality: number };
   rotate: { degrees: number };
   flip: { horizontal: boolean; vertical: boolean };

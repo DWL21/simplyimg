@@ -121,11 +121,21 @@ export const createImageProcessor = (): ImageProcessor => ({
   async resize(input, options) {
     try {
       await wasmReady;
+      const source = options.crop
+        ? wasmCrop(
+            toUint8Array(input),
+            Math.round(options.crop.x),
+            Math.round(options.crop.y),
+            Math.round(options.crop.width),
+            Math.round(options.crop.height),
+          )
+        : toUint8Array(input);
+
       return wasmResize(
-        toUint8Array(input),
+        source,
         Math.round(options.width),
         Math.round(options.height),
-        options.fit ?? "contain",
+        "exact",
       );
     } catch (error) {
       return wrapWasmError(error);

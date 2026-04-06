@@ -4,12 +4,14 @@ interface Props {
   imageUrl: string;
   width: number;
   height: number;
-  onResize: (size: { width: number; height: number }) => void;
+  crop?: { x: number; y: number; width: number; height: number };
+  onChange: (next: { width: number; height: number; crop: { x: number; y: number; width: number; height: number } }) => void;
 }
 
 type Handle = 'tl' | 'tr' | 'bl' | 'br' | 'tm' | 'bm' | 'ml' | 'mr';
 
-interface DragState {
+interface ResizeDragState {
+  mode: 'resize';
   handle: Handle;
   startX: number;
   startY: number;
@@ -17,17 +19,27 @@ interface DragState {
   startHeight: number;
 }
 
+interface MoveDragState {
+  mode: 'move';
+  startX: number;
+  startY: number;
+  startCropX: number;
+  startCropY: number;
+}
+
+type DragState = ResizeDragState | MoveDragState;
+
 const MIN_SIZE = 1;
 
-export default function ResizeEditor({ imageUrl, width, height, onResize }: Props) {
+export default function ResizeEditor({ imageUrl, width, height, crop, onChange }: Props) {
   const frameRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
-  const onResizeRef = useRef(onResize);
+  const onChangeRef = useRef(onChange);
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    onResizeRef.current = onResize;
-  }, [onResize]);
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => () => {
     document.body.style.cursor = '';
@@ -40,9 +52,7 @@ export default function ResizeEditor({ imageUrl, width, height, onResize }: Prop
     }
 
     const rect = frame.getBoundingClientRect();
-    const maxWidth = Math.max(naturalSize.width, width);
-    const maxHeight = Math.max(naturalSize.height, height);
-    const scale = Math.min((rect.width * 0.82) / maxWidth, (rect.height * 0.78) / maxHeight);
+    const scale = Math.min((rect.width * 0.84) / width, (rect.height * 0.8) / height);
     const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
     const boxWidth = width * safeScale;
     const boxHeight = height * safeScale;
@@ -56,7 +66,21 @@ export default function ResizeEditor({ imageUrl, width, height, onResize }: Prop
     };
   }
 
-  function nextSizeFromDrag(drag: DragState, clientX: number, clientY: number) {
+  function getSafeCrop() {
+    const maxWidth = Math.max(1, naturalSize.width);
+    const maxHeight = Math.max(1, naturalSize.height);
+    const nextCrop = crop ?? { x: 0, y: 0, width: maxWidth, height: maxHeight };
+    const safeWidth = Math.max(1, Math.min(nextCrop.width, maxWidth));
+    const safeHeight = Math.max(1, Math.min(nextCrop.height, maxHeight));
+    return {
+      x: Math.max(0, Math.min(nextCrop.x, maxWidth - safeWidth)),
+      y: Math.max(0, Math.min(nextCrop.y, maxHeight - safeHeight)),
+      width: safeWidth,
+      height: safeHeight,
+    };
+  }
+
+  function nextSizeFromDrag(drag: ResizeDragState, clientX: number, clientY: number) {
     const layout = getLayout();
     if (!layout) {
       return null;
@@ -94,6 +118,42 @@ export default function ResizeEditor({ imageUrl, width, height, onResize }: Prop
     };
   }
 
+  function nextCropFromMove(drag: MoveDragState, clientX: number, clientY: number) {
+    const layout = getLayout();
+    if (!layout) {
+      return null;
+    }
+
+    const activeCrop = getSafeCrop();
+    const scaleX = layout.boxWidth / activeCrop.width;
+    const scaleY = layout.boxHeight / activeCrop.height;
+    const deltaX = Math.round((clientX - drag.startX) / scaleX);
+    const deltaY = Math.round((clientY - drag.startY) / scaleY);
+
+    return {
+      ...activeCrop,
+      x: Math.max(0, Math.min(drag.startCropX - deltaX, naturalSize.width - activeCrop.width)),
+      y: Math.max(0, Math.min(drag.startCropY - deltaY, naturalSize.height - activeCrop.height)),
+    };
+  }
+
+  useEffect(() => {
+    if (!naturalSize.width || !naturalSize.height || crop) {
+      return;
+    }
+
+    onChangeRef.current({
+      width,
+      height,
+      crop: {
+        x: 0,
+        y: 0,
+        width: naturalSize.width,
+        height: naturalSize.height,
+      },
+    });
+  }, [crop, height, naturalSize.height, naturalSize.width, width]);
+
   useEffect(() => {
     function handleMouseMove(event: MouseEvent) {
       const drag = dragRef.current;
@@ -101,9 +161,25 @@ export default function ResizeEditor({ imageUrl, width, height, onResize }: Prop
         return;
       }
 
-      const nextSize = nextSizeFromDrag(drag, event.clientX, event.clientY);
-      if (nextSize) {
-        onResizeRef.current(nextSize);
+      if (drag.mode === 'resize') {
+        const nextSize = nextSizeFromDrag(drag, event.clientX, event.clientY);
+        if (nextSize) {
+          onChangeRef.current({
+            width: nextSize.width,
+            height: nextSize.height,
+            crop: getSafeCrop(),
+          });
+        }
+        return;
+      }
+
+      const nextCrop = nextCropFromMove(drag, event.clientX, event.clientY);
+      if (nextCrop) {
+        onChangeRef.current({
+          width,
+          height,
+          crop: nextCrop,
+        });
       }
     }
 
@@ -121,13 +197,18 @@ export default function ResizeEditor({ imageUrl, width, height, onResize }: Prop
   }, [height, naturalSize.height, naturalSize.width, width]);
 
   const layout = getLayout();
+  const safeCrop = getSafeCrop();
+  const imageLeft = layout ? layout.left - safeCrop.x * (layout.boxWidth / safeCrop.width) : 0;
+  const imageTop = layout ? layout.top - safeCrop.y * (layout.boxHeight / safeCrop.height) : 0;
+  const imageWidth = layout ? naturalSize.width * (layout.boxWidth / safeCrop.width) : 0;
+  const imageHeight = layout ? naturalSize.height * (layout.boxHeight / safeCrop.height) : 0;
 
   return (
     <div className="resize-editor-frame" ref={frameRef}>
       <div className="resize-editor-stage" />
       {layout ? (
         <div
-          className="resize-object"
+          className="resize-frame-box"
           style={{
             left: layout.left,
             top: layout.top,
@@ -135,18 +216,42 @@ export default function ResizeEditor({ imageUrl, width, height, onResize }: Prop
             height: layout.boxHeight,
           }}
         >
-          <img
-            src={imageUrl}
-            className="resize-object-image"
-            draggable={false}
-            alt=""
-            onLoad={(event) => {
-              setNaturalSize({
-                width: event.currentTarget.naturalWidth,
-                height: event.currentTarget.naturalHeight,
-              });
+          <div
+            className="resize-frame-canvas"
+            onMouseDown={(event) => {
+              if (event.target !== event.currentTarget && !(event.target as HTMLElement).classList.contains('resize-object-image')) {
+                return;
+              }
+
+              dragRef.current = {
+                mode: 'move',
+                startX: event.clientX,
+                startY: event.clientY,
+                startCropX: safeCrop.x,
+                startCropY: safeCrop.y,
+              };
+              document.body.style.cursor = 'grabbing';
             }}
-          />
+          >
+            <img
+              src={imageUrl}
+              className="resize-object-image"
+              draggable={false}
+              alt=""
+              style={{
+                left: imageLeft - layout.left,
+                top: imageTop - layout.top,
+                width: imageWidth,
+                height: imageHeight,
+              }}
+              onLoad={(event) => {
+                setNaturalSize({
+                  width: event.currentTarget.naturalWidth,
+                  height: event.currentTarget.naturalHeight,
+                });
+              }}
+            />
+          </div>
           <div className="resize-object-label">
             {width} x {height}
           </div>
@@ -158,6 +263,7 @@ export default function ResizeEditor({ imageUrl, width, height, onResize }: Prop
               onMouseDown={(event) => {
                 event.preventDefault();
                 dragRef.current = {
+                  mode: 'resize',
                   handle,
                   startX: event.clientX,
                   startY: event.clientY,

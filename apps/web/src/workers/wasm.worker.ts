@@ -81,7 +81,17 @@ async function resizeImage(file: File, options: ResizeOptions): Promise<Processe
   try {
     const canvas = new OffscreenCanvas(options.width, options.height);
     const ctx = getContext(canvas);
-    ctx.drawImage(bitmap, 0, 0, options.width, options.height);
+    const crop = options.crop;
+
+    if (crop) {
+      const sourceX = Math.max(0, Math.min(crop.x, bitmap.width - 1));
+      const sourceY = Math.max(0, Math.min(crop.y, bitmap.height - 1));
+      const sourceWidth = Math.max(1, Math.min(crop.width, bitmap.width - sourceX));
+      const sourceHeight = Math.max(1, Math.min(crop.height, bitmap.height - sourceY));
+      ctx.drawImage(bitmap, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, options.width, options.height);
+    } else {
+      ctx.drawImage(bitmap, 0, 0, options.width, options.height);
+    }
 
     const blob = await canvas.convertToBlob({ type: inferMimeType(file) });
     return { blob, mimeType: blob.type || inferMimeType(file) };

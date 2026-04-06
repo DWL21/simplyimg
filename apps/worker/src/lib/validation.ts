@@ -162,6 +162,22 @@ export const parseCompressOptions = (options: string): CompressOptions => {
 
 export const parseResizeOptions = (options: string): ResizeOptions => {
   const parsed = parseJsonOptions<Record<string, unknown>>(options, "resize");
+  const crop =
+    parsed.crop === undefined
+      ? undefined
+      : (() => {
+          if (typeof parsed.crop !== "object" || parsed.crop === null) {
+            throw new ApiError("INVALID_OPTIONS", "Invalid crop");
+          }
+          const cropRecord = parsed.crop as Record<string, unknown>;
+          return {
+            x: requireNonNegativeNumber(cropRecord.x, "crop.x"),
+            y: requireNonNegativeNumber(cropRecord.y, "crop.y"),
+            width: requirePositiveNumber(cropRecord.width, "crop.width"),
+            height: requirePositiveNumber(cropRecord.height, "crop.height"),
+          };
+        })();
+
   return {
     width: requirePositiveNumber(parsed.width, "width"),
     height: requirePositiveNumber(parsed.height, "height"),
@@ -173,6 +189,7 @@ export const parseResizeOptions = (options: string): ResizeOptions => {
           : (() => {
               throw new ApiError("INVALID_OPTIONS", "Invalid fit");
             })(),
+    crop,
   };
 };
 

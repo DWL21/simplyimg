@@ -263,7 +263,8 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               imageUrl={selectedFile.previewUrl}
               width={options.resize.width}
               height={options.resize.height}
-              onResize={(size) => setOptions((current) => ({ ...current, resize: size }))}
+              crop={options.resize.crop}
+              onChange={(nextResize) => setOptions((current) => ({ ...current, resize: nextResize }))}
             />
           ) : (
             <div className="preview-frame">

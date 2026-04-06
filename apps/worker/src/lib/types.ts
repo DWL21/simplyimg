@@ -26,6 +26,7 @@ export interface ResizeOptions {
   width: number;
   height: number;
   fit?: ResizeFit;
+  crop?: CropOptions;
 }
 
 export interface ConvertOptions {
