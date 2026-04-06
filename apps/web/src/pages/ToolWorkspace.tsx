@@ -222,8 +222,7 @@ export function ToolWorkspace({
                           imageUrl={selectedFile.previewUrl}
                           width={resizeOptions.width}
                           height={resizeOptions.height}
-                          value={resizeOptions.crop}
-                          onChange={(crop) => onOptionsChange({ ...resizeOptions, crop })}
+                          onResize={(nextSize) => onOptionsChange({ ...resizeOptions, ...nextSize })}
                         />
                       </div>
                       <span className="muted">{appMessages.workspace.original}</span>

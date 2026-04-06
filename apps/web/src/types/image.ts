@@ -39,7 +39,6 @@ export interface CompressOptions {
 export interface ResizeOptions {
   width: number;
   height: number;
-  crop?: CropOptions;
 }
 
 export interface ConvertOptions {
