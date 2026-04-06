@@ -428,16 +428,17 @@ export async function downloadAsPdf(html: string, fileName: string) {
   document.body.append(iframe);
 
   try {
-    const iframeDoc = iframe.contentDocument!;
-    iframeDoc.open();
-    iframeDoc.write(html);
-    iframeDoc.close();
+    const blob = new Blob([html], { type: 'text/html' });
+    const blobUrl = URL.createObjectURL(blob);
+    iframe.src = blobUrl;
 
     await new Promise<void>((resolve) => {
       iframe.onload = () => resolve();
       window.setTimeout(() => resolve(), 500);
     });
+    URL.revokeObjectURL(blobUrl);
 
+    const iframeDoc = iframe.contentDocument!;
     const iframeWin = iframe.contentWindow!;
     if (iframeWin.document.fonts?.ready) {
       await iframeWin.document.fonts.ready;
