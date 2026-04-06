@@ -1,0 +1,6 @@
+name = "simplyimg-worker"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[vars]
+MAX_UPLOAD_BYTES = "10485760"
