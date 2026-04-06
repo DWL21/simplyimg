@@ -37,8 +37,9 @@
 html,
 body,
 #root {
-  min-height: 100%;
+  height: 100%;
   margin: 0;
+  overflow: hidden;
 }
 
 body {
@@ -59,9 +60,10 @@ img {
 
 /* ─── App root ───────────────────────────────────────────── */
 .app {
-  min-height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* ─── Shared: brand ──────────────────────────────────────── */
