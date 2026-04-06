@@ -1,0 +1,10 @@
+node_modules
+dist
+.wrangler
+*.tsbuildinfo
+coverage
+packages/img-processor/pkg
+packages/img-processor/target
+.codex
+apps/web/vite.config.js
+apps/web/vite.config.d.ts

@@ -1,0 +1,14 @@
+{
+  "name": "simplyimg",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.7.1",
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:worker": "pnpm --filter worker dev",
+    "build:web": "pnpm --filter web build",
+    "build:worker": "pnpm --filter worker build",
+    "typecheck:web": "pnpm --filter web typecheck",
+    "typecheck:worker": "pnpm --filter worker typecheck"
+  }
+}
