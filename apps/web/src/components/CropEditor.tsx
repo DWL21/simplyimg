@@ -39,8 +39,9 @@ export default function CropEditor({ imageUrl, value, onChange }: Props) {
   const onChangeRef = useRef(onChange);
   const valueRef = useRef(value);
 
-  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
-  useEffect(() => { valueRef.current = value; }, [value]);
+  // Sync refs synchronously during render so onLoad (which may fire before effects) sees the latest values
+  onChangeRef.current = onChange;
+  valueRef.current = value;
 
   // Always cleanup cursor on unmount
   useEffect(() => () => { document.body.style.cursor = ''; }, []);
