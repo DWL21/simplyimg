@@ -605,6 +605,8 @@ img {
   aspect-ratio: 1 / 1;
   flex-shrink: 0;
   transition: border-color 150ms;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 243, 236, 0.92));
 }
 
 .strip-item.is-selected {
@@ -614,7 +616,8 @@ img {
 .strip-thumb {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  padding: 6px;
 }
 
 .strip-done {
