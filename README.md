@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNjAgMTYwIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZmF2aWNvbkdyYWRpZW50IiB4MT0iMjQiIHkxPSIyMCIgeDI9IjEzNCIgeTI9IjE0MCIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjZjk3MzE2IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMxZjdhNWYiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB4PSIyMCIgeT0iMjAiIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iMzIiIGZpbGw9IiNmZmZhZjIiIHN0cm9rZT0icmdiYSgyNSwxOCw4LDAuMSkiIC8+CiAgPHBhdGgKICAgIGQ9Ik00OCAxMDIgNzAgODBsMTYgMTYgMjYtMzQiCiAgICBmaWxsPSJub25lIgogICAgc3Ryb2tlPSJ1cmwoI2Zhdmljb25HcmFkaWVudCkiCiAgICBzdHJva2Utd2lkdGg9IjEyIgogICAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogICAgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIKICAvPgogIDxjaXJjbGUgY3g9IjU2IiBjeT0iNTYiIHI9IjEwIiBmaWxsPSIjZjU5ZTBiIiAvPgogIDxwYXRoCiAgICBkPSJNMTAyIDQ2aDE2TTExMCAzOHYxNiIKICAgIGZpbGw9Im5vbmUiCiAgICBzdHJva2U9IiMxZjdhNWYiCiAgICBzdHJva2Utd2lkdGg9IjgiCiAgICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgLz4KPC9zdmc+Cg==" width="80" height="80" alt="simplyimg" />
-</p>
-
 <h1 align="center">simplyimg</h1>
 
 <p align="center">
@@ -9,7 +5,7 @@
 </p>
 
 <p align="center">
-  A browser-first image and document processing tool — no uploads, no accounts, no waiting.
+  A browser-first image and document processing tool
 </p>
 
 ---
@@ -81,6 +77,6 @@ wasm-pack build --target bundler
 
 ## License
 
-Copyright (c) 2025 DWL21. All rights reserved.
+Copyright (c) 2026 DWL21. All rights reserved.
 
 This software is proprietary. Use, copying, modification, and distribution are strictly prohibited without prior written permission from the copyright holder.
