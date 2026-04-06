@@ -85,6 +85,7 @@ function documentStyles() {
     }
     .page {
       width: min(var(--page-width), 100%);
+      height: 297mm;
       margin: 0 auto;
       background: white;
       box-shadow: var(--shadow);
@@ -95,6 +96,7 @@ function documentStyles() {
     }
     .page-inner {
       flex: 1;
+      min-height: 0;
       padding: var(--page-padding-y) var(--page-padding-x);
       display: flex;
       flex-direction: column;
@@ -127,6 +129,7 @@ function documentStyles() {
     }
     .doc-body {
       flex: 1;
+      min-height: 0;
       font-size: 15px;
       line-height: 1.72;
       color: var(--text);
@@ -231,6 +234,7 @@ function documentStyles() {
     }
     .doc-measure .page {
       width: var(--page-width);
+      height: 297mm;
       min-height: 297mm;
       box-shadow: none;
     }
@@ -250,9 +254,10 @@ function documentStyles() {
       }
       .page {
         width: auto;
+        height: 297mm;
         margin: 0;
         box-shadow: none;
-        min-height: auto;
+        min-height: 297mm;
         break-after: page;
       }
       .page:last-child {
@@ -356,8 +361,17 @@ function paginationScript(options: RenderOptions) {
         });
       }
 
-      window.addEventListener('load', paginate);
+      function schedulePaginate() {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(paginate);
+        });
+      }
+
+      window.addEventListener('load', schedulePaginate);
       window.addEventListener('resize', paginate);
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(schedulePaginate).catch(() => {});
+      }
     </script>
   `;
 }

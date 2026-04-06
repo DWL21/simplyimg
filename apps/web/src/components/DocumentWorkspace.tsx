@@ -51,6 +51,13 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
     event.target.value = '';
   }
 
+  const headerSummary = options.header === 'fileName' ? '각 페이지 상단에 파일명 표시' : '머리말 없음';
+  const footerSummary = options.footer === 'fileName'
+    ? '각 페이지 하단에 파일명 표시'
+    : options.footer === 'pageNumber'
+      ? '각 페이지 하단에 페이지 번호 표시'
+      : '꼬리말 없음';
+
   if (!selectedFile) {
     return (
       <div className="upload-page" onDrop={handleDrop} onDragOver={(event) => event.preventDefault()}>
@@ -148,34 +155,34 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
             <div className="document-option-card"><strong>파일명</strong><p>{selectedFile.file.name}</p></div>
             <div className="document-option-card">
               <strong>머리말</strong>
-              <div className="document-toggle-row">
-                <button
-                  className={options.header === 'fileName' ? 'segmented-option is-active' : 'segmented-option'}
-                  type="button"
-                  onClick={() => void updateOptions({ header: options.header === 'fileName' ? 'none' : 'fileName' })}
+              <label className="document-select-field">
+                <span className="document-select-label">표시 방식</span>
+                <select
+                  className="document-select"
+                  value={options.header}
+                  onChange={(event) => void updateOptions({ header: event.target.value as 'none' | 'fileName' })}
                 >
-                  파일명
-                </button>
-              </div>
+                  <option value="none">없음</option>
+                  <option value="fileName">파일명</option>
+                </select>
+              </label>
+              <p className="document-option-help">{headerSummary}</p>
             </div>
             <div className="document-option-card">
               <strong>꼬리말</strong>
-              <div className="document-toggle-row">
-                <button
-                  className={options.footer === 'fileName' ? 'segmented-option is-active' : 'segmented-option'}
-                  type="button"
-                  onClick={() => void updateOptions({ footer: options.footer === 'fileName' ? 'none' : 'fileName' })}
+              <label className="document-select-field">
+                <span className="document-select-label">표시 방식</span>
+                <select
+                  className="document-select"
+                  value={options.footer}
+                  onChange={(event) => void updateOptions({ footer: event.target.value as 'none' | 'fileName' | 'pageNumber' })}
                 >
-                  파일명
-                </button>
-                <button
-                  className={options.footer === 'pageNumber' ? 'segmented-option is-active' : 'segmented-option'}
-                  type="button"
-                  onClick={() => void updateOptions({ footer: options.footer === 'pageNumber' ? 'none' : 'pageNumber' })}
-                >
-                  페이지 번호
-                </button>
-              </div>
+                  <option value="none">없음</option>
+                  <option value="fileName">파일명</option>
+                  <option value="pageNumber">페이지 번호</option>
+                </select>
+              </label>
+              <p className="document-option-help">{footerSummary}</p>
             </div>
             <div className="document-option-card"><strong>상태</strong><p>{isProcessing ? '렌더링 중' : previewHtml ? '준비됨' : '대기 중'}</p></div>
           </div>
