@@ -79,6 +79,10 @@ Endpoints: `POST /api/{compress,resize,convert,rotate,flip,crop}` — multipart 
   - Route is declared in `apps/worker/wrangler.toml`; `wrangler deploy` registers the route automatically.
 - `VITE_WORKER_URL` env var overrides the Worker base URL (default `http://localhost:8787` for local dev).
 
+## Git conventions
+
+- Commit messages should have no `Co-Authored-By` trailer. The sole author is the repository owner.
+
 ### Type sharing
 
 `apps/web/src/types/image.ts` defines all shared types (`ToolName`, `ToolOptions`, `*Options`). The Worker has its own parallel types in `apps/worker/src/lib/types.ts` — they are structurally equivalent but not imported from a shared package.
