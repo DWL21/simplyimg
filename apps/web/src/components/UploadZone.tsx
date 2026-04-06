@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react';
+import { acceptedImageInput, isSupportedImageFile } from '../lib/formatUtils';
 import { useImageStore } from '../store/imageStore';
 import { TOOL_LABELS } from '../lib/toolConstants';
 import Brand from './Brand';
@@ -18,7 +19,7 @@ export default function UploadZone({ tool, onConfirm, onBack }: Props) {
 
   const handleFiles = useCallback(
     (incoming: File[]) => {
-      const images = incoming.filter((f) => f.type.startsWith('image/'));
+      const images = incoming.filter(isSupportedImageFile);
       if (images.length > 0) addFiles(images);
     },
     [addFiles],
@@ -45,7 +46,7 @@ export default function UploadZone({ tool, onConfirm, onBack }: Props) {
         id="upload-input"
         type="file"
         multiple
-        accept="image/*"
+        accept={acceptedImageInput}
         onChange={handleChange}
         style={{ display: 'none' }}
       />
@@ -70,7 +71,7 @@ export default function UploadZone({ tool, onConfirm, onBack }: Props) {
             </div>
             <strong className="upload-heading">이미지를 끌어다 놓거나</strong>
             <span className="upload-sub">클릭해서 파일을 선택하세요</span>
-            <span className="upload-hint">JPG · PNG · WebP · GIF · 여러 파일 동시 가능</span>
+            <span className="upload-hint">JPG · PNG · WebP · SVG · HEIC/HEIF · 여러 파일 동시 가능</span>
           </div>
         </label>
       ) : (

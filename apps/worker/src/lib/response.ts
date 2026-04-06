@@ -15,6 +15,8 @@ export const formatToMimeType = (format: ImageFormat): string => {
       return "image/webp";
     case "gif":
       return "image/gif";
+    case "svg":
+      return "image/svg+xml";
   }
 };
 
@@ -24,6 +26,7 @@ export const inferFormat = (file: File): ImageFormat => {
   if (type.includes("png")) return "png";
   if (type.includes("webp")) return "webp";
   if (type.includes("gif")) return "gif";
+  if (type.includes("svg")) return "svg";
 
   const match = file.name.toLowerCase().match(/\.([a-z0-9]+)$/);
   switch (match?.[1]) {
@@ -36,6 +39,8 @@ export const inferFormat = (file: File): ImageFormat => {
       return "webp";
     case "gif":
       return "gif";
+    case "svg":
+      return "svg";
     default:
       return "png";
   }

@@ -10,7 +10,7 @@ import type {
   ToolName,
   ToolOptions,
 } from '../types/image';
-import { inferMimeType, mimeFromFormat } from '../lib/formatUtils';
+import { inferMimeType, mimeFromFormat, preferredRasterMimeType } from '../lib/formatUtils';
 
 type WorkerRequest =
   | { id: string; type: 'info'; file: File }
@@ -66,7 +66,16 @@ async function executeTool(tool: ToolName, file: File, options: ToolOptions): Pr
 }
 
 async function compressImage(file: File, options: CompressOptions): Promise<ProcessedImage> {
-  const mimeType = options.format ? mimeFromFormat(options.format) : inferMimeType(file);
+  if (options.format === 'svg') {
+    return drawToSvg(file, {
+      quality: normalizedQuality(options.quality),
+      draw(ctx, bitmap) {
+        ctx.drawImage(bitmap, 0, 0);
+      },
+    });
+  }
+
+  const mimeType = options.format ? mimeFromFormat(options.format) : preferredRasterMimeType(file);
   return drawToBlob(file, {
     mimeType,
     quality: normalizedQuality(options.quality),
@@ -93,16 +102,22 @@ async function resizeImage(file: File, options: ResizeOptions): Promise<Processe
       ctx.drawImage(bitmap, 0, 0, options.width, options.height);
     }
 
-    const blob = await canvas.convertToBlob({ type: inferMimeType(file) });
-    return { blob, mimeType: blob.type || inferMimeType(file) };
+    const mimeType = preferredRasterMimeType(file);
+    const blob = await canvas.convertToBlob({ type: mimeType });
+    return { blob, mimeType: blob.type || mimeType };
   } finally {
     bitmap.close();
   }
 }
 
 async function convertImage(file: File, options: ConvertOptions): Promise<ProcessedImage> {
-  if (options.to === 'gif') {
-    throw new Error('GIF conversion is not supported in the browser worker yet');
+  if (options.to === 'svg') {
+    return drawToSvg(file, {
+      quality: normalizedQuality(options.quality),
+      draw(ctx, bitmap) {
+        ctx.drawImage(bitmap, 0, 0);
+      },
+    });
   }
 
   return drawToBlob(file, {
@@ -129,8 +144,9 @@ async function rotateImage(file: File, options: RotateOptions): Promise<Processe
     ctx.rotate(radians);
     ctx.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
 
-    const blob = await canvas.convertToBlob({ type: inferMimeType(file) });
-    return { blob, mimeType: blob.type || inferMimeType(file) };
+    const mimeType = preferredRasterMimeType(file);
+    const blob = await canvas.convertToBlob({ type: mimeType });
+    return { blob, mimeType: blob.type || mimeType };
   } finally {
     bitmap.close();
   }
@@ -138,7 +154,7 @@ async function rotateImage(file: File, options: RotateOptions): Promise<Processe
 
 async function flipImage(file: File, options: FlipOptions): Promise<ProcessedImage> {
   return drawToBlob(file, {
-    mimeType: inferMimeType(file),
+    mimeType: preferredRasterMimeType(file),
     draw(ctx, bitmap) {
       ctx.translate(options.horizontal ? bitmap.width : 0, options.vertical ? bitmap.height : 0);
       ctx.scale(options.horizontal ? -1 : 1, options.vertical ? -1 : 1);
@@ -160,8 +176,9 @@ async function cropImage(file: File, options: CropOptions): Promise<ProcessedIma
     const ctx = getContext(canvas);
     ctx.drawImage(bitmap, options.x, options.y, width, height, 0, 0, width, height);
 
-    const blob = await canvas.convertToBlob({ type: inferMimeType(file) });
-    return { blob, mimeType: blob.type || inferMimeType(file) };
+    const mimeType = preferredRasterMimeType(file);
+    const blob = await canvas.convertToBlob({ type: mimeType });
+    return { blob, mimeType: blob.type || mimeType };
   } finally {
     bitmap.close();
   }
@@ -205,4 +222,44 @@ async function drawToBlob(
   } finally {
     bitmap.close();
   }
+}
+
+async function drawToSvg(
+  file: File,
+  config: {
+    quality?: number;
+    draw: (ctx: OffscreenCanvasRenderingContext2D, bitmap: ImageBitmap) => void;
+  },
+): Promise<ProcessedImage> {
+  const bitmap = await createImageBitmap(file);
+  try {
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    const ctx = getContext(canvas);
+    config.draw(ctx, bitmap);
+    const rasterMime = preferredRasterMimeType(file);
+    const blob = await canvas.convertToBlob({
+      type: rasterMime,
+      quality: config.quality,
+    });
+
+    return wrapBlobAsSvg(blob, bitmap.width, bitmap.height);
+  } finally {
+    bitmap.close();
+  }
+}
+
+async function wrapBlobAsSvg(blob: Blob, width: number, height: number): Promise<ProcessedImage> {
+  const buffer = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let index = 0; index < bytes.length; index += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+  }
+
+  const base64 = btoa(binary);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><image href="data:${blob.type};base64,${base64}" width="${width}" height="${height}" preserveAspectRatio="none"/></svg>`;
+  return {
+    blob: new Blob([svg], { type: 'image/svg+xml' }),
+    mimeType: 'image/svg+xml',
+  };
 }

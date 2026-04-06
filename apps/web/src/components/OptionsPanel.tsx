@@ -35,11 +35,11 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
 
   if (tool === 'compress') {
     const s = state.compress;
-    const formats: { label: string; value: OutputFormat | undefined }[] = [
-      { label: '원본 유지', value: undefined },
+    const formats: { label: string; value: OutputFormat }[] = [
       { label: 'JPEG', value: 'jpeg' },
       { label: 'PNG', value: 'png' },
       { label: 'WebP', value: 'webp' },
+      { label: 'SVG', value: 'svg' },
     ];
     return (
       <div className="opt-stack">
@@ -62,7 +62,7 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
           <div className="chip-row">
             {formats.map((f) => (
               <button
-                key={String(f.value)}
+                key={f.value}
                 className={`chip ${s.format === f.value ? 'is-active' : ''}`}
                 onClick={() => patch('compress', { ...s, format: f.value })}
               >
@@ -116,7 +116,7 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
       { label: 'JPEG', value: 'jpeg' },
       { label: 'PNG', value: 'png' },
       { label: 'WebP', value: 'webp' },
-      { label: 'GIF', value: 'gif' },
+      { label: 'SVG', value: 'svg' },
     ];
     return (
       <div className="opt-stack">

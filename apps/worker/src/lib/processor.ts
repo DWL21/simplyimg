@@ -69,6 +69,7 @@ const toImageFormat = (format: string | undefined): ImageFormat | "unknown" => {
     case "png":
     case "webp":
     case "gif":
+    case "svg":
       return format;
     default:
       return "unknown";
@@ -82,6 +83,19 @@ const toUint8Array = (value: Uint8Array): Uint8Array => {
   const next = new Uint8Array(value.byteLength);
   next.set(value);
   return next;
+};
+
+const toBase64 = (value: Uint8Array): string => {
+  let binary = "";
+  for (let index = 0; index < value.length; index += 0x8000) {
+    binary += String.fromCharCode(...value.subarray(index, index + 0x8000));
+  }
+  return btoa(binary);
+};
+
+const wrapRasterInSvg = (value: Uint8Array, mimeType: string, width: number, height: number): Uint8Array => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><image href="data:${mimeType};base64,${toBase64(value)}" width="${width}" height="${height}" preserveAspectRatio="none"/></svg>`;
+  return new TextEncoder().encode(svg);
 };
 
 const wrapWasmError = (error: unknown): never => {
@@ -112,6 +126,12 @@ export const createImageProcessor = (): ImageProcessor => ({
   async compress(input, options) {
     try {
       await wasmReady;
+      if (options.format === "svg") {
+        const raster = wasmCompress(toUint8Array(input), "png", normalizeQuality(options.quality, 80));
+        const info = wasmGetInfo(toUint8Array(raster)) as { width?: number; height?: number };
+        return wrapRasterInSvg(raster, "image/png", info.width ?? 0, info.height ?? 0);
+      }
+
       const format = options.format ?? normalizeFormat(detectFormat(input));
       return wasmCompress(toUint8Array(input), format, normalizeQuality(options.quality, 80));
     } catch (error) {
@@ -144,6 +164,12 @@ export const createImageProcessor = (): ImageProcessor => ({
   async convert(input, options) {
     try {
       await wasmReady;
+      if (options.to === "svg") {
+        const raster = wasmConvert(toUint8Array(input), "png", normalizeQuality(options.quality, 85));
+        const info = wasmGetInfo(toUint8Array(raster)) as { width?: number; height?: number };
+        return wrapRasterInSvg(raster, "image/png", info.width ?? 0, info.height ?? 0);
+      }
+
       return wasmConvert(toUint8Array(input), options.to, normalizeQuality(options.quality, 85));
     } catch (error) {
       return wrapWasmError(error);

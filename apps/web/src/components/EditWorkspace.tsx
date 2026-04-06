@@ -3,12 +3,12 @@ import { useImageStore } from '../store/imageStore';
 import CropEditor from './CropEditor';
 import OptionsPanel, { type OptionsPanelState } from './OptionsPanel';
 import ResizeEditor from './ResizeEditor';
-import { bytesToHuman } from '../lib/formatUtils';
+import { acceptedImageInput, bytesToHuman, isSupportedImageFile } from '../lib/formatUtils';
 import { TOOL_LABELS, ALL_TOOLS } from '../lib/toolConstants';
 import type { ToolName, ToolOptions } from '../types/image';
 
 const DEFAULT_OPTIONS: OptionsPanelState = {
-  compress: { quality: 80, format: undefined },
+  compress: { quality: 80, format: 'jpeg' },
   resize: { width: 1920, height: 1080 },
   convert: { to: 'webp', quality: 85 },
   rotate: { degrees: 0 },
@@ -55,7 +55,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   }, [files, selectedId]);
 
   function handleAddFiles(incoming: File[]) {
-    const images = incoming.filter((f) => f.type.startsWith('image/'));
+    const images = incoming.filter(isSupportedImageFile);
     if (images.length > 0) addFiles(images);
   }
 
@@ -175,7 +175,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
         ref={fileInputRef}
         type="file"
         multiple
-        accept="image/*"
+        accept={acceptedImageInput}
         onChange={handleFileInputChange}
         style={{ display: 'none' }}
       />

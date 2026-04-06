@@ -6,7 +6,7 @@ export type ToolName =
   | "flip"
   | "crop";
 
-export type ImageFormat = "jpeg" | "png" | "webp" | "gif";
+export type ImageFormat = "jpeg" | "png" | "webp" | "gif" | "svg";
 export type ResizeFit = "contain" | "cover" | "exact";
 export type DocumentFormat = "md" | "docx";
 

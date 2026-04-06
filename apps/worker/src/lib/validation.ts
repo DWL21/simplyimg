@@ -14,7 +14,7 @@ import type {
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const MAX_DOCUMENT_UPLOAD_BYTES = 25 * 1024 * 1024;
-const SUPPORTED_FORMATS: ImageFormat[] = ["jpeg", "png", "webp", "gif"];
+const SUPPORTED_FORMATS: ImageFormat[] = ["jpeg", "png", "webp", "gif", "svg"];
 const SUPPORTED_DOCUMENT_FORMATS: DocumentFormat[] = ["md", "docx"];
 
 export const parseMultipart = async (request: Request): Promise<MultipartPayload> => {

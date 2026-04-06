@@ -1,5 +1,6 @@
 import { useDropZone } from '../../hooks/useDropZone';
 import { appMessages } from '../../i18n/messages';
+import { acceptedImageInput } from '../../lib/formatUtils';
 
 interface DropZoneProps {
   onFiles: (files: File[]) => void;
@@ -13,7 +14,7 @@ export function DropZone({ onFiles }: DropZoneProps) {
       <input
         type="file"
         multiple
-        accept="image/*"
+        accept={acceptedImageInput}
         onChange={(event) => onFiles(Array.from(event.target.files ?? []))}
       />
       <div className="dropzone-copy">

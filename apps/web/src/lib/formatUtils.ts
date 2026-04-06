@@ -1,5 +1,23 @@
 import type { OutputFormat } from '../types/image';
 
+export const acceptedImageInput = [
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp',
+  '.svg',
+  '.heic',
+  '.heif',
+  '.gif',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/svg+xml',
+  'image/heic',
+  'image/heif',
+  'image/gif',
+].join(',');
+
 export function bytesToHuman(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) {
     return '0 B';
@@ -29,8 +47,8 @@ export function mimeFromFormat(format: OutputFormat): string {
       return 'image/png';
     case 'webp':
       return 'image/webp';
-    case 'gif':
-      return 'image/gif';
+    case 'svg':
+      return 'image/svg+xml';
   }
 }
 
@@ -42,8 +60,8 @@ export function extensionFromMime(mimeType: string): string {
       return 'png';
     case 'image/webp':
       return 'webp';
-    case 'image/gif':
-      return 'gif';
+    case 'image/svg+xml':
+      return 'svg';
     default:
       return 'bin';
   }
@@ -63,9 +81,33 @@ export function inferMimeType(file: File): string {
       return 'image/png';
     case 'webp':
       return 'image/webp';
+    case 'svg':
+      return 'image/svg+xml';
+    case 'heic':
+      return 'image/heic';
+    case 'heif':
+      return 'image/heif';
     case 'gif':
       return 'image/gif';
     default:
       return 'application/octet-stream';
   }
+}
+
+export function isSupportedImageFile(file: File): boolean {
+  if (file.type.startsWith('image/')) {
+    return true;
+  }
+
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  return ['jpg', 'jpeg', 'png', 'webp', 'svg', 'heic', 'heif', 'gif'].includes(extension ?? '');
+}
+
+export function preferredRasterMimeType(file: File): 'image/jpeg' | 'image/png' | 'image/webp' {
+  const mimeType = inferMimeType(file);
+  if (mimeType === 'image/jpeg' || mimeType === 'image/png' || mimeType === 'image/webp') {
+    return mimeType;
+  }
+
+  return 'image/png';
 }
