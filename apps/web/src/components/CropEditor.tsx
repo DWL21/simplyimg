@@ -232,13 +232,15 @@ export default function CropEditor({ imageUrl, value, onChange }: Props) {
         onLoad={(e) => {
           const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
           naturalSizeRef.current = { w, h };
-          const p = DEFAULT_PAD;
-          onChangeRef.current({
-            x: Math.round(w * p),
-            y: Math.round(h * p),
-            width: Math.round(w * (1 - 2 * p)),
-            height: Math.round(h * (1 - 2 * p)),
-          });
+          if (!valueRef.current) {
+            const p = DEFAULT_PAD;
+            onChangeRef.current({
+              x: Math.round(w * p),
+              y: Math.round(h * p),
+              width: Math.round(w * (1 - 2 * p)),
+              height: Math.round(h * (1 - 2 * p)),
+            });
+          }
         }}
         draggable={false}
         alt=""

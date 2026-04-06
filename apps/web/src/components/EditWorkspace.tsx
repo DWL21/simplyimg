@@ -38,6 +38,9 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
 
   const [selectedId, setSelectedId] = useState<string>(() => files[0]?.id ?? '');
   const [options, setOptions] = useState<OptionsPanelState>(DEFAULT_OPTIONS);
+  const [cropMap, setCropMap] = useState<Record<string, import('../types/image').CropOptions | null>>({});
+  const [rotateMap, setRotateMap] = useState<Record<string, number>>({});
+  const [flipMap, setFlipMap] = useState<Record<string, { horizontal: boolean; vertical: boolean }>>({});
   const [showResult, setShowResult] = useState(false);
   const [stripWidth, setStripWidth] = useState(280);
   const [zoom, setZoom] = useState(1);
@@ -63,6 +66,13 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     setZoom(1);
     setPan({ x: 0, y: 0 });
   }, [selectedId, showResult]);
+
+  // Sync options.crop from cropMap when selected file changes
+  useEffect(() => {
+    if (tool === 'crop' && selectedId) {
+      setOptions((o) => ({ ...o, crop: cropMap[selectedId] ?? null }));
+    }
+  }, [selectedId, tool]);
 
   function handleWheelZoom(e: React.WheelEvent) {
     e.preventDefault();
@@ -93,6 +103,20 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   function resetZoom() {
     setZoom(1);
     setPan({ x: 0, y: 0 });
+  }
+
+  function handleCropChange(crop: import('../types/image').CropOptions) {
+    if (!selectedFile) return;
+    setCropMap((m) => ({ ...m, [selectedFile.id]: crop }));
+    setOptions((o) => ({ ...o, crop }));
+  }
+
+  function handleOptionsChange(next: OptionsPanelState) {
+    setOptions(next);
+    if (!selectedFile) return;
+    if (tool === 'crop') setCropMap((m) => ({ ...m, [selectedFile.id]: next.crop }));
+    if (tool === 'rotate') setRotateMap((m) => ({ ...m, [selectedFile.id]: next.rotate.degrees }));
+    if (tool === 'flip') setFlipMap((m) => ({ ...m, [selectedFile.id]: next.flip }));
   }
 
   function handleAddFiles(incoming: File[]) {
@@ -175,15 +199,20 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   }
 
   function resetCurrentPreviewChanges() {
+    if (!selectedFile) return;
+    const id = selectedFile.id;
     switch (tool) {
       case 'rotate':
-        setOptions((current) => ({ ...current, rotate: DEFAULT_OPTIONS.rotate }));
+        setOptions((current) => ({ ...current, rotate: { degrees: selectedFile.committedRotateDegrees } }));
+        setRotateMap((m) => { const n = { ...m }; delete n[id]; return n; });
         break;
       case 'flip':
-        setOptions((current) => ({ ...current, flip: DEFAULT_OPTIONS.flip }));
+        setOptions((current) => ({ ...current, flip: { horizontal: selectedFile.committedFlipHorizontal, vertical: selectedFile.committedFlipVertical } }));
+        setFlipMap((m) => { const n = { ...m }; delete n[id]; return n; });
         break;
       case 'crop':
-        setOptions((current) => ({ ...current, crop: DEFAULT_OPTIONS.crop }));
+        setOptions((current) => ({ ...current, crop: null }));
+        setCropMap((m) => ({ ...m, [id]: null }));
         break;
       default:
         break;
@@ -194,10 +223,16 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     if (!selectedFile) {
       return;
     }
-    const completed = await processSingle(selectedFile.id, tool, getToolOptions());
+    const id = selectedFile.id;
+    const completed = await processSingle(id, tool, getToolOptions());
     if (!completed) {
       return;
     }
+
+    // Clear the per-file pending state — it's now committed in the store
+    if (tool === 'rotate') setRotateMap((m) => { const n = { ...m }; delete n[id]; return n; });
+    if (tool === 'flip') setFlipMap((m) => { const n = { ...m }; delete n[id]; return n; });
+    if (tool === 'crop') setCropMap((m) => { const n = { ...m }; delete n[id]; return n; });
 
     setShowResult(false);
   }
@@ -231,44 +266,27 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   );
 
   useEffect(() => {
-    if (!selectedFile) {
-      return;
-    }
+    if (!selectedFile) return;
 
     if (tool === 'rotate') {
+      const saved = rotateMap[selectedFile.id];
+      const degrees = saved !== undefined ? saved : selectedFile.committedRotateDegrees;
       setOptions((current) => {
-        if (current.rotate.degrees === selectedFile.committedRotateDegrees) {
-          return current;
-        }
-        return {
-          ...current,
-          rotate: { degrees: selectedFile.committedRotateDegrees },
-        };
+        if (current.rotate.degrees === degrees) return current;
+        return { ...current, rotate: { degrees } };
       });
     }
 
     if (tool === 'flip') {
+      const saved = flipMap[selectedFile.id];
+      const horizontal = saved !== undefined ? saved.horizontal : selectedFile.committedFlipHorizontal;
+      const vertical = saved !== undefined ? saved.vertical : selectedFile.committedFlipVertical;
       setOptions((current) => {
-        if (
-          current.flip.horizontal === selectedFile.committedFlipHorizontal
-          && current.flip.vertical === selectedFile.committedFlipVertical
-        ) {
-          return current;
-        }
-
-        return {
-          ...current,
-          flip: {
-            horizontal: selectedFile.committedFlipHorizontal,
-            vertical: selectedFile.committedFlipVertical,
-          },
-        };
+        if (current.flip.horizontal === horizontal && current.flip.vertical === vertical) return current;
+        return { ...current, flip: { horizontal, vertical } };
       });
     }
-  }, [
-    selectedFile,
-    tool,
-  ]);
+  }, [selectedFile?.id, tool]);
 
   return (
     <div className="edit-page">
@@ -355,7 +373,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
             <CropEditor
               imageUrl={selectedFile.previewUrl}
               value={options.crop}
-              onChange={(crop) => setOptions((o) => ({ ...o, crop }))}
+              onChange={handleCropChange}
             />
           ) : isResizeMode ? (
             <ResizeEditor
@@ -432,7 +450,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               {hasFiles ? (
                 <>
                   <h3 className="panel-title">{TOOL_LABELS[tool]} 옵션</h3>
-                  <OptionsPanel tool={tool} state={options} onChange={setOptions} />
+                  <OptionsPanel tool={tool} state={options} onChange={handleOptionsChange} />
                 </>
               ) : (
                 <div className="crop-guide">
