@@ -3,19 +3,21 @@ import type { ReactNode } from 'react';
 import { DownloadPanel } from '../components/download/DownloadPanel';
 import { ImagePreview } from '../components/editor/ImagePreview';
 import { ProgressBar } from '../components/editor/ProgressBar';
+import ResizeEditor from '../components/ResizeEditor';
 import { DropZone } from '../components/upload/DropZone';
 import { FileList } from '../components/upload/FileList';
 import { appMessages } from '../i18n/messages';
 import { bytesToHuman, formatLabel } from '../lib/formatUtils';
 import { wasmClient } from '../lib/wasmClient';
 import { useImageStore } from '../store/imageStore';
-import type { ImageInfo, ToolName, ToolOptions } from '../types/image';
+import type { ImageInfo, ResizeOptions, ToolName, ToolOptions } from '../types/image';
 
 interface ToolWorkspaceProps {
   title: string;
   description: string;
   tool: ToolName;
   options: ToolOptions;
+  onOptionsChange?: (options: ToolOptions) => void;
   optionsPanel: ReactNode;
   processLabel: string;
 }
@@ -32,6 +34,7 @@ export function ToolWorkspace({
   description,
   tool,
   options,
+  onOptionsChange,
   optionsPanel,
   processLabel,
 }: ToolWorkspaceProps) {
@@ -50,6 +53,7 @@ export function ToolWorkspace({
 
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [selectedInfo, setSelectedInfo] = useState<ImageInfo>(emptyInfo);
+  const [livePreviewUrl, setLivePreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     setActiveTool(tool);
@@ -69,6 +73,7 @@ export function ToolWorkspace({
 
   const selectedFile = files.find((file) => file.id === selectedFileId) ?? null;
   const selectedResult = results.find((result) => result.sourceFileId === selectedFileId) ?? null;
+  const resizeOptions = tool === 'resize' ? (options as ResizeOptions) : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -89,8 +94,57 @@ export function ToolWorkspace({
     };
   }, [selectedFile]);
 
+  useEffect(() => {
+    if (tool !== 'resize' || !selectedFile || !resizeOptions) {
+      setLivePreviewUrl((current) => {
+        if (current) {
+          URL.revokeObjectURL(current);
+        }
+        return null;
+      });
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const processed = await wasmClient.process('resize', selectedFile.file, resizeOptions);
+        if (cancelled) {
+          return;
+        }
+
+        const nextUrl = URL.createObjectURL(processed.blob);
+        setLivePreviewUrl((current) => {
+          if (current) {
+            URL.revokeObjectURL(current);
+          }
+          return nextUrl;
+        });
+      } catch {
+        if (!cancelled) {
+          setLivePreviewUrl((current) => current);
+        }
+      }
+    }, 80);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [resizeOptions, selectedFile, tool]);
+
+  useEffect(() => () => {
+    setLivePreviewUrl((current) => {
+      if (current) {
+        URL.revokeObjectURL(current);
+      }
+      return null;
+    });
+  }, []);
+
   const totalInputSize = files.reduce((sum, file) => sum + file.file.size, 0);
   const totalOutputSize = results.reduce((sum, result) => sum + result.size, 0);
+  const processedPreviewSrc = tool === 'resize' ? livePreviewUrl ?? selectedResult?.url : selectedResult?.url;
 
   return (
     <div className="workspace-page">
@@ -161,14 +215,29 @@ export function ToolWorkspace({
                   </div>
                 </div>
                 <div className="preview-grid">
+                  {tool === 'resize' && selectedFile && resizeOptions && onOptionsChange ? (
+                    <div className="preview-box">
+                      <div className="preview-frame preview-frame-editor">
+                        <ResizeEditor
+                          imageUrl={selectedFile.previewUrl}
+                          width={resizeOptions.width}
+                          height={resizeOptions.height}
+                          value={resizeOptions.crop}
+                          onChange={(crop) => onOptionsChange({ ...resizeOptions, crop })}
+                        />
+                      </div>
+                      <span className="muted">{appMessages.workspace.original}</span>
+                    </div>
+                  ) : (
+                    <ImagePreview
+                      src={selectedFile?.previewUrl}
+                      alt={selectedFile ? `${selectedFile.file.name} 원본` : '원본 미리보기'}
+                      caption={appMessages.workspace.original}
+                      emptyLabel={appMessages.workspace.originalEmpty}
+                    />
+                  )}
                   <ImagePreview
-                    src={selectedFile?.previewUrl}
-                    alt={selectedFile ? `${selectedFile.file.name} 원본` : '원본 미리보기'}
-                    caption={appMessages.workspace.original}
-                    emptyLabel={appMessages.workspace.originalEmpty}
-                  />
-                  <ImagePreview
-                    src={selectedResult?.url}
+                    src={processedPreviewSrc ?? undefined}
                     alt={selectedResult ? `${selectedResult.name} 결과` : '결과 미리보기'}
                     caption={appMessages.workspace.processed}
                     emptyLabel={appMessages.workspace.processedEmpty}
