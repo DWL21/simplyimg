@@ -1,5 +1,7 @@
 # simplyimg
 
+https://simplyimg.com/
+
 Monorepo scaffold for a browser-first image editing service with:
 
 - `packages/img-processor`: Rust -> WASM image processing engine
