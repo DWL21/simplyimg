@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { printRenderedDocument, renderMarkdownPreviewDocument } from '../lib/markdownRenderer';
+import { downloadAsPdf, renderMarkdownPreviewDocument } from '../lib/markdownRenderer';
 import type { DocumentRenderOptions, DocumentStoreState } from '../types/document';
 
 function makeId() {
@@ -103,16 +103,20 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
   },
   async printDocument() {
     const html = get().printHtml;
-    if (!html) {
-      set({ error: '출력할 문서를 먼저 불러오세요.' });
+    const file = get().files[0]?.file;
+    if (!html || !file) {
+      set({ error: '저장할 문서를 먼저 불러오세요.' });
       return;
     }
 
+    set({ isProcessing: true, error: null });
     try {
-      await printRenderedDocument(html);
+      await downloadAsPdf(html, file.name);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '출력에 실패했습니다.';
+      const message = error instanceof Error ? error.message : 'PDF 저장에 실패했습니다.';
       set({ error: message });
+    } finally {
+      set({ isProcessing: false });
     }
   },
   reset() {

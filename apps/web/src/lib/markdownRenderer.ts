@@ -121,12 +121,6 @@ function documentStyles() {
       color: var(--muted);
       letter-spacing: -0.01em;
     }
-    .doc-title {
-      margin: 0 0 18px;
-      font-size: 34px;
-      line-height: 1.08;
-      letter-spacing: -0.04em;
-    }
     .doc-body {
       flex: 1;
       min-height: 0;
@@ -377,17 +371,15 @@ function paginationScript(options: RenderOptions) {
 }
 
 function buildDocumentHtml(fileName: string, renderedBody: string, mode: 'preview' | 'print', options: RenderOptions) {
-  const title = escapeHtml(fileName.replace(/\\.[^.]+$/, ''));
   const headerHtml = buildHeader(fileName, options);
   const footerHtml = buildFooter(fileName, options);
-  const pageBody = `<h1 class="doc-title">${title}</h1><main class="doc-body">${renderedBody}</main>`;
   const pagedDocument = `
     <div id="page-stack" class="page-stack"></div>
     <template id="doc-template">
       <article class="page">
         <div class="page-inner">
           ${headerHtml}
-          ${pageBody}
+          <main class="doc-body"></main>
           ${footerHtml}
         </div>
       </article>
@@ -422,37 +414,62 @@ export async function renderMarkdownPreviewDocument(file: File, options: RenderO
   };
 }
 
-export async function printRenderedDocument(html: string) {
+export async function downloadAsPdf(html: string, fileName: string) {
+  const { default: html2canvas } = await import('html2canvas');
+  const { jsPDF } = await import('jspdf');
+
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
+  iframe.style.left = '-9999px';
+  iframe.style.top = '0';
+  iframe.style.width = '794px';
+  iframe.style.height = '1123px';
   iframe.style.border = '0';
-
   document.body.append(iframe);
 
-  const target = iframe.contentWindow;
-  if (!target) {
+  try {
+    const iframeDoc = iframe.contentDocument!;
+    iframeDoc.open();
+    iframeDoc.write(html);
+    iframeDoc.close();
+
+    await new Promise<void>((resolve) => {
+      iframe.onload = () => resolve();
+      window.setTimeout(() => resolve(), 500);
+    });
+
+    const iframeWin = iframe.contentWindow!;
+    if (iframeWin.document.fonts?.ready) {
+      await iframeWin.document.fonts.ready;
+    }
+
+    // Wait for pagination script to run
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 300));
+
+    const pages = Array.from(iframeDoc.querySelectorAll<HTMLElement>('.page'));
+    if (pages.length === 0) throw new Error('렌더링된 페이지를 찾지 못했습니다.');
+
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const A4_W = 210;
+    const A4_H = 297;
+
+    for (let i = 0; i < pages.length; i++) {
+      const canvas = await html2canvas(pages[i], {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        windowWidth: 794,
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      if (i > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, 0, A4_W, A4_H);
+    }
+
+    const baseName = fileName.replace(/\.[^.]+$/, '');
+    pdf.save(`${baseName}.pdf`);
+  } finally {
     iframe.remove();
-    throw new Error('인쇄 프레임을 만들지 못했습니다.');
   }
-
-  const doc = target.document;
-  doc.open();
-  doc.write(html);
-  doc.close();
-
-  await new Promise<void>((resolve) => {
-    iframe.onload = () => resolve();
-    window.setTimeout(() => resolve(), 300);
-  });
-
-  target.focus();
-  target.print();
-
-  window.setTimeout(() => {
-    iframe.remove();
-  }, 1500);
 }
