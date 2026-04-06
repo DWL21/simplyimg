@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useImageStore } from '../store/imageStore';
 import CropEditor from './CropEditor';
 import OptionsPanel, { type OptionsPanelState } from './OptionsPanel';
+import ResizeEditor from './ResizeEditor';
 import { bytesToHuman } from '../lib/formatUtils';
 import { TOOL_LABELS, ALL_TOOLS } from '../lib/toolConstants';
 import type { ToolName, ToolOptions } from '../types/image';
@@ -154,6 +155,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     : selectedFile?.previewUrl;
   const previewUrl = showResult && selectedResult ? selectedResult.url : basePreviewUrl;
   const isCropMode = tool === 'crop' && !showResult && !!selectedFile;
+  const isResizeMode = tool === 'resize' && !!selectedFile;
   const canProcess = !isProcessing
     && (tool !== 'crop' || options.crop !== null)
     && (tool !== 'rotate' || options.rotate.degrees !== 0)
@@ -255,6 +257,13 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               imageUrl={selectedFile.previewUrl}
               value={options.crop}
               onChange={(crop) => setOptions((o) => ({ ...o, crop }))}
+            />
+          ) : isResizeMode ? (
+            <ResizeEditor
+              imageUrl={selectedFile.previewUrl}
+              width={options.resize.width}
+              height={options.resize.height}
+              onResize={(size) => setOptions((current) => ({ ...current, resize: size }))}
             />
           ) : (
             <div className="preview-frame">
