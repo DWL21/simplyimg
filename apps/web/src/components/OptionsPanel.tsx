@@ -208,24 +208,51 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
       );
     }
     return (
-      <div className="opt-group">
-        <span className="opt-label">선택 영역</span>
-        <div className="crop-stats">
-          <div className="crop-stat">
-            <span>X</span>
-            <strong>{crop.x}px</strong>
+      <div className="opt-stack">
+        <div className="opt-group">
+          <span className="opt-label">위치</span>
+          <div className="size-row">
+            <div className="field">
+              <span>X</span>
+              <input
+                type="number"
+                min={0}
+                value={crop.x}
+                onChange={(e) => patch('crop', { ...crop, x: Math.max(0, +e.target.value) })}
+              />
+            </div>
+            <div className="field">
+              <span>Y</span>
+              <input
+                type="number"
+                min={0}
+                value={crop.y}
+                onChange={(e) => patch('crop', { ...crop, y: Math.max(0, +e.target.value) })}
+              />
+            </div>
           </div>
-          <div className="crop-stat">
-            <span>Y</span>
-            <strong>{crop.y}px</strong>
-          </div>
-          <div className="crop-stat">
-            <span>너비</span>
-            <strong>{crop.width}px</strong>
-          </div>
-          <div className="crop-stat">
-            <span>높이</span>
-            <strong>{crop.height}px</strong>
+        </div>
+        <div className="opt-group">
+          <span className="opt-label">크기</span>
+          <div className="size-row">
+            <div className="field">
+              <span>너비</span>
+              <input
+                type="number"
+                min={1}
+                value={crop.width}
+                onChange={(e) => patch('crop', { ...crop, width: Math.max(1, +e.target.value) })}
+              />
+            </div>
+            <div className="field">
+              <span>높이</span>
+              <input
+                type="number"
+                min={1}
+                value={crop.height}
+                onChange={(e) => patch('crop', { ...crop, height: Math.max(1, +e.target.value) })}
+              />
+            </div>
           </div>
         </div>
       </div>

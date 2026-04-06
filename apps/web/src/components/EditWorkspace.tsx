@@ -19,10 +19,9 @@ interface Props {
   tool: ToolName;
   onChangeTool: (t: ToolName) => void;
   onBack: () => void;
-  onAddMore: () => void;
 }
 
-export default function EditWorkspace({ tool, onChangeTool, onBack, onAddMore }: Props) {
+export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const files = useImageStore((s) => s.files);
   const results = useImageStore((s) => s.results);
   const isProcessing = useImageStore((s) => s.isProcessing);
@@ -32,17 +31,42 @@ export default function EditWorkspace({ tool, onChangeTool, onBack, onAddMore }:
   const downloadSingle = useImageStore((s) => s.downloadSingle);
   const downloadAll = useImageStore((s) => s.downloadAll);
   const removeFile = useImageStore((s) => s.removeFile);
+  const addFiles = useImageStore((s) => s.addFiles);
 
   const [selectedId, setSelectedId] = useState<string>(() => files[0]?.id ?? '');
   const [options, setOptions] = useState<OptionsPanelState>(DEFAULT_OPTIONS);
   const [showResult, setShowResult] = useState(false);
   const [isDone, setIsDone] = useState(false);
-  const [stripWidth, setStripWidth] = useState(100);
+  const [stripWidth, setStripWidth] = useState(280);
+
   const bodyRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     return () => { document.body.style.cursor = ''; };
   }, []);
+
+  // Auto-select first file when files are added
+  useEffect(() => {
+    if (files.length > 0 && !files.find((f) => f.id === selectedId)) {
+      setSelectedId(files[0].id);
+    }
+  }, [files, selectedId]);
+
+  function handleAddFiles(incoming: File[]) {
+    const images = incoming.filter((f) => f.type.startsWith('image/'));
+    if (images.length > 0) addFiles(images);
+  }
+
+  function handleFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    handleAddFiles(Array.from(e.target.files ?? []));
+    e.target.value = '';
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    handleAddFiles(Array.from(e.dataTransfer.files));
+  }
 
   function handleDividerMouseDown(e: React.MouseEvent) {
     e.preventDefault();
@@ -52,8 +76,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack, onAddMore }:
       const body = bodyRef.current;
       if (!body) return;
       const rect = body.getBoundingClientRect();
-      const newWidth = Math.max(72, Math.min(280, ev.clientX - rect.left));
-      setStripWidth(newWidth);
+      setStripWidth(Math.max(72, Math.min(320, ev.clientX - rect.left)));
     }
 
     function onMouseUp() {
@@ -69,6 +92,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack, onAddMore }:
   const selectedFile = files.find((f) => f.id === selectedId) ?? files[0];
   const selectedResultIndex = results.findIndex((r) => r.sourceFileId === selectedFile?.id);
   const selectedResult = selectedResultIndex >= 0 ? results[selectedResultIndex] : undefined;
+  const hasFiles = files.length > 0;
 
   function getToolOptions(): ToolOptions {
     switch (tool) {
@@ -99,6 +123,15 @@ export default function EditWorkspace({ tool, onChangeTool, onBack, onAddMore }:
 
   return (
     <div className="edit-page">
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*"
+        onChange={handleFileInputChange}
+        style={{ display: 'none' }}
+      />
+
       <header className="edit-header">
         <button className="back-btn" onClick={onBack}>← 처음으로</button>
         <nav className="tool-tabs">
@@ -112,14 +145,19 @@ export default function EditWorkspace({ tool, onChangeTool, onBack, onAddMore }:
             </button>
           ))}
         </nav>
-        <button className="add-more-btn" onClick={onAddMore}>+ 파일 추가</button>
+        <button className="add-more-btn" onClick={() => fileInputRef.current?.click()}>
+          + 파일 추가
+        </button>
       </header>
 
       <div
         className="edit-body"
         ref={bodyRef}
         style={{ gridTemplateColumns: `${stripWidth}px 4px 1fr 280px` }}
+        onDrop={handleDrop}
+        onDragOver={(e) => e.preventDefault()}
       >
+        {/* Left: file strip */}
         <aside className="file-strip">
           {files.map((f) => {
             const res = results.find((r) => r.sourceFileId === f.id);
@@ -138,20 +176,32 @@ export default function EditWorkspace({ tool, onChangeTool, onBack, onAddMore }:
                   onClick={(e) => {
                     e.stopPropagation();
                     removeFile(f.id);
-                    if (isSelected && files.length > 1) {
-                      const next = files.find((x) => x.id !== f.id);
-                      if (next) setSelectedId(next.id);
-                    }
                   }}
                 >×</button>
               </div>
             );
           })}
+          <button className="strip-add-btn" onClick={() => fileInputRef.current?.click()} title="파일 추가">
+            +
+          </button>
         </aside>
 
         <div className="strip-divider" onMouseDown={handleDividerMouseDown} />
+
+        {/* Center: preview */}
         <div className="preview-area">
-          {isCropMode ? (
+          {!hasFiles ? (
+            <div className="edit-empty" onClick={() => fileInputRef.current?.click()}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              <strong>이미지를 끌어다 놓거나 클릭하여 추가</strong>
+              <span>JPG · PNG · WebP · GIF</span>
+            </div>
+          ) : isCropMode ? (
             <CropEditor
               imageUrl={selectedFile.previewUrl}
               value={options.crop}
@@ -201,13 +251,11 @@ export default function EditWorkspace({ tool, onChangeTool, onBack, onAddMore }:
                   <span className="done-sub">{results.length}개 파일</span>
                 </div>
               </div>
-
               <div className="done-list">
                 {results.map((r, i) => {
                   const src = files.find((f) => f.id === r.sourceFileId);
                   const saved = src && r.size < src.file.size
-                    ? Math.round((1 - r.size / src.file.size) * 100)
-                    : null;
+                    ? Math.round((1 - r.size / src.file.size) * 100) : null;
                   return (
                     <div key={r.id} className="done-item">
                       <div className="done-item-info">
@@ -217,14 +265,11 @@ export default function EditWorkspace({ tool, onChangeTool, onBack, onAddMore }:
                           {saved !== null && <span className="done-item-saved">−{saved}%</span>}
                         </div>
                       </div>
-                      <button className="done-item-dl" onClick={() => downloadSingle(i)} title="다운로드">
-                        ↓
-                      </button>
+                      <button className="done-item-dl" onClick={() => downloadSingle(i)}>↓</button>
                     </div>
                   );
                 })}
               </div>
-
               <div className="done-actions">
                 <button className="process-btn" onClick={() => downloadAll()}>
                   전체 다운로드 ({results.length}개)

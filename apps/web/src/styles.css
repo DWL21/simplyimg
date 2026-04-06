@@ -582,6 +582,28 @@ img {
   font-weight: 800;
 }
 
+.strip-add-btn {
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  border: 2px dashed var(--line-strong);
+  background: none;
+  color: var(--muted);
+  font-size: 1.4rem;
+  font-weight: 300;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 140ms, border-color 140ms, color 140ms;
+  width: 100%;
+}
+
+.strip-add-btn:hover {
+  background: var(--accent-tint);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .strip-remove {
   position: absolute;
   bottom: 3px;
@@ -613,6 +635,38 @@ img {
   flex-direction: column;
   overflow: hidden;
   background: rgba(25, 18, 8, 0.025);
+}
+
+.edit-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  color: var(--muted);
+  text-align: center;
+  padding: 40px;
+  border: 2px dashed rgba(31, 122, 95, 0.2);
+  border-radius: var(--r-xl);
+  margin: 16px;
+  transition: border-color 150ms, background 150ms;
+}
+
+.edit-empty:hover {
+  border-color: rgba(31, 122, 95, 0.45);
+  background: rgba(31, 122, 95, 0.03);
+}
+
+.edit-empty strong {
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.edit-empty span {
+  font-size: 0.82rem;
 }
 
 .preview-frame {

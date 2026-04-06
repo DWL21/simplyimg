@@ -138,10 +138,10 @@ export default function CropEditor({ imageUrl, value, onChange }: Props) {
         src={imageUrl}
         className="crop-img"
         onLoad={(e) => {
-          naturalSizeRef.current = {
-            w: e.currentTarget.naturalWidth,
-            h: e.currentTarget.naturalHeight,
-          };
+          const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+          naturalSizeRef.current = { w, h };
+          // Default to full image selection
+          onChangeRef.current({ x: 0, y: 0, width: w, height: h });
         }}
         draggable={false}
         alt=""
