@@ -455,8 +455,9 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                         ? Math.round((1 - r.size / r.sourceSize) * 100) : null;
                       const pageNum = files.findIndex((f) => f.id === r.sourceFileId) + 1;
                       return (
-                        <div key={r.id} className="done-item">
+                        <div key={r.id} className="done-item-row">
                           {pageNum > 0 && <span className="done-item-page">{pageNum}</span>}
+                          <div className="done-item">
                           <div className="done-item-info">
                             <span className="done-item-name">{r.name}</span>
                             <div className="done-item-meta">
@@ -465,6 +466,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                             </div>
                           </div>
                           <button className="done-item-dl" onClick={() => downloadSingle(i)}>↓</button>
+                          </div>
                         </div>
                       );
                     })}
