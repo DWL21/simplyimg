@@ -186,6 +186,21 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
                 </select>
               </label>
             </div>
+            <div className="document-option-card">
+              <strong>표시 크기</strong>
+              <div className="doc-scale-row">
+                <input
+                  type="range"
+                  className="range-input"
+                  min={70}
+                  max={130}
+                  step={5}
+                  value={options.contentScale}
+                  onChange={(event) => void updateOptions({ contentScale: Number(event.target.value) })}
+                />
+                <span className="doc-scale-label">{options.contentScale}%</span>
+              </div>
+            </div>
             <div className="document-option-card"><strong>상태</strong><p>{isProcessing ? '렌더링 중' : previewHtml ? '준비됨' : '대기 중'}</p></div>
           </div>
           <div className="panel-actions">

@@ -7,6 +7,7 @@ export interface DocumentRenderOptions {
   titlePosition: 'header' | 'footer' | 'none';
   pageNumberFormat: 'none' | 'page-n' | 'n-of-total' | 'n';
   showDateInFooter: boolean;
+  contentScale: number; // 70–130, default 100
 }
 
 export interface DocumentStoreState {

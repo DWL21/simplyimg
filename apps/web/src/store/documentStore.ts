@@ -15,6 +15,7 @@ const defaultOptions: DocumentRenderOptions = {
   titlePosition: 'none',
   pageNumberFormat: 'none',
   showDateInFooter: false,
+  contentScale: 100,
 };
 
 export const useDocumentStore = create<DocumentStoreState>((set, get) => ({

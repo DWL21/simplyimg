@@ -13,6 +13,7 @@ interface RenderOptions {
   titlePosition: 'header' | 'footer' | 'none';
   pageNumberFormat: 'none' | 'page-n' | 'n-of-total' | 'n';
   showDateInFooter: boolean;
+  contentScale: number;
 }
 
 function ensureRenderer() {
@@ -31,7 +32,8 @@ function escapeHtml(value: string) {
     .replace(/'/g, '&#39;');
 }
 
-function documentStyles() {
+function documentStyles(options: RenderOptions) {
+  const scale = Math.max(70, Math.min(130, options.contentScale)) / 100;
   return `
     @font-face {
       font-family: "Preview Noto Sans KR";
@@ -57,6 +59,7 @@ function documentStyles() {
       --page-width: 210mm;
       --page-padding-x: 18mm;
       --page-padding-y: 18mm;
+      --content-scale: ${scale};
       --text: #1b1814;
       --muted: #6f675d;
       --line: rgba(60, 40, 10, 0.12);
@@ -125,7 +128,7 @@ function documentStyles() {
     .doc-body {
       flex: 1;
       min-height: 0;
-      font-size: 15px;
+      font-size: calc(15px * var(--content-scale));
       line-height: 1.72;
       color: var(--text);
       word-break: break-word;
@@ -143,9 +146,9 @@ function documentStyles() {
       letter-spacing: -0.03em;
       color: var(--accent);
     }
-    .doc-body h1 { font-size: 30px; }
-    .doc-body h2 { font-size: 24px; }
-    .doc-body h3 { font-size: 20px; }
+    .doc-body h1 { font-size: 2em; }
+    .doc-body h2 { font-size: 1.6em; }
+    .doc-body h3 { font-size: 1.33em; }
     .doc-body p,
     .doc-body ul,
     .doc-body ol,
@@ -194,7 +197,7 @@ function documentStyles() {
     .doc-body table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 14px;
+      font-size: 0.93em;
     }
     .doc-body th,
     .doc-body td {
@@ -410,7 +413,7 @@ function buildDocumentHtml(fileName: string, renderedBody: string, mode: 'previe
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(fileName)}</title>
-    <style>${documentStyles()}</style>
+    <style>${documentStyles(options)}</style>
   </head>
   <body class="${mode}">
     ${pagedDocument}

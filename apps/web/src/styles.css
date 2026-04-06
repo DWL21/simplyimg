@@ -1733,6 +1733,22 @@ img {
     0 0 0 4px rgba(117, 91, 44, 0.12);
 }
 
+.doc-scale-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.doc-scale-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 36px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
 .document-option-help {
   margin: 10px 0 0;
   color: var(--muted);
