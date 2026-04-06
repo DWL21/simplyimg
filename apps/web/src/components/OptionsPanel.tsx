@@ -188,14 +188,18 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
             <button
               className="chip"
               onClick={() => patch('rotate', { degrees: rotateQuarter(s.degrees, -90) })}
+              aria-label="왼쪽으로 90도 회전"
+              title="왼쪽으로 90도 회전"
             >
-              왼쪽 90°
+              ↶ 90°
             </button>
             <button
               className="chip"
               onClick={() => patch('rotate', { degrees: rotateQuarter(s.degrees, 90) })}
+              aria-label="오른쪽으로 90도 회전"
+              title="오른쪽으로 90도 회전"
             >
-              오른쪽 90°
+              ↷ 90°
             </button>
           </div>
           <div className="chip-row">
@@ -223,14 +227,18 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
           <button
             className={`chip ${s.horizontal ? 'is-active' : ''}`}
             onClick={() => patch('flip', { ...s, horizontal: !s.horizontal })}
+            aria-label="좌우 반전"
+            title="좌우 반전"
           >
-            좌우 반전
+            ↔
           </button>
           <button
             className={`chip ${s.vertical ? 'is-active' : ''}`}
             onClick={() => patch('flip', { ...s, vertical: !s.vertical })}
+            aria-label="상하 반전"
+            title="상하 반전"
           >
-            상하 반전
+            ↕
           </button>
         </div>
       </div>
