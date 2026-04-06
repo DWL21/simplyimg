@@ -8,6 +8,14 @@ export function getWorkerBaseUrl() {
   return configured && configured.length > 0 ? configured : defaultBaseUrl;
 }
 
+// The Cloudflare worker doesn't recognise 'jpg' as a format name; normalise it to 'jpeg'.
+function normalizeOptions(options: ToolOptions): ToolOptions {
+  const opts = options as unknown as Record<string, unknown>;
+  if (opts['to'] === 'jpg') return { ...opts, to: 'jpeg' } as unknown as ToolOptions;
+  if (opts['format'] === 'jpg') return { ...opts, format: 'jpeg' } as unknown as ToolOptions;
+  return options;
+}
+
 export async function postToWorker(
   tool: ToolName,
   file: File,
@@ -15,7 +23,7 @@ export async function postToWorker(
 ): Promise<ProcessedImage> {
   const formData = new FormData();
   formData.set('file', file);
-  formData.set('options', JSON.stringify(options));
+  formData.set('options', JSON.stringify(normalizeOptions(options)));
 
   const response = await fetch(`${getWorkerBaseUrl()}/api/${tool}`, {
     method: 'POST',

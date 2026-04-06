@@ -42,6 +42,7 @@ export function formatLabel(format: string): string {
 export function mimeFromFormat(format: OutputFormat): string {
   switch (format) {
     case 'jpeg':
+    case 'jpg':
       return 'image/jpeg';
     case 'png':
       return 'image/png';
@@ -49,6 +50,16 @@ export function mimeFromFormat(format: OutputFormat): string {
       return 'image/webp';
     case 'svg':
       return 'image/svg+xml';
+  }
+}
+
+export function extensionFromFormat(format: OutputFormat): string {
+  switch (format) {
+    case 'jpeg': return 'jpeg';
+    case 'jpg': return 'jpg';
+    case 'png': return 'png';
+    case 'webp': return 'webp';
+    case 'svg': return 'svg';
   }
 }
 

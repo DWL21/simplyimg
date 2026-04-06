@@ -1,5 +1,5 @@
 export type ToolName = 'compress' | 'resize' | 'convert' | 'rotate' | 'crop' | 'flip';
-export type OutputFormat = 'jpeg' | 'png' | 'webp' | 'svg';
+export type OutputFormat = 'jpeg' | 'jpg' | 'png' | 'webp' | 'svg';
 
 export interface UploadedFile {
   id: string;

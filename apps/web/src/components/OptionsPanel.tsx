@@ -37,6 +37,7 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
     const s = state.compress;
     const formats: { label: string; value: OutputFormat }[] = [
       { label: 'JPEG', value: 'jpeg' },
+      { label: 'JPG', value: 'jpg' },
       { label: 'PNG', value: 'png' },
       { label: 'WebP', value: 'webp' },
       { label: 'SVG', value: 'svg' },
@@ -114,6 +115,7 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
     const s = state.convert;
     const formats: { label: string; value: OutputFormat }[] = [
       { label: 'JPEG', value: 'jpeg' },
+      { label: 'JPG', value: 'jpg' },
       { label: 'PNG', value: 'png' },
       { label: 'WebP', value: 'webp' },
       { label: 'SVG', value: 'svg' },

@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import { create } from 'zustand';
 import { createImageUrl, revokeImageUrl } from '../lib/canvasUtils';
-import { bytesToHuman, extensionFromMime, inferMimeType } from '../lib/formatUtils';
+import { bytesToHuman, extensionFromFormat, extensionFromMime, inferMimeType } from '../lib/formatUtils';
 import { wasmClient } from '../lib/wasmClient';
 import type { ImageStoreState, ProcessedResult, ToolName, ToolOptions, UploadedFile } from '../types/image';
 
@@ -30,9 +30,9 @@ function downloadUrl(url: string, filename: string) {
   anchor.click();
 }
 
-function deriveResultName(file: File, mimeType: string) {
+function deriveResultName(file: File, mimeType: string, extOverride?: string) {
   const base = file.name.replace(/\.[^.]+$/, '');
-  return `${base}.${extensionFromMime(mimeType)}`;
+  return `${base}.${extOverride ?? extensionFromMime(mimeType)}`;
 }
 
 function createProcessedFile(blob: Blob, filename: string, mimeType: string) {
@@ -130,7 +130,11 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
         const processed = await wasmClient.process(tool, sourceFile, processOptions);
         const blob = processed.blob;
         const mimeType = processed.mimeType || inferMimeType(sourceFile);
-        const name = deriveResultName(uploaded.file, mimeType);
+        const targetFormat =
+          tool === 'convert' ? (options as { to: import('../types/image').OutputFormat }).to
+          : tool === 'compress' ? (options as { format?: import('../types/image').OutputFormat }).format
+          : undefined;
+        const name = deriveResultName(uploaded.file, mimeType, targetFormat ? extensionFromFormat(targetFormat) : undefined);
         const url = URL.createObjectURL(blob);
         const nextFile = createProcessedFile(blob, name, mimeType);
         nextResults.push({
@@ -210,7 +214,11 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
       const processed = await wasmClient.process(tool, sourceFile, processOptions);
       const blob = processed.blob;
       const mimeType = processed.mimeType || inferMimeType(sourceFile);
-      const name = deriveResultName(uploaded.file, mimeType);
+      const targetFormat =
+        tool === 'convert' ? (options as { to: import('../types/image').OutputFormat }).to
+        : tool === 'compress' ? (options as { format?: import('../types/image').OutputFormat }).format
+        : undefined;
+      const name = deriveResultName(uploaded.file, mimeType, targetFormat ? extensionFromFormat(targetFormat) : undefined);
       const url = URL.createObjectURL(blob);
       const nextFile = createProcessedFile(blob, name, mimeType);
 
