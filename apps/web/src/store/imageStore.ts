@@ -9,6 +9,11 @@ function makeId() {
   return crypto.randomUUID();
 }
 
+function normalizeDegrees(value: number) {
+  const normalized = Math.round(value) % 360;
+  return normalized < 0 ? normalized + 360 : normalized;
+}
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -65,6 +70,9 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
             originalFile: file,
             previewUrl,
             originalPreviewUrl: previewUrl,
+            committedRotateDegrees: 0,
+            committedFlipHorizontal: false,
+            committedFlipVertical: false,
           };
         }),
       ],
@@ -106,7 +114,20 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
       for (let index = 0; index < files.length; index += 1) {
         const uploaded = files[index];
         const sourceFile = uploaded.file;
-        const processed = await wasmClient.process(tool, sourceFile, options);
+        const processOptions =
+          tool === 'rotate'
+            ? {
+                degrees: normalizeDegrees(
+                  (options as { degrees: number }).degrees - uploaded.committedRotateDegrees,
+                ),
+              }
+            : tool === 'flip'
+              ? {
+                  horizontal: (options as { horizontal: boolean; vertical: boolean }).horizontal !== uploaded.committedFlipHorizontal,
+                  vertical: (options as { horizontal: boolean; vertical: boolean }).vertical !== uploaded.committedFlipVertical,
+                }
+              : options;
+        const processed = await wasmClient.process(tool, sourceFile, processOptions);
         const blob = processed.blob;
         const mimeType = processed.mimeType || inferMimeType(sourceFile);
         const name = deriveResultName(uploaded.file, mimeType);
@@ -125,6 +146,15 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
           ...uploaded,
           file: nextFile,
           previewUrl: createImageUrl(nextFile),
+          committedRotateDegrees: tool === 'rotate'
+            ? normalizeDegrees((options as { degrees: number }).degrees)
+            : uploaded.committedRotateDegrees,
+          committedFlipHorizontal: tool === 'flip'
+            ? (options as { horizontal: boolean; vertical: boolean }).horizontal
+            : uploaded.committedFlipHorizontal,
+          committedFlipVertical: tool === 'flip'
+            ? (options as { horizontal: boolean; vertical: boolean }).vertical
+            : uploaded.committedFlipVertical,
         });
 
         set({ progress: Math.round(((index + 1) / files.length) * 100) });
@@ -173,6 +203,9 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
                 ...file,
                 file: file.originalFile,
                 previewUrl: file.originalPreviewUrl,
+                committedRotateDegrees: 0,
+                committedFlipHorizontal: false,
+                committedFlipVertical: false,
               }
             : file,
         ),

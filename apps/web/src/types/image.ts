@@ -7,6 +7,9 @@ export interface UploadedFile {
   originalFile: File;
   previewUrl: string;
   originalPreviewUrl: string;
+  committedRotateDegrees: number;
+  committedFlipHorizontal: boolean;
+  committedFlipVertical: boolean;
 }
 
 export interface ProcessedResult {

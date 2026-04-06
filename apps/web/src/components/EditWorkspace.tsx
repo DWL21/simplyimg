@@ -108,14 +108,26 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
 
   function getPreviewTransform() {
     if (tool === 'rotate') {
-      return `rotate(${options.rotate.degrees}deg)`;
+      if (!selectedFile) {
+        return undefined;
+      }
+
+      const delta = (options.rotate.degrees - selectedFile.committedRotateDegrees + 360) % 360;
+      return delta === 0 ? undefined : `rotate(${delta}deg)`;
     }
 
     if (tool === 'flip') {
-      if (!options.flip.horizontal && !options.flip.vertical) {
+      if (!selectedFile) {
         return undefined;
       }
-      return `scale(${options.flip.horizontal ? -1 : 1}, ${options.flip.vertical ? -1 : 1})`;
+
+      const horizontal = options.flip.horizontal !== selectedFile.committedFlipHorizontal;
+      const vertical = options.flip.vertical !== selectedFile.committedFlipVertical;
+      if (!horizontal && !vertical) {
+        return undefined;
+      }
+
+      return `scale(${horizontal ? -1 : 1}, ${vertical ? -1 : 1})`;
     }
 
     return undefined;
@@ -143,7 +155,6 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
       return;
     }
 
-    resetCurrentPreviewChanges();
     setShowResult(false);
   }
 
@@ -158,19 +169,60 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const isResizeMode = tool === 'resize' && !!selectedFile;
   const canProcess = !isProcessing
     && (tool !== 'crop' || options.crop !== null)
-    && (tool !== 'rotate' || options.rotate.degrees !== 0)
-    && (tool !== 'flip' || options.flip.horizontal || options.flip.vertical);
+    && (tool !== 'rotate' || files.some((file) => file.committedRotateDegrees !== options.rotate.degrees))
+    && (tool !== 'flip'
+      || files.some((file) => file.committedFlipHorizontal !== options.flip.horizontal || file.committedFlipVertical !== options.flip.vertical));
   const previewTransform = getPreviewTransform();
   const canResetSelected = Boolean(
     selectedFile
       && (selectedFile.file !== selectedFile.originalFile
         || selectedFile.previewUrl !== selectedFile.originalPreviewUrl
         || selectedResult
-        || options.rotate.degrees !== 0
-        || options.flip.horizontal
-        || options.flip.vertical
+        || options.rotate.degrees !== selectedFile.committedRotateDegrees
+        || options.flip.horizontal !== selectedFile.committedFlipHorizontal
+        || options.flip.vertical !== selectedFile.committedFlipVertical
         || options.crop !== null),
   );
+
+  useEffect(() => {
+    if (!selectedFile) {
+      return;
+    }
+
+    if (tool === 'rotate') {
+      setOptions((current) => {
+        if (current.rotate.degrees === selectedFile.committedRotateDegrees) {
+          return current;
+        }
+        return {
+          ...current,
+          rotate: { degrees: selectedFile.committedRotateDegrees },
+        };
+      });
+    }
+
+    if (tool === 'flip') {
+      setOptions((current) => {
+        if (
+          current.flip.horizontal === selectedFile.committedFlipHorizontal
+          && current.flip.vertical === selectedFile.committedFlipVertical
+        ) {
+          return current;
+        }
+
+        return {
+          ...current,
+          flip: {
+            horizontal: selectedFile.committedFlipHorizontal,
+            vertical: selectedFile.committedFlipVertical,
+          },
+        };
+      });
+    }
+  }, [
+    selectedFile,
+    tool,
+  ]);
 
   return (
     <div className="edit-page">
