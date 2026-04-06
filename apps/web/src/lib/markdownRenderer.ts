@@ -355,6 +355,7 @@ function paginationScript(options: RenderOptions) {
 
         updatePageNumbers();
         notifyPageCount();
+        notifyPageThumbnails();
       }
 
       function formatPageNum(index, total) {
@@ -377,6 +378,13 @@ function paginationScript(options: RenderOptions) {
       function notifyPageCount() {
         const count = pageStack.querySelectorAll('.page').length;
         window.parent.postMessage({ type: 'doc-page-count', count }, '*');
+      }
+
+      function notifyPageThumbnails() {
+        const pages = Array.from(pageStack.querySelectorAll('.page'));
+        const headHtml = document.head.innerHTML;
+        const pageHtmls = pages.map(function(p) { return p.outerHTML; });
+        window.parent.postMessage({ type: 'doc-page-thumbnails', headHtml: headHtml, pages: pageHtmls }, '*');
       }
 
       function notifyActivePage() {
@@ -408,7 +416,6 @@ function paginationScript(options: RenderOptions) {
 
       function paginateAndNotify() {
         paginate();
-        notifyPageCount();
       }
 
       window.addEventListener('load', schedulePaginate);

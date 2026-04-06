@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { useImageStore } from '../store/imageStore';
-import { useBeforeUnloadWarning } from '../hooks/useBeforeUnloadWarning';
 import CropEditor from './CropEditor';
 import OptionsPanel, { type OptionsPanelState } from './OptionsPanel';
 import ResizeEditor from './ResizeEditor';
@@ -24,6 +23,7 @@ interface Props {
 }
 
 export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
+  const emptyPreviewSize = { width: 0, height: 0 };
   const files = useImageStore((s) => s.files);
   const results = useImageStore((s) => s.results);
   const isProcessing = useImageStore((s) => s.isProcessing);
@@ -52,6 +52,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewFrameRef = useRef<HTMLDivElement>(null);
   const [frameDims, setFrameDims] = useState({ w: 0, h: 0 });
+  const [previewNaturalSize, setPreviewNaturalSize] = useState(emptyPreviewSize);
 
   useEffect(() => {
     return () => { document.body.style.cursor = ''; };
@@ -166,8 +167,6 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const selectedResult = selectedResultIndex >= 0 ? results[selectedResultIndex] : undefined;
   const hasFiles = files.length > 0;
 
-  useBeforeUnloadWarning(hasFiles);
-
   // Derived directly from cropMap — no async effect lag
   const currentCrop = cropMap[selectedFile?.id ?? ''] ?? null;
 
@@ -207,6 +206,31 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     }
 
     return undefined;
+  }
+
+  function getPreviewRotationDegrees() {
+    if (tool !== 'rotate' || !selectedFile) {
+      return 0;
+    }
+
+    const delta = options.rotate.degrees - selectedFile.committedRotateDegrees;
+    const normalized = delta % 360;
+    return normalized < 0 ? normalized + 360 : normalized;
+  }
+
+  function handlePreviewImageLoad(event: React.SyntheticEvent<HTMLImageElement>) {
+    const { naturalWidth, naturalHeight } = event.currentTarget;
+    if (!naturalWidth || !naturalHeight) {
+      return;
+    }
+
+    setPreviewNaturalSize((current) => {
+      if (current.width === naturalWidth && current.height === naturalHeight) {
+        return current;
+      }
+
+      return { width: naturalWidth, height: naturalHeight };
+    });
   }
 
   function resetCurrentPreviewChanges() {
@@ -256,6 +280,11 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const previewUrl = showResult && selectedResult ? selectedResult.url : basePreviewUrl;
   const isCropMode = tool === 'crop' && !showResult && !!selectedFile;
   const isResizeMode = tool === 'resize' && !!selectedFile;
+
+  useEffect(() => {
+    setPreviewNaturalSize(emptyPreviewSize);
+  }, [previewUrl]);
+
   const canProcess = !isProcessing
     && !!selectedFile
     && (tool !== 'crop' || currentCrop !== null)
@@ -264,15 +293,48 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
       || selectedFile.committedFlipHorizontal !== options.flip.horizontal
       || selectedFile.committedFlipVertical !== options.flip.vertical);
   const previewTransform = getPreviewTransform();
-  const isOrthogonalRotation = Boolean(previewTransform?.match(/rotate\((90|270)deg\)/));
-  const rotatedImgStyle: React.CSSProperties = previewTransform
+  const previewRotationDegrees = getPreviewRotationDegrees();
+  const rotatedPreviewFrameStyle: React.CSSProperties | undefined = previewRotationDegrees !== 0
+    && previewNaturalSize.width > 0
+    && previewNaturalSize.height > 0
+    && frameDims.w > 0
+    && frameDims.h > 0
+    ? (() => {
+        const radians = (previewRotationDegrees * Math.PI) / 180;
+        const absSin = Math.abs(Math.sin(radians));
+        const absCos = Math.abs(Math.cos(radians));
+        const rotatedWidth = previewNaturalSize.width * absCos + previewNaturalSize.height * absSin;
+        const rotatedHeight = previewNaturalSize.width * absSin + previewNaturalSize.height * absCos;
+        const scale = Math.min(1, frameDims.w / rotatedWidth, frameDims.h / rotatedHeight);
+
+        return {
+          width: previewNaturalSize.width * scale,
+          height: previewNaturalSize.height * scale,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flex: '0 0 auto',
+        };
+      })()
+    : undefined;
+  const previewImageStyle: React.CSSProperties | undefined = previewTransform
     ? {
         transform: previewTransform,
-        ...(isOrthogonalRotation && frameDims.w && frameDims.h
-          ? { maxWidth: frameDims.h, maxHeight: frameDims.w }
-          : {}),
+        display: 'block',
       }
-    : {};
+    : {
+        display: 'block',
+      };
+  const rotatedPreviewImageStyle: React.CSSProperties | undefined = rotatedPreviewFrameStyle
+    ? {
+        ...previewImageStyle,
+        width: '100%',
+        height: '100%',
+        maxWidth: 'none',
+        maxHeight: 'none',
+        objectFit: 'contain',
+      }
+    : previewImageStyle;
   const canResetSelected = Boolean(
     selectedFile
       && (selectedFile.file !== selectedFile.originalFile
@@ -421,13 +483,27 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                   onPointerMove={handleZoomPointerMove}
                   onPointerUp={handleZoomPointerUp}
                 >
-                  <img
-                    src={previewUrl}
-                    alt=""
-                    className="preview-img"
-                    style={Object.keys(rotatedImgStyle).length ? rotatedImgStyle : undefined}
-                    draggable={false}
-                  />
+                  {rotatedPreviewFrameStyle ? (
+                    <div style={rotatedPreviewFrameStyle}>
+                      <img
+                        src={previewUrl}
+                        alt=""
+                        className="preview-img"
+                        style={rotatedPreviewImageStyle}
+                        draggable={false}
+                        onLoad={handlePreviewImageLoad}
+                      />
+                    </div>
+                  ) : (
+                    <img
+                      src={previewUrl}
+                      alt=""
+                      className="preview-img"
+                      style={previewImageStyle}
+                      draggable={false}
+                      onLoad={handlePreviewImageLoad}
+                    />
+                  )}
                 </div>
               ) : (
                 <div className="preview-empty">이미지를 선택하세요</div>

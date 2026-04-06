@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useBeforeUnloadWarning } from '../hooks/useBeforeUnloadWarning';
 import { useDocumentStore } from '../store/documentStore';
 import { bytesToHuman } from '../lib/formatUtils';
 
@@ -22,6 +21,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
   const [selectedId, setSelectedId] = useState<string>('');
   const [pageCount, setPageCount] = useState(0);
   const [activePage, setActivePage] = useState(0);
+  const [pageThumbs, setPageThumbs] = useState<{ headHtml: string; pages: string[] }>({ headHtml: '', pages: [] });
   const inputRef = useRef<HTMLInputElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -29,9 +29,6 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
     () => files.find((file) => file.id === selectedId) ?? files[0],
     [files, selectedId],
   );
-  const hasUnsavedDocument = files.length > 0;
-
-  useBeforeUnloadWarning(hasUnsavedDocument);
 
   useEffect(() => {
     if (files.length > 0 && !files.find((file) => file.id === selectedId)) {
@@ -48,6 +45,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
   useEffect(() => {
     setPageCount(0);
     setActivePage(0);
+    setPageThumbs({ headHtml: '', pages: [] });
   }, [previewHtml]);
 
   const handleMessage = useCallback((event: MessageEvent) => {
@@ -55,6 +53,8 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
       setPageCount(event.data.count as number);
     } else if (event.data?.type === 'doc-active-page') {
       setActivePage(event.data.index as number);
+    } else if (event.data?.type === 'doc-page-thumbnails') {
+      setPageThumbs({ headHtml: event.data.headHtml as string, pages: event.data.pages as string[] });
     }
   }, []);
 
@@ -151,7 +151,18 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
                   onClick={() => scrollToPage(i)}
                   title={`${i + 1}페이지`}
                 >
-                  <span className="doc-page-item-num">{i + 1}</span>
+                  {pageThumbs.pages[i] ? (
+                    <div className="doc-page-thumb">
+                      <iframe
+                        className="doc-page-thumb-frame"
+                        srcDoc={`<!doctype html><html><head>${pageThumbs.headHtml}<style>html,body{margin:0;padding:0;overflow:hidden;background:white;}</style></head><body>${pageThumbs.pages[i]}</body></html>`}
+                        sandbox="allow-same-origin"
+                        title={`${i + 1}페이지 미리보기`}
+                      />
+                    </div>
+                  ) : (
+                    <span className="doc-page-item-num">{i + 1}</span>
+                  )}
                 </button>
               ))
             : null}
@@ -252,7 +263,6 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
                 <span className="doc-scale-label">{options.contentScale}%</span>
               </div>
             </div>
-            <div className="document-option-card"><strong>상태</strong><p>{isProcessing ? '렌더링 중' : previewHtml ? '준비됨' : '대기 중'}</p></div>
           </div>
           <div className="panel-actions">
             <button className="process-btn" onClick={() => printDocument()} disabled={isProcessing || !previewHtml}>

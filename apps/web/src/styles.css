@@ -1679,6 +1679,29 @@ img {
   box-shadow: 0 2px 8px rgba(40, 28, 10, 0.08);
   transition: border-color 150ms, box-shadow 150ms;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.doc-page-thumb {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: calc(var(--r-md) - 2px);
+  pointer-events: none;
+}
+
+/* A4 at 96dpi ≈ 793×1122px; strip item inner ≈ 84px → scale ≈ 0.106 */
+.doc-page-thumb-frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 793px;
+  height: 1122px;
+  transform: scale(0.106);
+  transform-origin: top left;
+  border: none;
+  pointer-events: none;
 }
 
 .doc-page-item:hover {
