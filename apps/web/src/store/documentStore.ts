@@ -1,7 +1,6 @@
 import JSZip from 'jszip';
 import { create } from 'zustand';
 import { renderMarkdownToPdf } from '../lib/markdownPdf';
-import { postDocumentToWorker } from '../lib/documentClient';
 import { bytesToHuman } from '../lib/formatUtils';
 import type { DocumentResult, DocumentStoreState } from '../types/document';
 
@@ -11,15 +10,7 @@ function makeId() {
 
 function isDocumentFile(file: File) {
   const lowered = file.name.toLowerCase();
-  return (
-    file.type.includes('markdown') ||
-    file.type.includes(
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    ) ||
-    lowered.endsWith('.md') ||
-    lowered.endsWith('.markdown') ||
-    lowered.endsWith('.docx')
-  );
+  return file.type.includes('markdown') || lowered.endsWith('.md') || lowered.endsWith('.markdown');
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -55,19 +46,20 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
   progress: 0,
   error: null,
   addFiles(files) {
-    const nextFiles = files.filter(isDocumentFile);
+    const nextFile = files.filter(isDocumentFile).at(-1);
     get().results.forEach((result) => URL.revokeObjectURL(result.url));
-    set((state) => ({
-      files: [
-        ...state.files,
-        ...nextFiles.map((file) => ({
-          id: makeId(),
-          file,
-        })),
-      ],
+    set({
+      files: nextFile
+        ? [
+            {
+              id: makeId(),
+              file: nextFile,
+            },
+          ]
+        : [],
       results: [],
-      error: nextFiles.length === 0 ? 'md 또는 docx 문서만 추가할 수 있습니다.' : null,
-    }));
+      error: nextFile ? null : 'md 파일만 추가할 수 있습니다.',
+    });
   },
   removeFile(id) {
     set((state) => {
@@ -94,9 +86,7 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       const nextResults: DocumentResult[] = [];
       for (let index = 0; index < files.length; index += 1) {
         const uploaded = files[index];
-        const processed = isMarkdownFile(uploaded.file)
-          ? await renderMarkdownToPdf(uploaded.file)
-          : await postDocumentToWorker(uploaded.file);
+        const processed = await renderMarkdownToPdf(uploaded.file);
         const url = URL.createObjectURL(processed.blob);
         nextResults.push({
           id: makeId(),
@@ -126,6 +116,11 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
   async downloadAll() {
     const { results } = get();
     if (results.length === 0) {
+      return;
+    }
+
+    if (results.length === 1) {
+      downloadUrl(results[0].url, results[0].name);
       return;
     }
 

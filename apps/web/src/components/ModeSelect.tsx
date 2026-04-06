@@ -33,9 +33,7 @@ export default function ModeSelect({ onSelectImage, onSelectDocument }: Props) {
       </header>
 
       <div className="select-hero">
-        <h1 className="select-title">
-          이미지 작업은 그대로 두고<br />문서 작업 섹션을 추가했습니다.
-        </h1>
+        <h1 className="select-title">어떤 작업을 하실 건가요?</h1>
       </div>
 
       <section className="mode-section">
@@ -43,7 +41,6 @@ export default function ModeSelect({ onSelectImage, onSelectDocument }: Props) {
           <div>
             <span className="mode-section-label">IMAGE</span>
             <h2>이미지 섹션</h2>
-            <p>기존 구현은 이 섹션으로 묶고 그대로 유지합니다.</p>
           </div>
         </div>
         <div className="mode-grid">
@@ -65,15 +62,14 @@ export default function ModeSelect({ onSelectImage, onSelectDocument }: Props) {
           <div>
             <span className="mode-section-label">DOCUMENT</span>
             <h2>문서 섹션</h2>
-            <p>md, docx 문서를 PDF로 변환하는 새 흐름입니다.</p>
           </div>
         </div>
         <div className="mode-grid mode-grid-single">
           <button className="mode-card mode-card-document" onClick={onSelectDocument}>
             <span className="mode-icon">PDF</span>
             <div className="mode-copy">
-              <strong>문서를 PDF로 변환</strong>
-              <p>Markdown과 Word 문서를 업로드해서 PDF로 일괄 변환합니다.</p>
+              <strong>Markdown을 PDF로 변환</strong>
+              <p>Markdown 파일을 PDF로 변환합니다.</p>
             </div>
             <span className="mode-arrow">→</span>
           </button>

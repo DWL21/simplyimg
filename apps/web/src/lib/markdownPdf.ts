@@ -1,273 +1,360 @@
-import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { marked } from 'marked';
 import type { ProcessedDocument } from '../types/document';
 
-const A4_WIDTH_MM = 210;
-const A4_HEIGHT_MM = 297;
-const RENDER_SCALE = 2;
+type GenericToken = {
+  type?: string;
+  raw?: string;
+  text?: string;
+  depth?: number;
+  ordered?: boolean;
+  start?: number;
+  lang?: string;
+  tokens?: GenericToken[];
+  items?: Array<{
+    text?: string;
+    tokens?: GenericToken[];
+    task?: boolean;
+    checked?: boolean;
+  }>;
+  header?: Array<{ text?: string; tokens?: GenericToken[] }>;
+  rows?: Array<Array<{ text?: string; tokens?: GenericToken[] }>>;
+};
 
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+const PAGE_WIDTH = 210;
+const PAGE_HEIGHT = 297;
+const MARGIN_X = 18;
+const MARGIN_TOP = 20;
+const MARGIN_BOTTOM = 18;
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2;
+
+const COLORS = {
+  text: '#1d1a16',
+  muted: '#6c665d',
+  accent: '#0f5f49',
+  quote: '#4c4943',
+  codeBg: '#f2ede4',
+  codeBorder: '#d8d0c4',
+  tableHeader: '#e7f0ec',
+  tableBorder: '#d9d2c8',
+};
+
+function addPage(pdf: jsPDF) {
+  pdf.addPage('a4', 'portrait');
 }
 
-function buildMarkdownStyles() {
-  return `
-    .simplyimg-md-root {
-      width: 794px;
-      box-sizing: border-box;
-      padding: 72px 64px;
-      background: #fffdf8;
-      color: #1d1a16;
-      font-family: Georgia, "Times New Roman", serif;
-      line-height: 1.7;
-      overflow: hidden;
-    }
-    .simplyimg-md-root .doc-header {
-      margin-bottom: 32px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid rgba(29, 26, 22, 0.12);
-    }
-    .simplyimg-md-root .doc-kicker {
-      margin: 0 0 10px;
-      color: #6c665d;
-      font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-    }
-    .simplyimg-md-root .doc-title {
-      margin: 0;
-      font-size: 36px;
-      line-height: 1.05;
-      letter-spacing: -0.04em;
-    }
-    .simplyimg-md-root .doc-meta {
-      margin-top: 12px;
-      color: #6c665d;
-      font-size: 13px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    }
-    .simplyimg-md-root h1,
-    .simplyimg-md-root h2,
-    .simplyimg-md-root h3,
-    .simplyimg-md-root h4,
-    .simplyimg-md-root h5,
-    .simplyimg-md-root h6 {
-      margin: 1.5em 0 0.55em;
-      line-height: 1.15;
-      letter-spacing: -0.03em;
-      page-break-after: avoid;
-    }
-    .simplyimg-md-root h1 { font-size: 31px; }
-    .simplyimg-md-root h2 { font-size: 25px; }
-    .simplyimg-md-root h3 { font-size: 20px; }
-    .simplyimg-md-root p,
-    .simplyimg-md-root ul,
-    .simplyimg-md-root ol,
-    .simplyimg-md-root blockquote,
-    .simplyimg-md-root pre,
-    .simplyimg-md-root table {
-      margin: 0 0 1.05em;
-    }
-    .simplyimg-md-root a {
-      color: #0f5f49;
-      text-decoration: none;
-    }
-    .simplyimg-md-root code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 0.9em;
-      background: rgba(15, 95, 73, 0.08);
-      border-radius: 6px;
-      padding: 0.12em 0.38em;
-    }
-    .simplyimg-md-root pre {
-      overflow: hidden;
-      padding: 16px 18px;
-      border-radius: 14px;
-      background: #1f1f1b;
-      color: #f8f4eb;
-    }
-    .simplyimg-md-root pre code {
-      background: transparent;
-      padding: 0;
-      color: inherit;
-      display: block;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .simplyimg-md-root blockquote {
-      padding: 10px 0 10px 18px;
-      border-left: 3px solid rgba(15, 95, 73, 0.4);
-      color: #4c4943;
-      background: rgba(15, 95, 73, 0.04);
-    }
-    .simplyimg-md-root table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-      font-size: 14px;
-    }
-    .simplyimg-md-root th,
-    .simplyimg-md-root td {
-      border: 1px solid rgba(29, 26, 22, 0.14);
-      padding: 10px 12px;
-      vertical-align: top;
-      word-break: break-word;
-    }
-    .simplyimg-md-root th {
-      background: rgba(15, 95, 73, 0.08);
-      text-align: left;
-    }
-    .simplyimg-md-root img {
-      display: block;
-      max-width: 100%;
-      height: auto;
-      border-radius: 12px;
-      margin: 16px 0;
-    }
-    .simplyimg-md-root hr {
-      border: 0;
-      border-top: 1px solid rgba(29, 26, 22, 0.12);
-      margin: 28px 0;
-    }
-  `;
+function ensureSpace(pdf: jsPDF, cursorY: number, neededHeight: number) {
+  if (cursorY + neededHeight <= PAGE_HEIGHT - MARGIN_BOTTOM) {
+    return cursorY;
+  }
+
+  addPage(pdf);
+  return MARGIN_TOP;
 }
 
-async function buildMarkdownElement(file: File, markdown: string) {
-  const root = document.createElement('div');
-  root.style.position = 'fixed';
-  root.style.left = '-10000px';
-  root.style.top = '0';
-  root.style.zIndex = '-1';
-  root.style.pointerEvents = 'none';
+function hexToRgb(hex: string) {
+  const normalized = hex.replace('#', '');
+  const value = normalized.length === 3
+    ? normalized.split('').map((char) => `${char}${char}`).join('')
+    : normalized;
+  const int = Number.parseInt(value, 16);
+  return {
+    r: (int >> 16) & 255,
+    g: (int >> 8) & 255,
+    b: int & 255,
+  };
+}
 
-  const renderer = new marked.Renderer();
-  renderer.html = ({ text }) => `<pre>${escapeHtml(text)}</pre>`;
+function setTextColor(pdf: jsPDF, color: string) {
+  const { r, g, b } = hexToRgb(color);
+  pdf.setTextColor(r, g, b);
+}
 
-  const bodyHtml = await marked.parse(markdown, {
-    breaks: true,
-    gfm: true,
-    renderer,
+function setDrawColor(pdf: jsPDF, color: string) {
+  const { r, g, b } = hexToRgb(color);
+  pdf.setDrawColor(r, g, b);
+}
+
+function setFillColor(pdf: jsPDF, color: string) {
+  const { r, g, b } = hexToRgb(color);
+  pdf.setFillColor(r, g, b);
+}
+
+function cleanWhitespace(value: string) {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function inlineText(token: GenericToken | undefined): string {
+  if (!token) {
+    return '';
+  }
+
+  if (token.type === 'codespan') {
+    return token.text ?? '';
+  }
+
+  if (token.type === 'image') {
+    return token.text ? `[Image: ${token.text}]` : '[Image]';
+  }
+
+  if (Array.isArray(token.tokens) && token.tokens.length > 0) {
+    const combined = token.tokens.map((child) => inlineText(child)).join('');
+    return cleanWhitespace(combined);
+  }
+
+  return cleanWhitespace(token.text ?? token.raw ?? '');
+}
+
+function blockText(token: GenericToken | undefined) {
+  if (!token) {
+    return '';
+  }
+
+  if (Array.isArray(token.tokens) && token.tokens.length > 0) {
+    return cleanWhitespace(token.tokens.map((child) => inlineText(child)).join(' '));
+  }
+
+  return cleanWhitespace(token.text ?? token.raw ?? '');
+}
+
+function writeLines(
+  pdf: jsPDF,
+  lines: string[],
+  x: number,
+  startY: number,
+  lineHeight: number,
+) {
+  lines.forEach((line, index) => {
+    pdf.text(line, x, startY + lineHeight * index);
+  });
+}
+
+function splitText(pdf: jsPDF, text: string, width: number) {
+  const normalized = cleanWhitespace(text);
+  if (!normalized) {
+    return [''];
+  }
+  return pdf.splitTextToSize(normalized, width) as string[];
+}
+
+function renderParagraph(pdf: jsPDF, cursorY: number, text: string, options?: {
+  x?: number;
+  width?: number;
+  fontSize?: number;
+  lineHeight?: number;
+  color?: string;
+  style?: 'normal' | 'bold' | 'italic' | 'bolditalic';
+}) {
+  const x = options?.x ?? MARGIN_X;
+  const width = options?.width ?? CONTENT_WIDTH;
+  const fontSize = options?.fontSize ?? 11;
+  const lineHeight = options?.lineHeight ?? fontSize * 0.48 + 1.8;
+
+  pdf.setFont('times', options?.style ?? 'normal');
+  pdf.setFontSize(fontSize);
+  setTextColor(pdf, options?.color ?? COLORS.text);
+
+  const lines = splitText(pdf, text, width);
+  cursorY = ensureSpace(pdf, cursorY, lineHeight * lines.length);
+  writeLines(pdf, lines, x, cursorY, lineHeight);
+  return cursorY + lineHeight * lines.length;
+}
+
+function renderCodeBlock(pdf: jsPDF, cursorY: number, token: GenericToken) {
+  pdf.setFont('courier', 'normal');
+  pdf.setFontSize(9.5);
+
+  const source = (token.text ?? '').replace(/\t/g, '  ');
+  const lines = source.length > 0 ? source.split('\n') : [''];
+  const wrapped = lines.flatMap((line) => {
+    const parts = pdf.splitTextToSize(line || ' ', CONTENT_WIDTH - 8) as string[];
+    return parts.length > 0 ? parts : [' '];
   });
 
-  root.innerHTML = `
-    <style>${buildMarkdownStyles()}</style>
-    <article class="simplyimg-md-root">
-      <header class="doc-header">
-        <p class="doc-kicker">Markdown Document</p>
-        <h1 class="doc-title">${escapeHtml(file.name.replace(/\.[^.]+$/, ''))}</h1>
-        <div class="doc-meta">${escapeHtml(file.name)} · ${new Date().toLocaleString()}</div>
-      </header>
-      <section class="doc-body">${bodyHtml}</section>
-    </article>
-  `;
+  const lineHeight = 5.2;
+  const boxHeight = wrapped.length * lineHeight + 8;
+  cursorY = ensureSpace(pdf, cursorY, boxHeight);
 
-  document.body.append(root);
+  setFillColor(pdf, COLORS.codeBg);
+  setDrawColor(pdf, COLORS.codeBorder);
+  pdf.roundedRect(MARGIN_X, cursorY - 3.2, CONTENT_WIDTH, boxHeight, 2, 2, 'FD');
+  setTextColor(pdf, COLORS.text);
+  writeLines(pdf, wrapped, MARGIN_X + 4, cursorY + 1.2, lineHeight);
 
-  if ('fonts' in document) {
-    await document.fonts.ready;
-  }
-
-  const images = Array.from(root.querySelectorAll<HTMLImageElement>('img'));
-  await Promise.all(
-    images.map(
-      (image) =>
-        new Promise<void>((resolve) => {
-          if (image.complete) {
-            resolve();
-            return;
-          }
-          image.addEventListener('load', () => resolve(), { once: true });
-          image.addEventListener('error', () => resolve(), { once: true });
-        }),
-    ),
-  );
-
-  return root;
+  return cursorY + boxHeight + 2;
 }
 
-function canvasSliceToDataUrl(source: HTMLCanvasElement, offsetY: number, height: number) {
-  const sliceCanvas = document.createElement('canvas');
-  sliceCanvas.width = source.width;
-  sliceCanvas.height = height;
-  const context = sliceCanvas.getContext('2d');
-  if (!context) {
-    throw new Error('Canvas context를 만들 수 없습니다.');
-  }
+function renderRule(pdf: jsPDF, cursorY: number) {
+  cursorY = ensureSpace(pdf, cursorY, 8);
+  setDrawColor(pdf, COLORS.tableBorder);
+  pdf.setLineWidth(0.35);
+  pdf.line(MARGIN_X, cursorY + 2, PAGE_WIDTH - MARGIN_X, cursorY + 2);
+  return cursorY + 6;
+}
 
-  context.fillStyle = '#fffdf8';
-  context.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-  context.drawImage(
-    source,
-    0,
-    offsetY,
-    source.width,
-    height,
-    0,
-    0,
-    sliceCanvas.width,
-    sliceCanvas.height,
-  );
-  return sliceCanvas.toDataURL('image/png');
+function renderTable(pdf: jsPDF, cursorY: number, token: GenericToken) {
+  const headers = token.header ?? [];
+  const rows = token.rows ?? [];
+  const columnCount = Math.max(headers.length, ...rows.map((row) => row.length), 1);
+  const columnWidth = CONTENT_WIDTH / columnCount;
+  const lineHeight = 4.8;
+
+  const normalizeCell = (cell?: { text?: string; tokens?: GenericToken[] }) =>
+    cleanWhitespace(cell?.tokens?.map((child) => inlineText(child)).join(' ') ?? cell?.text ?? '');
+
+  const drawRow = (cells: string[], y: number, isHeader: boolean) => {
+    const cellLines = cells.map((cell) => {
+      pdf.setFont('times', isHeader ? 'bold' : 'normal');
+      pdf.setFontSize(10);
+      return splitText(pdf, cell || ' ', columnWidth - 6);
+    });
+    const rowHeight = Math.max(...cellLines.map((lines) => Math.max(lines.length, 1))) * lineHeight + 6;
+    cursorY = ensureSpace(pdf, y, rowHeight);
+
+    cells.forEach((_cell, columnIndex) => {
+      const x = MARGIN_X + columnWidth * columnIndex;
+      setDrawColor(pdf, COLORS.tableBorder);
+      if (isHeader) {
+        setFillColor(pdf, COLORS.tableHeader);
+        pdf.rect(x, cursorY, columnWidth, rowHeight, 'FD');
+      } else {
+        pdf.rect(x, cursorY, columnWidth, rowHeight);
+      }
+
+      pdf.setFont('times', isHeader ? 'bold' : 'normal');
+      pdf.setFontSize(10);
+      setTextColor(pdf, COLORS.text);
+      writeLines(pdf, cellLines[columnIndex], x + 3, cursorY + 5, lineHeight);
+    });
+
+    return cursorY + rowHeight;
+  };
+
+  const headerCells = Array.from({ length: columnCount }, (_, index) => normalizeCell(headers[index]));
+  cursorY = drawRow(headerCells, cursorY, true);
+
+  rows.forEach((row) => {
+    const rowCells = Array.from({ length: columnCount }, (_, index) => normalizeCell(row[index]));
+    cursorY = drawRow(rowCells, cursorY, false);
+  });
+
+  return cursorY + 3;
+}
+
+function renderList(pdf: jsPDF, cursorY: number, token: GenericToken) {
+  const items = token.items ?? [];
+  let itemIndex = token.start ?? 1;
+
+  items.forEach((item) => {
+    const marker = token.ordered ? `${itemIndex}.` : item.task ? `[${item.checked ? 'x' : ' '}]` : '•';
+    const text = blockText({ tokens: item.tokens, text: item.text });
+    const markerWidth = 10;
+
+    pdf.setFont('times', 'normal');
+    pdf.setFontSize(11);
+    const lines = splitText(pdf, `${marker} ${text}`, CONTENT_WIDTH - 4);
+    const lineHeight = 6;
+    cursorY = ensureSpace(pdf, cursorY, lines.length * lineHeight);
+    writeLines(pdf, lines, MARGIN_X + markerWidth / 2, cursorY, lineHeight);
+    cursorY += lines.length * lineHeight + 1;
+    itemIndex += 1;
+  });
+
+  return cursorY + 1;
 }
 
 export async function renderMarkdownToPdf(file: File): Promise<ProcessedDocument> {
   const markdown = await file.text();
-  const mount = await buildMarkdownElement(file, markdown);
+  const tokens = marked.lexer(markdown, { gfm: true, breaks: true }) as GenericToken[];
 
-  try {
-    const article = mount.querySelector('.simplyimg-md-root');
-    if (!(article instanceof HTMLElement)) {
-      throw new Error('Markdown 렌더링 컨테이너를 만들지 못했습니다.');
-    }
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: true,
+  });
 
-    const canvas = await html2canvas(article, {
-      backgroundColor: '#fffdf8',
-      scale: RENDER_SCALE,
-      useCORS: true,
-      logging: false,
-      windowWidth: article.scrollWidth,
-      width: article.scrollWidth,
-      height: article.scrollHeight,
-    });
+  let cursorY = MARGIN_TOP;
 
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-      compress: true,
-    });
+  pdf.setProperties({
+    title: file.name.replace(/\.[^.]+$/, ''),
+    subject: 'Markdown to PDF',
+    author: 'SimplyImg',
+  });
 
-    const sliceHeight = Math.floor((canvas.width * A4_HEIGHT_MM) / A4_WIDTH_MM);
-    let offsetY = 0;
-    let pageIndex = 0;
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(22);
+  setTextColor(pdf, COLORS.text);
+  const titleLines = splitText(pdf, file.name.replace(/\.[^.]+$/, ''), CONTENT_WIDTH);
+  writeLines(pdf, titleLines, MARGIN_X, cursorY, 8.8);
+  cursorY += titleLines.length * 8.8;
 
-    while (offsetY < canvas.height) {
-      const currentHeight = Math.min(sliceHeight, canvas.height - offsetY);
-      const image = canvasSliceToDataUrl(canvas, offsetY, currentHeight);
+  pdf.setFont('courier', 'normal');
+  pdf.setFontSize(9.5);
+  setTextColor(pdf, COLORS.muted);
+  pdf.text(`Markdown · ${file.name}`, MARGIN_X, cursorY + 1);
+  cursorY += 8;
 
-      if (pageIndex > 0) {
-        pdf.addPage();
+  cursorY = renderRule(pdf, cursorY);
+  cursorY += 2;
+
+  for (const token of tokens) {
+    switch (token.type) {
+      case 'space':
+        cursorY += 2;
+        break;
+      case 'hr':
+        cursorY = renderRule(pdf, cursorY) + 2;
+        break;
+      case 'heading': {
+        const depth = Math.min(Math.max(token.depth ?? 1, 1), 6);
+        const sizeMap = [0, 20, 16.5, 14, 12.5, 11.5, 11];
+        cursorY = renderParagraph(pdf, cursorY, blockText(token), {
+          fontSize: sizeMap[depth],
+          lineHeight: depth === 1 ? 8 : 6.8,
+          color: depth <= 2 ? COLORS.accent : COLORS.text,
+          style: 'bold',
+        }) + (depth <= 2 ? 3 : 2);
+        break;
       }
-
-      const renderHeight = (currentHeight * A4_WIDTH_MM) / canvas.width;
-      pdf.addImage(image, 'PNG', 0, 0, A4_WIDTH_MM, renderHeight, undefined, 'FAST');
-
-      offsetY += currentHeight;
-      pageIndex += 1;
+      case 'paragraph':
+      case 'text':
+        cursorY = renderParagraph(pdf, cursorY, blockText(token)) + 3;
+        break;
+      case 'blockquote':
+        cursorY = ensureSpace(pdf, cursorY, 12);
+        setDrawColor(pdf, COLORS.accent);
+        pdf.setLineWidth(0.8);
+        pdf.line(MARGIN_X, cursorY - 1.5, MARGIN_X, cursorY + 8);
+        cursorY = renderParagraph(pdf, cursorY, blockText(token), {
+          x: MARGIN_X + 4.5,
+          width: CONTENT_WIDTH - 4.5,
+          fontSize: 10.5,
+          lineHeight: 5.8,
+          color: COLORS.quote,
+          style: 'italic',
+        }) + 3;
+        break;
+      case 'list':
+        cursorY = renderList(pdf, cursorY, token);
+        break;
+      case 'code':
+        cursorY = renderCodeBlock(pdf, cursorY, token);
+        break;
+      case 'table':
+        cursorY = renderTable(pdf, cursorY, token);
+        break;
+      default: {
+        const fallback = blockText(token);
+        if (fallback) {
+          cursorY = renderParagraph(pdf, cursorY, fallback) + 3;
+        }
+      }
     }
-
-    const blob = pdf.output('blob');
-    return {
-      blob,
-      mimeType: 'application/pdf',
-    };
-  } finally {
-    mount.remove();
   }
+
+  return {
+    blob: pdf.output('blob'),
+    mimeType: 'application/pdf',
+  };
 }
