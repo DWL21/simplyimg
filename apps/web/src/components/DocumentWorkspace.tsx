@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBeforeUnloadWarning } from '../hooks/useBeforeUnloadWarning';
 import { useDocumentStore } from '../store/documentStore';
 import { bytesToHuman } from '../lib/formatUtils';
-import UnsavedChangesAlert from './UnsavedChangesAlert';
 
 interface DocumentWorkspaceProps {
   onBack: () => void;
@@ -142,8 +141,6 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
       </header>
 
       <div className="document-workspace">
-        <UnsavedChangesAlert className="document-unsaved-alert" />
-
         {/* Left: page strip */}
         <aside className="doc-page-strip">
           {pageCount > 0
