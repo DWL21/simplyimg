@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useBeforeUnloadWarning } from '../hooks/useBeforeUnloadWarning';
 import { useDocumentStore } from '../store/documentStore';
 import { bytesToHuman } from '../lib/formatUtils';
+import UnsavedChangesAlert from './UnsavedChangesAlert';
 
 interface DocumentWorkspaceProps {
   onBack: () => void;
@@ -25,6 +27,9 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
     () => files.find((file) => file.id === selectedId) ?? files[0],
     [files, selectedId],
   );
+  const hasUnsavedDocument = files.length > 0;
+
+  useBeforeUnloadWarning(hasUnsavedDocument);
 
   useEffect(() => {
     if (files.length > 0 && !files.find((file) => file.id === selectedId)) {
@@ -110,6 +115,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
       </header>
 
       <div className="document-workspace">
+        <UnsavedChangesAlert className="document-unsaved-alert" />
         <section className="document-preview panel-surface">
           {previewHtml ? (
             <iframe

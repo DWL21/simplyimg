@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useImageStore } from '../store/imageStore';
+import { useBeforeUnloadWarning } from '../hooks/useBeforeUnloadWarning';
 import CropEditor from './CropEditor';
 import OptionsPanel, { type OptionsPanelState } from './OptionsPanel';
 import ResizeEditor from './ResizeEditor';
+import UnsavedChangesAlert from './UnsavedChangesAlert';
 import { acceptedImageInput, bytesToHuman, isSupportedImageFile } from '../lib/formatUtils';
 import { TOOL_LABELS, ALL_TOOLS } from '../lib/toolConstants';
 import type { ToolName, ToolOptions } from '../types/image';
@@ -164,6 +166,8 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const selectedResultIndex = results.findIndex((r) => r.sourceFileId === selectedFile?.id);
   const selectedResult = selectedResultIndex >= 0 ? results[selectedResultIndex] : undefined;
   const hasFiles = files.length > 0;
+
+  useBeforeUnloadWarning(hasFiles);
 
   // Derived directly from cropMap — no async effect lag
   const currentCrop = cropMap[selectedFile?.id ?? ''] ?? null;
@@ -374,6 +378,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
 
         {/* Center: preview */}
         <div className="preview-area">
+          {hasFiles ? <UnsavedChangesAlert /> : null}
           {!hasFiles ? (
             <div className="edit-empty" onClick={() => fileInputRef.current?.click()}>
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none"
