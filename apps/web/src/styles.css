@@ -136,6 +136,26 @@ img {
   gap: 14px;
 }
 
+.select-mark {
+  width: min(180px, 34vw);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  border-radius: 40px;
+  background:
+    radial-gradient(circle at top, rgba(249, 115, 22, 0.18), transparent 54%),
+    linear-gradient(180deg, rgba(255, 250, 242, 0.96), rgba(255, 255, 255, 0.9));
+  border: 1px solid rgba(25, 18, 8, 0.08);
+  box-shadow: 0 24px 60px rgba(25, 18, 8, 0.08);
+}
+
+.select-mark-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .select-eyebrow {
   margin: 0;
   color: var(--muted);

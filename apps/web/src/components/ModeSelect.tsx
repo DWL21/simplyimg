@@ -1,6 +1,5 @@
 import type { ToolName } from '../types/image';
 import { TOOL_LABELS, ALL_TOOLS } from '../lib/toolConstants';
-import Brand from './Brand';
 
 const TOOL_DESCS: Record<ToolName, string> = {
   compress: '파일 크기를 줄이고 품질을 최적화합니다',
@@ -28,12 +27,35 @@ interface Props {
 export default function ModeSelect({ onSelectImage, onSelectDocument }: Props) {
   return (
     <div className="select-page">
-      <header className="select-header">
-        <Brand />
-      </header>
-
       <div className="select-hero">
-        <h1 className="select-title">어떤 작업을 하실 건가요?</h1>
+        <div className="select-mark" aria-hidden="true">
+          <svg viewBox="0 0 160 160" className="select-mark-svg" role="img">
+            <defs>
+              <linearGradient id="selectMarkGradient" x1="24" y1="20" x2="134" y2="140" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#f97316" />
+                <stop offset="100%" stopColor="#1f7a5f" />
+              </linearGradient>
+            </defs>
+            <rect x="20" y="20" width="120" height="120" rx="32" fill="#fffaf2" stroke="rgba(25,18,8,0.1)" />
+            <path
+              d="M48 102 70 80l16 16 26-34"
+              fill="none"
+              stroke="url(#selectMarkGradient)"
+              strokeWidth="12"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <circle cx="56" cy="56" r="10" fill="#f59e0b" />
+            <path
+              d="M102 46h16M110 38v16"
+              fill="none"
+              stroke="#1f7a5f"
+              strokeWidth="8"
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
+        <h1 className="select-title">지금 필요한 작업을 바로 시작하세요</h1>
       </div>
 
       <section className="mode-section">
