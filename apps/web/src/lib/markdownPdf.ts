@@ -1,4 +1,9 @@
-import { jsPDF } from 'jspdf';
+import fontkit from '@pdf-lib/fontkit';
+import latinBoldUrl from '@fontsource/noto-sans-kr/files/noto-sans-kr-latin-700-normal.woff';
+import latinRegularUrl from '@fontsource/noto-sans-kr/files/noto-sans-kr-latin-400-normal.woff';
+import koreanBoldUrl from '@fontsource/noto-sans-kr/files/noto-sans-kr-korean-700-normal.woff';
+import koreanRegularUrl from '@fontsource/noto-sans-kr/files/noto-sans-kr-korean-400-normal.woff';
+import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { marked } from 'marked';
 import type { ProcessedDocument } from '../types/document';
 
@@ -21,66 +26,51 @@ type GenericToken = {
   rows?: Array<Array<{ text?: string; tokens?: GenericToken[] }>>;
 };
 
-const PAGE_WIDTH = 210;
-const PAGE_HEIGHT = 297;
-const MARGIN_X = 18;
-const MARGIN_TOP = 20;
-const MARGIN_BOTTOM = 18;
+type FontWeight = 'regular' | 'bold';
+type LoadedFonts = {
+  regularLatin: PDFFont;
+  regularKorean: PDFFont;
+  boldLatin: PDFFont;
+  boldKorean: PDFFont;
+};
+
+type FontBytes = {
+  regularLatin: ArrayBuffer;
+  regularKorean: ArrayBuffer;
+  boldLatin: ArrayBuffer;
+  boldKorean: ArrayBuffer;
+};
+
+const PAGE_WIDTH = 595.28;
+const PAGE_HEIGHT = 841.89;
+const MARGIN_X = 52;
+const MARGIN_TOP = 54;
+const MARGIN_BOTTOM = 50;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2;
 
 const COLORS = {
-  text: '#1d1a16',
-  muted: '#6c665d',
-  accent: '#0f5f49',
-  quote: '#4c4943',
-  codeBg: '#f2ede4',
-  codeBorder: '#d8d0c4',
-  tableHeader: '#e7f0ec',
-  tableBorder: '#d9d2c8',
+  text: rgb(0.11, 0.1, 0.09),
+  muted: rgb(0.42, 0.4, 0.36),
+  accent: rgb(0.06, 0.37, 0.29),
+  quote: rgb(0.3, 0.29, 0.26),
+  codeBg: rgb(0.95, 0.93, 0.89),
+  codeBorder: rgb(0.84, 0.82, 0.77),
+  tableHeader: rgb(0.91, 0.94, 0.92),
+  tableBorder: rgb(0.85, 0.82, 0.78),
 };
 
-function addPage(pdf: jsPDF) {
-  pdf.addPage('a4', 'portrait');
-}
+let fontCache: Promise<FontBytes> | null = null;
 
-function ensureSpace(pdf: jsPDF, cursorY: number, neededHeight: number) {
-  if (cursorY + neededHeight <= PAGE_HEIGHT - MARGIN_BOTTOM) {
-    return cursorY;
+function isLatinLike(char: string) {
+  if (char === ' ') {
+    return true;
   }
 
-  addPage(pdf);
-  return MARGIN_TOP;
+  const code = char.codePointAt(0) ?? 0;
+  return code <= 0x024f;
 }
 
-function hexToRgb(hex: string) {
-  const normalized = hex.replace('#', '');
-  const value = normalized.length === 3
-    ? normalized.split('').map((char) => `${char}${char}`).join('')
-    : normalized;
-  const int = Number.parseInt(value, 16);
-  return {
-    r: (int >> 16) & 255,
-    g: (int >> 8) & 255,
-    b: int & 255,
-  };
-}
-
-function setTextColor(pdf: jsPDF, color: string) {
-  const { r, g, b } = hexToRgb(color);
-  pdf.setTextColor(r, g, b);
-}
-
-function setDrawColor(pdf: jsPDF, color: string) {
-  const { r, g, b } = hexToRgb(color);
-  pdf.setDrawColor(r, g, b);
-}
-
-function setFillColor(pdf: jsPDF, color: string) {
-  const { r, g, b } = hexToRgb(color);
-  pdf.setFillColor(r, g, b);
-}
-
-function cleanWhitespace(value: string) {
+function normalizeWhitespace(value: string) {
   return value.replace(/\s+/g, ' ').trim();
 }
 
@@ -98,11 +88,10 @@ function inlineText(token: GenericToken | undefined): string {
   }
 
   if (Array.isArray(token.tokens) && token.tokens.length > 0) {
-    const combined = token.tokens.map((child) => inlineText(child)).join('');
-    return cleanWhitespace(combined);
+    return normalizeWhitespace(token.tokens.map((child) => inlineText(child)).join(''));
   }
 
-  return cleanWhitespace(token.text ?? token.raw ?? '');
+  return normalizeWhitespace(token.text ?? token.raw ?? '');
 }
 
 function blockText(token: GenericToken | undefined) {
@@ -111,250 +100,439 @@ function blockText(token: GenericToken | undefined) {
   }
 
   if (Array.isArray(token.tokens) && token.tokens.length > 0) {
-    return cleanWhitespace(token.tokens.map((child) => inlineText(child)).join(' '));
+    return normalizeWhitespace(token.tokens.map((child) => inlineText(child)).join(' '));
   }
 
-  return cleanWhitespace(token.text ?? token.raw ?? '');
+  return normalizeWhitespace(token.text ?? token.raw ?? '');
 }
 
-function writeLines(
-  pdf: jsPDF,
-  lines: string[],
-  x: number,
-  startY: number,
-  lineHeight: number,
-) {
-  lines.forEach((line, index) => {
-    pdf.text(line, x, startY + lineHeight * index);
-  });
+async function loadFontBytes(url: string) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`폰트를 불러오지 못했습니다: ${url}`);
+  }
+  return response.arrayBuffer();
 }
 
-function splitText(pdf: jsPDF, text: string, width: number) {
-  const normalized = cleanWhitespace(text);
+async function loadFonts(pdf: PDFDocument): Promise<LoadedFonts> {
+  pdf.registerFontkit(fontkit);
+
+  if (!fontCache) {
+    fontCache = Promise.all([
+      loadFontBytes(latinRegularUrl),
+      loadFontBytes(latinBoldUrl),
+      loadFontBytes(koreanRegularUrl),
+      loadFontBytes(koreanBoldUrl),
+    ]).then(([latinRegular, latinBold, koreanRegular, koreanBold]) => ({
+      regularLatin: latinRegular,
+      boldLatin: latinBold,
+      regularKorean: koreanRegular,
+      boldKorean: koreanBold,
+    }));
+  }
+
+  const bytes = await fontCache;
+  return {
+    regularLatin: await pdf.embedFont(bytes.regularLatin),
+    boldLatin: await pdf.embedFont(bytes.boldLatin),
+    regularKorean: await pdf.embedFont(bytes.regularKorean),
+    boldKorean: await pdf.embedFont(bytes.boldKorean),
+  };
+}
+
+function pickFont(fonts: LoadedFonts, char: string, weight: FontWeight) {
+  if (isLatinLike(char)) {
+    return weight === 'bold' ? fonts.boldLatin : fonts.regularLatin;
+  }
+
+  return weight === 'bold' ? fonts.boldKorean : fonts.regularKorean;
+}
+
+function splitRuns(text: string, fonts: LoadedFonts, weight: FontWeight) {
+  const runs: Array<{ text: string; font: PDFFont }> = [];
+
+  for (const char of text) {
+    const font = pickFont(fonts, char, weight);
+    const last = runs.at(-1);
+    if (last && last.font === font) {
+      last.text += char;
+    } else {
+      runs.push({ text: char, font });
+    }
+  }
+
+  return runs;
+}
+
+function measureText(text: string, fonts: LoadedFonts, size: number, weight: FontWeight) {
+  return splitRuns(text, fonts, weight).reduce(
+    (sum, run) => sum + run.font.widthOfTextAtSize(run.text, size),
+    0,
+  );
+}
+
+function breakWord(word: string, fonts: LoadedFonts, size: number, width: number, weight: FontWeight) {
+  const lines: string[] = [];
+  let current = '';
+
+  for (const char of word) {
+    const candidate = `${current}${char}`;
+    if (measureText(candidate, fonts, size, weight) <= width || current.length === 0) {
+      current = candidate;
+    } else {
+      lines.push(current);
+      current = char;
+    }
+  }
+
+  if (current) {
+    lines.push(current);
+  }
+
+  return lines;
+}
+
+function wrapText(text: string, fonts: LoadedFonts, size: number, width: number, weight: FontWeight) {
+  const normalized = normalizeWhitespace(text);
   if (!normalized) {
     return [''];
   }
-  return pdf.splitTextToSize(normalized, width) as string[];
+
+  const parts = normalized.split(/(\s+)/).filter((part) => part.length > 0);
+  const lines: string[] = [];
+  let current = '';
+
+  for (const part of parts) {
+    const candidate = `${current}${part}`;
+    if (measureText(candidate, fonts, size, weight) <= width) {
+      current = candidate;
+      continue;
+    }
+
+    if (current.trim().length > 0) {
+      lines.push(current.trimEnd());
+      current = part.trimStart();
+      if (measureText(current, fonts, size, weight) <= width) {
+        continue;
+      }
+    }
+
+    const broken = breakWord(part.trim(), fonts, size, width, weight);
+    if (broken.length === 0) {
+      continue;
+    }
+
+    lines.push(...broken.slice(0, -1));
+    current = broken.at(-1) ?? '';
+  }
+
+  if (current.trim().length > 0) {
+    lines.push(current.trimEnd());
+  }
+
+  return lines.length > 0 ? lines : [''];
 }
 
-function renderParagraph(pdf: jsPDF, cursorY: number, text: string, options?: {
-  x?: number;
-  width?: number;
-  fontSize?: number;
-  lineHeight?: number;
-  color?: string;
-  style?: 'normal' | 'bold' | 'italic' | 'bolditalic';
-}) {
+function drawLine(
+  page: PDFPage,
+  text: string,
+  x: number,
+  topY: number,
+  fonts: LoadedFonts,
+  size: number,
+  weight: FontWeight,
+  color: ReturnType<typeof rgb>,
+) {
+  let cursorX = x;
+  const baselineY = PAGE_HEIGHT - topY - size;
+  const runs = splitRuns(text, fonts, weight);
+
+  runs.forEach((run) => {
+    page.drawText(run.text, {
+      x: cursorX,
+      y: baselineY,
+      size,
+      font: run.font,
+      color,
+    });
+    cursorX += run.font.widthOfTextAtSize(run.text, size);
+  });
+}
+
+function createPage(pdf: PDFDocument) {
+  return pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+}
+
+function ensureSpace(pdf: PDFDocument, page: PDFPage, cursorY: number, neededHeight: number) {
+  if (cursorY + neededHeight <= PAGE_HEIGHT - MARGIN_BOTTOM) {
+    return { page, cursorY };
+  }
+
+  return {
+    page: createPage(pdf),
+    cursorY: MARGIN_TOP,
+  };
+}
+
+function drawParagraph(
+  pdf: PDFDocument,
+  page: PDFPage,
+  cursorY: number,
+  text: string,
+  fonts: LoadedFonts,
+  options?: {
+    x?: number;
+    width?: number;
+    size?: number;
+    lineHeight?: number;
+    weight?: FontWeight;
+    color?: ReturnType<typeof rgb>;
+  },
+) {
   const x = options?.x ?? MARGIN_X;
   const width = options?.width ?? CONTENT_WIDTH;
-  const fontSize = options?.fontSize ?? 11;
-  const lineHeight = options?.lineHeight ?? fontSize * 0.48 + 1.8;
+  const size = options?.size ?? 11;
+  const lineHeight = options?.lineHeight ?? size * 1.55;
+  const weight = options?.weight ?? 'regular';
+  const color = options?.color ?? COLORS.text;
 
-  pdf.setFont('times', options?.style ?? 'normal');
-  pdf.setFontSize(fontSize);
-  setTextColor(pdf, options?.color ?? COLORS.text);
+  const lines = wrapText(text, fonts, size, width, weight);
+  ({ page, cursorY } = ensureSpace(pdf, page, cursorY, lines.length * lineHeight));
 
-  const lines = splitText(pdf, text, width);
-  cursorY = ensureSpace(pdf, cursorY, lineHeight * lines.length);
-  writeLines(pdf, lines, x, cursorY, lineHeight);
-  return cursorY + lineHeight * lines.length;
-}
-
-function renderCodeBlock(pdf: jsPDF, cursorY: number, token: GenericToken) {
-  pdf.setFont('courier', 'normal');
-  pdf.setFontSize(9.5);
-
-  const source = (token.text ?? '').replace(/\t/g, '  ');
-  const lines = source.length > 0 ? source.split('\n') : [''];
-  const wrapped = lines.flatMap((line) => {
-    const parts = pdf.splitTextToSize(line || ' ', CONTENT_WIDTH - 8) as string[];
-    return parts.length > 0 ? parts : [' '];
+  lines.forEach((line, index) => {
+    drawLine(page, line, x, cursorY + index * lineHeight, fonts, size, weight, color);
   });
 
-  const lineHeight = 5.2;
-  const boxHeight = wrapped.length * lineHeight + 8;
-  cursorY = ensureSpace(pdf, cursorY, boxHeight);
-
-  setFillColor(pdf, COLORS.codeBg);
-  setDrawColor(pdf, COLORS.codeBorder);
-  pdf.roundedRect(MARGIN_X, cursorY - 3.2, CONTENT_WIDTH, boxHeight, 2, 2, 'FD');
-  setTextColor(pdf, COLORS.text);
-  writeLines(pdf, wrapped, MARGIN_X + 4, cursorY + 1.2, lineHeight);
-
-  return cursorY + boxHeight + 2;
+  return { page, cursorY: cursorY + lines.length * lineHeight };
 }
 
-function renderRule(pdf: jsPDF, cursorY: number) {
-  cursorY = ensureSpace(pdf, cursorY, 8);
-  setDrawColor(pdf, COLORS.tableBorder);
-  pdf.setLineWidth(0.35);
-  pdf.line(MARGIN_X, cursorY + 2, PAGE_WIDTH - MARGIN_X, cursorY + 2);
-  return cursorY + 6;
+function drawRule(pdf: PDFDocument, page: PDFPage, cursorY: number) {
+  ({ page, cursorY } = ensureSpace(pdf, page, cursorY, 8));
+  page.drawLine({
+    start: { x: MARGIN_X, y: PAGE_HEIGHT - cursorY - 4 },
+    end: { x: PAGE_WIDTH - MARGIN_X, y: PAGE_HEIGHT - cursorY - 4 },
+    thickness: 0.7,
+    color: COLORS.tableBorder,
+  });
+  return { page, cursorY: cursorY + 8 };
 }
 
-function renderTable(pdf: jsPDF, cursorY: number, token: GenericToken) {
+function drawCodeBlock(
+  pdf: PDFDocument,
+  page: PDFPage,
+  cursorY: number,
+  token: GenericToken,
+  fonts: LoadedFonts,
+) {
+  const source = (token.text ?? '').replace(/\t/g, '  ');
+  const rawLines = source.length > 0 ? source.split('\n') : [''];
+  const wrapped = rawLines.flatMap((line) => wrapText(line || ' ', fonts, 10, CONTENT_WIDTH - 18, 'regular'));
+  const lineHeight = 16;
+  const boxHeight = wrapped.length * lineHeight + 14;
+
+  ({ page, cursorY } = ensureSpace(pdf, page, cursorY, boxHeight + 4));
+
+  page.drawRectangle({
+    x: MARGIN_X,
+    y: PAGE_HEIGHT - cursorY - boxHeight + 4,
+    width: CONTENT_WIDTH,
+    height: boxHeight,
+    color: COLORS.codeBg,
+    borderColor: COLORS.codeBorder,
+    borderWidth: 1,
+  });
+
+  wrapped.forEach((line, index) => {
+    drawLine(page, line, MARGIN_X + 9, cursorY + 9 + index * lineHeight, fonts, 10, 'regular', COLORS.text);
+  });
+
+  return { page, cursorY: cursorY + boxHeight + 6 };
+}
+
+function drawList(
+  pdf: PDFDocument,
+  page: PDFPage,
+  cursorY: number,
+  token: GenericToken,
+  fonts: LoadedFonts,
+) {
+  const items = token.items ?? [];
+  let itemIndex = token.start ?? 1;
+
+  for (const item of items) {
+    const marker = token.ordered ? `${itemIndex}.` : item.task ? `[${item.checked ? 'x' : ' '}]` : '•';
+    const lines = wrapText(
+      `${marker} ${blockText({ tokens: item.tokens, text: item.text })}`,
+      fonts,
+      11,
+      CONTENT_WIDTH - 6,
+      'regular',
+    );
+    const lineHeight = 18;
+    ({ page, cursorY } = ensureSpace(pdf, page, cursorY, lines.length * lineHeight));
+    lines.forEach((line, index) => {
+      drawLine(page, line, MARGIN_X + 6, cursorY + index * lineHeight, fonts, 11, 'regular', COLORS.text);
+    });
+    cursorY += lines.length * lineHeight + 2;
+    itemIndex += 1;
+  }
+
+  return { page, cursorY };
+}
+
+function drawTable(
+  pdf: PDFDocument,
+  page: PDFPage,
+  cursorY: number,
+  token: GenericToken,
+  fonts: LoadedFonts,
+) {
   const headers = token.header ?? [];
   const rows = token.rows ?? [];
   const columnCount = Math.max(headers.length, ...rows.map((row) => row.length), 1);
   const columnWidth = CONTENT_WIDTH / columnCount;
-  const lineHeight = 4.8;
+  const lineHeight = 16;
 
   const normalizeCell = (cell?: { text?: string; tokens?: GenericToken[] }) =>
-    cleanWhitespace(cell?.tokens?.map((child) => inlineText(child)).join(' ') ?? cell?.text ?? '');
+    normalizeWhitespace(cell?.tokens?.map((child) => inlineText(child)).join(' ') ?? cell?.text ?? '');
 
-  const drawRow = (cells: string[], y: number, isHeader: boolean) => {
-    const cellLines = cells.map((cell) => {
-      pdf.setFont('times', isHeader ? 'bold' : 'normal');
-      pdf.setFontSize(10);
-      return splitText(pdf, cell || ' ', columnWidth - 6);
-    });
-    const rowHeight = Math.max(...cellLines.map((lines) => Math.max(lines.length, 1))) * lineHeight + 6;
-    cursorY = ensureSpace(pdf, y, rowHeight);
+  const drawRow = (cells: string[], bold: boolean) => {
+    const cellLines = cells.map((cell) => wrapText(cell || ' ', fonts, 10, columnWidth - 10, bold ? 'bold' : 'regular'));
+    const rowHeight = Math.max(...cellLines.map((lines) => Math.max(lines.length, 1))) * lineHeight + 10;
+
+    ({ page, cursorY } = ensureSpace(pdf, page, cursorY, rowHeight));
 
     cells.forEach((_cell, columnIndex) => {
       const x = MARGIN_X + columnWidth * columnIndex;
-      setDrawColor(pdf, COLORS.tableBorder);
-      if (isHeader) {
-        setFillColor(pdf, COLORS.tableHeader);
-        pdf.rect(x, cursorY, columnWidth, rowHeight, 'FD');
-      } else {
-        pdf.rect(x, cursorY, columnWidth, rowHeight);
-      }
+      page.drawRectangle({
+        x,
+        y: PAGE_HEIGHT - cursorY - rowHeight + 4,
+        width: columnWidth,
+        height: rowHeight,
+        color: bold ? COLORS.tableHeader : undefined,
+        borderColor: COLORS.tableBorder,
+        borderWidth: 1,
+      });
 
-      pdf.setFont('times', isHeader ? 'bold' : 'normal');
-      pdf.setFontSize(10);
-      setTextColor(pdf, COLORS.text);
-      writeLines(pdf, cellLines[columnIndex], x + 3, cursorY + 5, lineHeight);
+      cellLines[columnIndex].forEach((line, lineIndex) => {
+        drawLine(
+          page,
+          line,
+          x + 5,
+          cursorY + 8 + lineIndex * lineHeight,
+          fonts,
+          10,
+          bold ? 'bold' : 'regular',
+          COLORS.text,
+        );
+      });
     });
 
-    return cursorY + rowHeight;
+    cursorY += rowHeight;
   };
 
-  const headerCells = Array.from({ length: columnCount }, (_, index) => normalizeCell(headers[index]));
-  cursorY = drawRow(headerCells, cursorY, true);
-
+  drawRow(Array.from({ length: columnCount }, (_, index) => normalizeCell(headers[index])), true);
   rows.forEach((row) => {
-    const rowCells = Array.from({ length: columnCount }, (_, index) => normalizeCell(row[index]));
-    cursorY = drawRow(rowCells, cursorY, false);
+    drawRow(Array.from({ length: columnCount }, (_, index) => normalizeCell(row[index])), false);
   });
 
-  return cursorY + 3;
-}
-
-function renderList(pdf: jsPDF, cursorY: number, token: GenericToken) {
-  const items = token.items ?? [];
-  let itemIndex = token.start ?? 1;
-
-  items.forEach((item) => {
-    const marker = token.ordered ? `${itemIndex}.` : item.task ? `[${item.checked ? 'x' : ' '}]` : '•';
-    const text = blockText({ tokens: item.tokens, text: item.text });
-    const markerWidth = 10;
-
-    pdf.setFont('times', 'normal');
-    pdf.setFontSize(11);
-    const lines = splitText(pdf, `${marker} ${text}`, CONTENT_WIDTH - 4);
-    const lineHeight = 6;
-    cursorY = ensureSpace(pdf, cursorY, lines.length * lineHeight);
-    writeLines(pdf, lines, MARGIN_X + markerWidth / 2, cursorY, lineHeight);
-    cursorY += lines.length * lineHeight + 1;
-    itemIndex += 1;
-  });
-
-  return cursorY + 1;
+  return { page, cursorY: cursorY + 4 };
 }
 
 export async function renderMarkdownToPdf(file: File): Promise<ProcessedDocument> {
   const markdown = await file.text();
   const tokens = marked.lexer(markdown, { gfm: true, breaks: true }) as GenericToken[];
 
-  const pdf = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
-    compress: true,
-  });
+  const pdf = await PDFDocument.create();
+  const fonts = await loadFonts(pdf);
 
+  let page = createPage(pdf);
   let cursorY = MARGIN_TOP;
+  const title = file.name.replace(/\.[^.]+$/, '');
 
-  pdf.setProperties({
-    title: file.name.replace(/\.[^.]+$/, ''),
-    subject: 'Markdown to PDF',
-    author: 'SimplyImg',
-  });
-
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(22);
-  setTextColor(pdf, COLORS.text);
-  const titleLines = splitText(pdf, file.name.replace(/\.[^.]+$/, ''), CONTENT_WIDTH);
-  writeLines(pdf, titleLines, MARGIN_X, cursorY, 8.8);
-  cursorY += titleLines.length * 8.8;
-
-  pdf.setFont('courier', 'normal');
-  pdf.setFontSize(9.5);
-  setTextColor(pdf, COLORS.muted);
-  pdf.text(`Markdown · ${file.name}`, MARGIN_X, cursorY + 1);
+  ({ page, cursorY } = drawParagraph(pdf, page, cursorY, title, fonts, {
+    size: 24,
+    lineHeight: 34,
+    weight: 'bold',
+  }));
+  ({ page, cursorY } = drawParagraph(pdf, page, cursorY, `Markdown · ${file.name}`, fonts, {
+    size: 10,
+    lineHeight: 16,
+    color: COLORS.muted,
+  }));
+  ({ page, cursorY } = drawRule(pdf, page, cursorY));
   cursorY += 8;
-
-  cursorY = renderRule(pdf, cursorY);
-  cursorY += 2;
 
   for (const token of tokens) {
     switch (token.type) {
       case 'space':
-        cursorY += 2;
+        cursorY += 4;
         break;
       case 'hr':
-        cursorY = renderRule(pdf, cursorY) + 2;
+        ({ page, cursorY } = drawRule(pdf, page, cursorY));
+        cursorY += 6;
         break;
       case 'heading': {
         const depth = Math.min(Math.max(token.depth ?? 1, 1), 6);
-        const sizeMap = [0, 20, 16.5, 14, 12.5, 11.5, 11];
-        cursorY = renderParagraph(pdf, cursorY, blockText(token), {
-          fontSize: sizeMap[depth],
-          lineHeight: depth === 1 ? 8 : 6.8,
+        const sizeMap = [0, 22, 18, 15, 13, 12, 11];
+        const lineHeightMap = [0, 30, 24, 21, 18, 17, 16];
+        ({ page, cursorY } = drawParagraph(pdf, page, cursorY, blockText(token), fonts, {
+          size: sizeMap[depth],
+          lineHeight: lineHeightMap[depth],
+          weight: 'bold',
           color: depth <= 2 ? COLORS.accent : COLORS.text,
-          style: 'bold',
-        }) + (depth <= 2 ? 3 : 2);
+        }));
+        cursorY += depth <= 2 ? 8 : 6;
         break;
       }
       case 'paragraph':
       case 'text':
-        cursorY = renderParagraph(pdf, cursorY, blockText(token)) + 3;
+        ({ page, cursorY } = drawParagraph(pdf, page, cursorY, blockText(token), fonts));
+        cursorY += 8;
         break;
       case 'blockquote':
-        cursorY = ensureSpace(pdf, cursorY, 12);
-        setDrawColor(pdf, COLORS.accent);
-        pdf.setLineWidth(0.8);
-        pdf.line(MARGIN_X, cursorY - 1.5, MARGIN_X, cursorY + 8);
-        cursorY = renderParagraph(pdf, cursorY, blockText(token), {
-          x: MARGIN_X + 4.5,
-          width: CONTENT_WIDTH - 4.5,
-          fontSize: 10.5,
-          lineHeight: 5.8,
+        ({ page, cursorY } = ensureSpace(pdf, page, cursorY, 24));
+        page.drawLine({
+          start: { x: MARGIN_X, y: PAGE_HEIGHT - cursorY - 2 },
+          end: { x: MARGIN_X, y: PAGE_HEIGHT - cursorY - 26 },
+          thickness: 2,
+          color: COLORS.accent,
+        });
+        ({ page, cursorY } = drawParagraph(pdf, page, cursorY, blockText(token), fonts, {
+          x: MARGIN_X + 14,
+          width: CONTENT_WIDTH - 14,
+          size: 10.5,
+          lineHeight: 17,
           color: COLORS.quote,
-          style: 'italic',
-        }) + 3;
+        }));
+        cursorY += 8;
         break;
       case 'list':
-        cursorY = renderList(pdf, cursorY, token);
+        ({ page, cursorY } = drawList(pdf, page, cursorY, token, fonts));
+        cursorY += 6;
         break;
       case 'code':
-        cursorY = renderCodeBlock(pdf, cursorY, token);
+        ({ page, cursorY } = drawCodeBlock(pdf, page, cursorY, token, fonts));
+        cursorY += 4;
         break;
       case 'table':
-        cursorY = renderTable(pdf, cursorY, token);
+        ({ page, cursorY } = drawTable(pdf, page, cursorY, token, fonts));
+        cursorY += 6;
         break;
       default: {
         const fallback = blockText(token);
         if (fallback) {
-          cursorY = renderParagraph(pdf, cursorY, fallback) + 3;
+          ({ page, cursorY } = drawParagraph(pdf, page, cursorY, fallback, fonts));
+          cursorY += 8;
         }
       }
     }
   }
 
+  const bytes = await pdf.save();
+  const payload = new Uint8Array(bytes);
   return {
-    blob: pdf.output('blob'),
+    blob: new Blob([payload], { type: 'application/pdf' }),
     mimeType: 'application/pdf',
   };
 }

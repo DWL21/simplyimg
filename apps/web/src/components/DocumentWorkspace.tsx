@@ -53,6 +53,44 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
     event.target.value = '';
   }
 
+  if (!selectedFile) {
+    return (
+      <div className="upload-page" onDrop={handleDrop} onDragOver={(event) => event.preventDefault()}>
+        <input
+          ref={inputRef}
+          id="document-upload-input"
+          type="file"
+          accept=".md,.markdown,text/markdown"
+          onChange={handleChange}
+          style={{ display: 'none' }}
+        />
+
+        <header className="upload-header">
+          <button className="back-btn" onClick={onBack}>← 뒤로</button>
+          <div className="document-upload-title">Markdown → PDF</div>
+          <span className="tool-badge">MD</span>
+        </header>
+
+        <label className="upload-dropzone" htmlFor="document-upload-input">
+          <div className="upload-inner">
+            <div className="upload-icon">
+              <svg width="52" height="52" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="1.4"
+                strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            </div>
+            <strong className="upload-heading">Markdown 파일을 끌어다 놓거나</strong>
+            <span className="upload-sub">클릭해서 파일을 선택하세요</span>
+            <span className="upload-hint">MD</span>
+          </div>
+        </label>
+      </div>
+    );
+  }
+
   return (
     <div className="document-page" onDrop={handleDrop} onDragOver={(event) => event.preventDefault()}>
       <input
@@ -69,105 +107,30 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
           <strong>Markdown → PDF</strong>
         </div>
         <button className="add-more-btn" onClick={() => inputRef.current?.click()}>
-          파일 선택
+          파일 바꾸기
         </button>
       </header>
 
-      <div className="document-body">
-        <aside className="document-sidebar panel-surface">
-          <div className="document-section-head">
-            <div>
-              <h2>파일</h2>
+      <div className="document-workspace">
+        <section className="document-preview panel-surface">
+          {selectedResult ? (
+            <iframe
+              key={selectedResult.url}
+              title="PDF preview"
+              src={selectedResult.url}
+              className="document-preview-frame"
+            />
+          ) : (
+            <div className="document-preview-empty">
+              <strong>{selectedFile.file.name}</strong>
+              <span>출력하기를 누르면 PDF 미리보기가 표시됩니다.</span>
             </div>
-            <span className="document-count">{files.length > 0 ? '1개' : '0개'}</span>
+          )}
+          <div className="document-preview-meta">
+            <span>{selectedFile.file.name}</span>
+            <span>{bytesToHuman(selectedFile.file.size)}</span>
+            {selectedResult ? <span>{bytesToHuman(selectedResult.size)}</span> : null}
           </div>
-          <div className="document-list">
-            {files.length === 0 ? (
-              <button className="document-empty" onClick={() => inputRef.current?.click()}>
-                <strong>Markdown 파일을 선택하세요</strong>
-                <span>지원 형식: MD</span>
-              </button>
-            ) : (
-              files.map((file) => {
-                const isSelected = file.id === selectedFile?.id;
-                const result = results.find((item) => item.sourceFileId === file.id);
-                return (
-                  <div
-                    key={file.id}
-                    className={`document-item ${isSelected ? 'is-selected' : ''}`}
-                    onClick={() => setSelectedId(file.id)}
-                  >
-                    <div className="document-badge">MD</div>
-                    <div className="document-item-copy">
-                      <strong>{file.file.name}</strong>
-                      <span>{bytesToHuman(file.file.size)}</span>
-                    </div>
-                    {result ? <span className="document-status">PDF</span> : null}
-                    <button
-                      className="document-remove"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        removeFile(file.id);
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </aside>
-
-        <section className="document-main panel-surface">
-          <div className="document-main-copy">
-            <span className="document-eyebrow">DOCUMENT</span>
-            <h1>Markdown to PDF</h1>
-          </div>
-
-          <div className="document-summary-grid">
-            <div className="document-summary-card">
-              <span>선택 파일</span>
-              <strong>{selectedFile?.file.name ?? '아직 없음'}</strong>
-              <p>{selectedFile ? bytesToHuman(selectedFile.file.size) : '-'}</p>
-            </div>
-            <div className="document-summary-card">
-              <span>변환 결과</span>
-              <strong>{selectedResult?.name ?? 'PDF 대기 중'}</strong>
-              <p>{selectedResult ? bytesToHuman(selectedResult.size) : '-'}</p>
-            </div>
-            <div className="document-summary-card">
-              <span>지원 형식</span>
-              <strong>MD → PDF</strong>
-            </div>
-          </div>
-
-          {selectedFile ? (
-            <div className="document-detail-card">
-              <div>
-                <h2>선택한 문서 정보</h2>
-              </div>
-              <dl className="document-detail-list">
-                <div>
-                  <dt>파일명</dt>
-                  <dd>{selectedFile.file.name}</dd>
-                </div>
-                <div>
-                  <dt>형식</dt>
-                  <dd>MD</dd>
-                </div>
-                <div>
-                  <dt>원본 크기</dt>
-                  <dd>{bytesToHuman(selectedFile.file.size)}</dd>
-                </div>
-                <div>
-                  <dt>출력</dt>
-                  <dd>{selectedResult ? selectedResult.name : 'PDF로 변환 예정'}</dd>
-                </div>
-              </dl>
-            </div>
-          ) : null}
-
           {error ? <p className="error-msg">{error}</p> : null}
           {isProcessing ? (
             <div className="progress-wrap document-progress">
@@ -181,19 +144,10 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
 
         <aside className="options-panel">
           <div className="options-scroll">
-            <h3 className="panel-title">PDF 변환</h3>
-            <div className="document-option-card">
-              <strong>출력 형식</strong>
-              <p>PDF</p>
-            </div>
-            <div className="document-option-card">
-              <strong>변환 엔진</strong>
-              <p>브라우저</p>
-            </div>
-            <div className="document-option-card">
-              <strong>입력</strong>
-              <p>단일 파일</p>
-            </div>
+            <h3 className="panel-title">출력</h3>
+            <div className="document-option-card"><strong>형식</strong><p>PDF</p></div>
+            <div className="document-option-card"><strong>입력</strong><p>MD</p></div>
+            <div className="document-option-card"><strong>파일명</strong><p>{selectedFile.file.name}</p></div>
             {results.length > 0 ? (
               <div className="document-results">
                 <strong>결과</strong>
@@ -215,10 +169,13 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
           </div>
           <div className="panel-actions">
             <button className="process-btn" onClick={() => processAll()} disabled={isProcessing || files.length === 0}>
-              {isProcessing ? '변환 중…' : 'PDF로 변환'}
+              {isProcessing ? '출력 중…' : '출력하기'}
             </button>
             <button className="re-edit-btn" onClick={() => downloadAll()} disabled={results.length === 0}>
               다운로드
+            </button>
+            <button className="re-edit-btn" onClick={() => removeFile(selectedFile.id)}>
+              파일 제거
             </button>
           </div>
         </aside>
