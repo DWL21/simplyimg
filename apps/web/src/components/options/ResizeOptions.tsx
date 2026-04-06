@@ -3,10 +3,8 @@ import { appMessages } from '../../i18n/messages';
 interface ResizeOptionsProps {
   width: number;
   height: number;
-  fit: 'contain' | 'cover' | 'exact';
   onWidthChange: (width: number) => void;
   onHeightChange: (height: number) => void;
-  onFitChange: (fit: 'contain' | 'cover' | 'exact') => void;
 }
 
 const resizePresets = [
@@ -18,10 +16,8 @@ const resizePresets = [
 export function ResizeOptions({
   width,
   height,
-  fit,
   onWidthChange,
   onHeightChange,
-  onFitChange,
 }: ResizeOptionsProps) {
   return (
     <div className="option-stack">
@@ -57,35 +53,6 @@ export function ResizeOptions({
         </div>
       </div>
 
-      <div className="option-group">
-        <div className="option-copy">
-          <strong>{appMessages.options.resize.fitTitle}</strong>
-          <p>{appMessages.options.resize.fitDescription}</p>
-        </div>
-        <div className="segmented-control">
-          <button
-            className={fit === 'contain' ? 'segmented-option is-active' : 'segmented-option'}
-            type="button"
-            onClick={() => onFitChange('contain')}
-          >
-            Contain
-          </button>
-          <button
-            className={fit === 'cover' ? 'segmented-option is-active' : 'segmented-option'}
-            type="button"
-            onClick={() => onFitChange('cover')}
-          >
-            Cover
-          </button>
-          <button
-            className={fit === 'exact' ? 'segmented-option is-active' : 'segmented-option'}
-            type="button"
-            onClick={() => onFitChange('exact')}
-          >
-            Exact
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

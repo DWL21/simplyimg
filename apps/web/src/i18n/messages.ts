@@ -89,8 +89,6 @@ type LocaleMessages = {
       sizeDescription: string;
       width: string;
       height: string;
-      fitTitle: string;
-      fitDescription: string;
     };
     convert: {
       outputTitle: string;
@@ -163,10 +161,10 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       resize: {
         name: '이미지 크기 조절',
         label: 'RESIZE',
-        description: '가로와 세로 크기를 지정해 여러 이미지를 한 번에 조절합니다.',
-        details: '정확한 크기, 비율 맞춤, cover/contain 지원',
+        description: '가로와 세로 크기를 지정한 값으로 강제 변경합니다.',
+        details: '정확한 픽셀 크기, 프레임 이동, 실시간 미리보기',
         workspaceTitle: '이미지 크기 조절',
-        workspaceDescription: '목표 크기와 맞춤 방식을 정한 뒤 여러 이미지를 한 번에 리사이즈합니다.',
+        workspaceDescription: '목표 크기를 정하고 프레임을 움직여 보이는 영역을 맞춘 뒤 여러 이미지를 한 번에 변경합니다.',
         processLabel: '크기 조절',
       },
       convert: {
@@ -209,11 +207,9 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       },
       resize: {
         sizeTitle: '크기 지정',
-        sizeDescription: '목표 해상도를 입력하면 업로드한 모든 이미지에 동일하게 적용됩니다.',
+        sizeDescription: '입력한 가로/세로 크기로 출력되고, 왼쪽 미리보기에서 프레임 위치를 움직여 보이는 영역을 맞출 수 있습니다.',
         width: '가로',
         height: '세로',
-        fitTitle: '맞춤 방식',
-        fitDescription: '이미지를 프레임 안에 어떻게 배치할지 선택합니다.',
       },
       convert: {
         outputTitle: '출력 형식',
@@ -284,10 +280,10 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       resize: {
         name: 'Resize Images',
         label: 'RESIZE',
-        description: 'Set width and height and resize multiple images in one step.',
-        details: 'Exact dimensions, fit modes, bulk export',
+        description: 'Force images to the exact width and height you enter.',
+        details: 'Exact pixel size, movable frame, live preview',
         workspaceTitle: 'Resize Images',
-        workspaceDescription: 'Set target dimensions and fit mode, then resize all uploaded images at once.',
+        workspaceDescription: 'Set the target size, reposition the frame on the image, and resize the full batch at once.',
         processLabel: 'Resize images',
       },
       convert: {
@@ -330,11 +326,9 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       },
       resize: {
         sizeTitle: 'Target size',
-        sizeDescription: 'The same target resolution is applied to every uploaded image.',
+        sizeDescription: 'Each image is exported at the exact width and height you enter, and you can reposition the frame in the preview.',
         width: 'Width',
         height: 'Height',
-        fitTitle: 'Fit mode',
-        fitDescription: 'Choose how the image should sit inside the target frame.',
       },
       convert: {
         outputTitle: 'Output format',

@@ -79,34 +79,20 @@ async function compressImage(file: File, options: CompressOptions): Promise<Proc
 async function resizeImage(file: File, options: ResizeOptions): Promise<ProcessedImage> {
   const bitmap = await createImageBitmap(file);
   try {
-    const sourceWidth = bitmap.width;
-    const sourceHeight = bitmap.height;
-    const scaleX = options.width / sourceWidth;
-    const scaleY = options.height / sourceHeight;
-    const fit = options.fit ?? 'contain';
-
-    let drawWidth = options.width;
-    let drawHeight = options.height;
-    let offsetX = 0;
-    let offsetY = 0;
-
-    if (fit === 'contain') {
-      const scale = Math.min(scaleX, scaleY);
-      drawWidth = Math.max(1, Math.round(sourceWidth * scale));
-      drawHeight = Math.max(1, Math.round(sourceHeight * scale));
-      offsetX = Math.floor((options.width - drawWidth) / 2);
-      offsetY = Math.floor((options.height - drawHeight) / 2);
-    } else if (fit === 'cover') {
-      const scale = Math.max(scaleX, scaleY);
-      drawWidth = Math.max(1, Math.round(sourceWidth * scale));
-      drawHeight = Math.max(1, Math.round(sourceHeight * scale));
-      offsetX = Math.floor((options.width - drawWidth) / 2);
-      offsetY = Math.floor((options.height - drawHeight) / 2);
-    }
-
     const canvas = new OffscreenCanvas(options.width, options.height);
     const ctx = getContext(canvas);
-    ctx.drawImage(bitmap, offsetX, offsetY, drawWidth, drawHeight);
+    const crop = options.crop;
+
+    if (crop) {
+      const sourceX = Math.max(0, Math.min(crop.x, bitmap.width - 1));
+      const sourceY = Math.max(0, Math.min(crop.y, bitmap.height - 1));
+      const sourceWidth = Math.max(1, Math.min(crop.width, bitmap.width - sourceX));
+      const sourceHeight = Math.max(1, Math.min(crop.height, bitmap.height - sourceY));
+      ctx.drawImage(bitmap, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, options.width, options.height);
+    } else {
+      ctx.drawImage(bitmap, 0, 0, options.width, options.height);
+    }
+
     const blob = await canvas.convertToBlob({ type: inferMimeType(file) });
     return { blob, mimeType: blob.type || inferMimeType(file) };
   } finally {
