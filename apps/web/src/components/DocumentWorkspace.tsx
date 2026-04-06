@@ -145,30 +145,30 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
             <h3 className="panel-title">PDF export</h3>
             <div className="document-option-card"><strong>파일명</strong><p>{selectedFile.file.name}</p></div>
             <div className="document-option-card">
-              <strong>머리말</strong>
+              <strong>제목</strong>
               <label className="document-select-field">
                 <select
                   className="document-select"
-                  value={options.header}
-                  onChange={(event) => void updateOptions({ header: event.target.value as 'none' | 'title' | 'pageNumber' })}
+                  value={options.titlePosition}
+                  onChange={(event) => void updateOptions({ titlePosition: event.target.value as 'header' | 'footer' | 'none' })}
                 >
                   <option value="none">선택 안함</option>
-                  <option value="title">제목</option>
-                  <option value="pageNumber">페이지 번호</option>
+                  <option value="header">머리말</option>
+                  <option value="footer">꼬리말</option>
                 </select>
               </label>
             </div>
             <div className="document-option-card">
-              <strong>꼬리말</strong>
+              <strong>페이지 번호</strong>
               <label className="document-select-field">
                 <select
                   className="document-select"
-                  value={options.footer}
-                  onChange={(event) => void updateOptions({ footer: event.target.value as 'none' | 'title' | 'pageNumber' })}
+                  value={options.pageNumberPosition}
+                  onChange={(event) => void updateOptions({ pageNumberPosition: event.target.value as 'header' | 'footer' | 'none' })}
                 >
                   <option value="none">선택 안함</option>
-                  <option value="title">제목</option>
-                  <option value="pageNumber">페이지 번호</option>
+                  <option value="header">머리말</option>
+                  <option value="footer">꼬리말</option>
                 </select>
               </label>
             </div>

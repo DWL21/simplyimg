@@ -12,8 +12,8 @@ function isDocumentFile(file: File) {
 }
 
 const defaultOptions: DocumentRenderOptions = {
-  header: 'none',
-  footer: 'none',
+  titlePosition: 'none',
+  pageNumberPosition: 'none',
 };
 
 export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
