@@ -15,5 +15,6 @@
     "noEmit": true,
     "types": ["vite/client"]
   },
-  "include": ["src/workers/**/*.ts", "src/lib/**/*.ts", "src/types/**/*.ts"]
+  "include": ["src/workers/**/*.ts", "src/lib/**/*.ts", "src/types/**/*.ts"],
+  "exclude": ["src/lib/markdownPdf.ts"]
 }

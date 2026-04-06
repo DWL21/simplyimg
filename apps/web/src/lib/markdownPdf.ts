@@ -173,7 +173,7 @@ async function buildMarkdownElement(file: File, markdown: string) {
     await document.fonts.ready;
   }
 
-  const images = Array.from(root.querySelectorAll('img'));
+  const images = Array.from(root.querySelectorAll<HTMLImageElement>('img'));
   await Promise.all(
     images.map(
       (image) =>
