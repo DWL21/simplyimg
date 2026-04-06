@@ -6,5 +6,20 @@ routes = [
   { pattern = "api.simplyimg.com/*", zone_name = "simplyimg.com" }
 ]
 
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
+
 [vars]
 MAX_UPLOAD_BYTES = "10485760"
