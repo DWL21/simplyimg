@@ -1,4 +1,5 @@
 import { useDropZone } from '../../hooks/useDropZone';
+import { appMessages } from '../../i18n/messages';
 
 interface DropZoneProps {
   onFiles: (files: File[]) => void;
@@ -15,9 +16,11 @@ export function DropZone({ onFiles }: DropZoneProps) {
         accept="image/*"
         onChange={(event) => onFiles(Array.from(event.target.files ?? []))}
       />
-      <div>
-        <strong>Drop images here</strong>
-        <p>or click to upload JPEG, PNG, WebP, or GIF files.</p>
+      <div className="dropzone-copy">
+        <span className="dropzone-kicker">{appMessages.dropzone.formats}</span>
+        <strong>{appMessages.dropzone.title}</strong>
+        <p>{appMessages.dropzone.description}</p>
+        <span className="dropzone-button">{appMessages.dropzone.button}</span>
       </div>
     </label>
   );

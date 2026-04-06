@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { ToolPage } from './ToolPage';
+import { ResizeOptions } from '../components/options/ResizeOptions';
+import { appMessages } from '../i18n/messages';
+import { ToolWorkspace } from './ToolWorkspace';
 
 export function Resize() {
   const [width, setWidth] = useState(1280);
@@ -7,30 +9,21 @@ export function Resize() {
   const [fit, setFit] = useState<'contain' | 'cover' | 'exact'>('contain');
 
   return (
-    <ToolPage
-      title="Resize"
-      description="Specify target dimensions and choose how the image should fit inside that frame."
+    <ToolWorkspace
+      title={appMessages.tools.resize.workspaceTitle}
+      description={appMessages.tools.resize.workspaceDescription}
       tool="resize"
       options={{ width, height, fit }}
+      processLabel={appMessages.tools.resize.processLabel}
       optionsPanel={
-        <div className="grid">
-          <label className="field">
-            <span>Width</span>
-            <input type="number" value={width} onChange={(e) => setWidth(Number(e.target.value))} />
-          </label>
-          <label className="field">
-            <span>Height</span>
-            <input type="number" value={height} onChange={(e) => setHeight(Number(e.target.value))} />
-          </label>
-          <label className="field">
-            <span>Fit mode</span>
-            <select value={fit} onChange={(e) => setFit(e.target.value as typeof fit)}>
-              <option value="contain">Contain</option>
-              <option value="cover">Cover</option>
-              <option value="exact">Exact</option>
-            </select>
-          </label>
-        </div>
+        <ResizeOptions
+          width={width}
+          height={height}
+          fit={fit}
+          onWidthChange={setWidth}
+          onHeightChange={setHeight}
+          onFitChange={setFit}
+        />
       }
     />
   );

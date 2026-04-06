@@ -38,6 +38,7 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
   error: null,
   activeTool: 'compress',
   addFiles(files) {
+    get().results.forEach((result) => URL.revokeObjectURL(result.url));
     set((state) => ({
       files: [
         ...state.files,
@@ -47,6 +48,7 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
           previewUrl: createImageUrl(file),
         })),
       ],
+      results: [],
       error: null,
     }));
   },
@@ -78,6 +80,7 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
     set({ isProcessing: true, progress: 0, error: null });
 
     try {
+      get().results.forEach((result) => URL.revokeObjectURL(result.url));
       const nextResults: ProcessedResult[] = [];
       for (let index = 0; index < files.length; index += 1) {
         const uploaded = files[index];
@@ -97,7 +100,7 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
         set({ progress: Math.round(((index + 1) / files.length) * 100) });
       }
 
-      set({ results: nextResults, isProcessing: false });
+      set({ results: nextResults, isProcessing: false, progress: 100 });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Processing failed.';
       set({ isProcessing: false, error: message });

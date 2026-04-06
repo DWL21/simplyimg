@@ -1,3 +1,4 @@
+import { appMessages } from '../i18n/messages';
 import { ToolCard, type ToolCardData } from '../components/layout/ToolCard';
 
 interface HomeProps {
@@ -6,21 +7,20 @@ interface HomeProps {
 
 export function Home({ cards }: HomeProps) {
   return (
-    <div className="page">
-      <section className="hero">
-        <h1>Process images locally first.</h1>
-        <p>
-          This scaffold gives you a router, upload flow, store, and adapter boundaries for a
-          client-first image editor with worker fallback.
-        </p>
-        <div className="pill-row">
-          <span className="chip">React 19</span>
-          <span className="chip">Vite</span>
-          <span className="chip">Zustand</span>
-          <span className="chip">Web Worker ready</span>
+    <div className="landing-page">
+      <section className="landing-hero">
+        <div className="landing-copy">
+          <span className="eyebrow">{appMessages.home.eyebrow}</span>
+          <h1>{appMessages.home.title}</h1>
+          <p>{appMessages.home.description}</p>
+        </div>
+        <div className="landing-note">
+          <strong>{appMessages.home.currentFeaturesTitle}</strong>
+          <p>{appMessages.home.currentFeaturesValue}</p>
+          <span>{appMessages.home.currentFeaturesDescription}</span>
         </div>
       </section>
-      <section className="grid cards">
+      <section className="tool-grid">
         {cards.map((card) => (
           <ToolCard key={card.path} {...card} />
         ))}
