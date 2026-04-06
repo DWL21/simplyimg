@@ -35,7 +35,7 @@ export default function App() {
     <div className="app">
       {step === 'select' && <ModeSelect onSelect={handleSelectTool} />}
       {step === 'upload' && (
-        <UploadZone tool={tool} onFilesAdded={handleFilesAdded} onBack={handleBack} />
+        <UploadZone tool={tool} onConfirm={handleFilesAdded} onBack={handleBack} />
       )}
       {step === 'edit' && (
         <EditWorkspace
