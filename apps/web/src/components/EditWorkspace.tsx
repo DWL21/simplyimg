@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useImageStore } from '../store/imageStore';
 import CropEditor from './CropEditor';
 import OptionsPanel, { type OptionsPanelState } from './OptionsPanel';
@@ -37,6 +37,34 @@ export default function EditWorkspace({ tool, onChangeTool, onBack, onAddMore }:
   const [options, setOptions] = useState<OptionsPanelState>(DEFAULT_OPTIONS);
   const [showResult, setShowResult] = useState(false);
   const [isDone, setIsDone] = useState(false);
+  const [stripWidth, setStripWidth] = useState(100);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    return () => { document.body.style.cursor = ''; };
+  }, []);
+
+  function handleDividerMouseDown(e: React.MouseEvent) {
+    e.preventDefault();
+    document.body.style.cursor = 'col-resize';
+
+    function onMouseMove(ev: MouseEvent) {
+      const body = bodyRef.current;
+      if (!body) return;
+      const rect = body.getBoundingClientRect();
+      const newWidth = Math.max(72, Math.min(280, ev.clientX - rect.left));
+      setStripWidth(newWidth);
+    }
+
+    function onMouseUp() {
+      document.body.style.cursor = '';
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    }
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }
 
   const selectedFile = files.find((f) => f.id === selectedId) ?? files[0];
   const selectedResultIndex = results.findIndex((r) => r.sourceFileId === selectedFile?.id);
@@ -87,8 +115,11 @@ export default function EditWorkspace({ tool, onChangeTool, onBack, onAddMore }:
         <button className="add-more-btn" onClick={onAddMore}>+ 파일 추가</button>
       </header>
 
-      <div className="edit-body">
-        {/* Left: file strip */}
+      <div
+        className="edit-body"
+        ref={bodyRef}
+        style={{ gridTemplateColumns: `${stripWidth}px 4px 1fr 280px` }}
+      >
         <aside className="file-strip">
           {files.map((f) => {
             const res = results.find((r) => r.sourceFileId === f.id);
@@ -118,7 +149,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack, onAddMore }:
           })}
         </aside>
 
-        {/* Center: preview */}
+        <div className="strip-divider" onMouseDown={handleDividerMouseDown} />
         <div className="preview-area">
           {isCropMode ? (
             <CropEditor

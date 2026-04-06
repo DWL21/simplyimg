@@ -511,9 +511,28 @@ img {
 .edit-body {
   flex: 1;
   display: grid;
-  grid-template-columns: 100px 1fr 280px;
+  /* columns set via inline style: stripWidth 4px 1fr 280px */
+  grid-template-columns: 100px 4px 1fr 280px;
   overflow: hidden;
   min-height: 0;
+}
+
+.strip-divider {
+  cursor: col-resize;
+  background: var(--line);
+  transition: background 140ms;
+  position: relative;
+  z-index: 1;
+}
+
+.strip-divider::after {
+  content: '';
+  position: absolute;
+  inset: 0 -4px;
+}
+
+.strip-divider:hover {
+  background: var(--accent);
 }
 
 /* ── Left: file strip ─────────────────────────────────── */

@@ -32,7 +32,6 @@ export default function ModeSelect({ onSelect }: Props) {
       </header>
 
       <div className="select-hero">
-        <p className="select-eyebrow">무료 · 브라우저에서 처리 · 개인정보 보호</p>
         <h1 className="select-title">
           어떤 작업을<br />하실 건가요?
         </h1>
