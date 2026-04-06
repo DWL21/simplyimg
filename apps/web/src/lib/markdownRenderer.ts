@@ -11,7 +11,8 @@ let ready: Promise<unknown> | null = null;
 
 interface RenderOptions {
   titlePosition: 'header' | 'footer' | 'none';
-  pageNumberPosition: 'header' | 'footer' | 'none';
+  pageNumberFormat: 'none' | 'page-n' | 'n-of-total' | 'n';
+  showDateInFooter: boolean;
 }
 
 function ensureRenderer() {
@@ -264,26 +265,31 @@ function documentStyles() {
   `;
 }
 
-function buildSlotLabel(fileName: string, options: RenderOptions, slot: 'header' | 'footer') {
-  const title = escapeHtml(fileName.replace(/\.[^.]+$/, ''));
-  const hasTitle = options.titlePosition === slot;
-  const hasPage = options.pageNumberPosition === slot;
-  if (hasTitle && hasPage) return `${title} · <span class="doc-page-num">1</span>`;
-  if (hasTitle) return title;
-  if (hasPage) return '<span class="doc-page-num">1</span>';
-  return '&nbsp;';
+function todayString() {
+  const d = new Date();
+  return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.`;
 }
 
 function buildHeader(fileName: string, options: RenderOptions) {
-  const hasContent = options.titlePosition === 'header' || options.pageNumberPosition === 'header';
-  const label = buildSlotLabel(fileName, options, 'header');
+  const hasContent = options.titlePosition === 'header';
+  const label = hasContent ? escapeHtml(fileName.replace(/\.[^.]+$/, '')) : '&nbsp;';
   const className = hasContent ? 'doc-header' : 'doc-header is-empty';
   return `<header class="${className}"><span class="doc-header-label">${label}</span></header>`;
 }
 
 function buildFooter(fileName: string, options: RenderOptions) {
-  const hasContent = options.titlePosition === 'footer' || options.pageNumberPosition === 'footer';
-  const label = buildSlotLabel(fileName, options, 'footer');
+  const parts: string[] = [];
+  if (options.titlePosition === 'footer') {
+    parts.push(`<span class="doc-footer-title">${escapeHtml(fileName.replace(/\.[^.]+$/, ''))}</span>`);
+  }
+  if (options.pageNumberFormat !== 'none') {
+    parts.push(`<span class="doc-footer-pagenum">1</span>`);
+  }
+  if (options.showDateInFooter) {
+    parts.push(`<span class="doc-footer-date">${todayString()}</span>`);
+  }
+  const hasContent = parts.length > 0;
+  const label = hasContent ? parts.join('<span class="doc-footer-sep"> · </span>') : '&nbsp;';
   const className = hasContent ? 'doc-footer' : 'doc-footer is-empty';
   return `<footer class="${className}"><span class="doc-footer-label">${label}</span></footer>`;
 }
@@ -295,8 +301,7 @@ function paginationScript(options: RenderOptions) {
       const template = document.getElementById('doc-template');
       const source = document.getElementById('doc-source');
       const measureRoot = document.getElementById('doc-measure');
-      const pageNumInHeader = ${JSON.stringify(options.pageNumberPosition === 'header')};
-      const pageNumInFooter = ${JSON.stringify(options.pageNumberPosition === 'footer')};
+      const pageNumberFormat = ${JSON.stringify(options.pageNumberFormat)};
 
       function createPage() {
         const fragment = template.content.cloneNode(true);
@@ -348,17 +353,20 @@ function paginationScript(options: RenderOptions) {
         updatePageNumbers();
       }
 
+      function formatPageNum(index, total) {
+        if (pageNumberFormat === 'page-n') return '페이지 ' + (index + 1);
+        if (pageNumberFormat === 'n-of-total') return (index + 1) + '/' + total;
+        if (pageNumberFormat === 'n') return String(index + 1);
+        return '';
+      }
+
       function updatePageNumbers() {
-        Array.from(pageStack.querySelectorAll('.page')).forEach((page, index) => {
-          const num = String(index + 1);
-          if (pageNumInHeader) {
-            const el = page.querySelector('.doc-header-label .doc-page-num') || page.querySelector('.doc-header-label');
-            if (el) el.textContent = num;
-          }
-          if (pageNumInFooter) {
-            const el = page.querySelector('.doc-footer-label .doc-page-num') || page.querySelector('.doc-footer-label');
-            if (el) el.textContent = num;
-          }
+        if (pageNumberFormat === 'none') return;
+        const pages = Array.from(pageStack.querySelectorAll('.page'));
+        const total = pages.length;
+        pages.forEach((page, index) => {
+          const el = page.querySelector('.doc-footer-pagenum');
+          if (el) el.textContent = formatPageNum(index, total);
         });
       }
 

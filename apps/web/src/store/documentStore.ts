@@ -13,7 +13,8 @@ function isDocumentFile(file: File) {
 
 const defaultOptions: DocumentRenderOptions = {
   titlePosition: 'none',
-  pageNumberPosition: 'none',
+  pageNumberFormat: 'none',
+  showDateInFooter: false,
 };
 
 export const useDocumentStore = create<DocumentStoreState>((set, get) => ({

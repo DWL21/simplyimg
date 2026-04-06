@@ -145,14 +145,14 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
             <h3 className="panel-title">PDF export</h3>
             <div className="document-option-card"><strong>파일명</strong><p>{selectedFile.file.name}</p></div>
             <div className="document-option-card">
-              <strong>제목</strong>
+              <strong>파일명</strong>
               <label className="document-select-field">
                 <select
                   className="document-select"
                   value={options.titlePosition}
                   onChange={(event) => void updateOptions({ titlePosition: event.target.value as 'header' | 'footer' | 'none' })}
                 >
-                  <option value="none">선택 안함</option>
+                  <option value="none">표시 안함</option>
                   <option value="header">머리말</option>
                   <option value="footer">꼬리말</option>
                 </select>
@@ -163,11 +163,25 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
               <label className="document-select-field">
                 <select
                   className="document-select"
-                  value={options.pageNumberPosition}
-                  onChange={(event) => void updateOptions({ pageNumberPosition: event.target.value as 'header' | 'footer' | 'none' })}
+                  value={options.pageNumberFormat}
+                  onChange={(event) => void updateOptions({ pageNumberFormat: event.target.value as 'none' | 'page-n' | 'n-of-total' | 'n' })}
                 >
-                  <option value="none">선택 안함</option>
-                  <option value="header">머리말</option>
+                  <option value="none">표시 안함</option>
+                  <option value="page-n">페이지 1</option>
+                  <option value="n-of-total">1/전체</option>
+                  <option value="n">1</option>
+                </select>
+              </label>
+            </div>
+            <div className="document-option-card">
+              <strong>오늘 날짜</strong>
+              <label className="document-select-field">
+                <select
+                  className="document-select"
+                  value={options.showDateInFooter ? 'footer' : 'none'}
+                  onChange={(event) => void updateOptions({ showDateInFooter: event.target.value === 'footer' })}
+                >
+                  <option value="none">표시 안함</option>
                   <option value="footer">꼬리말</option>
                 </select>
               </label>

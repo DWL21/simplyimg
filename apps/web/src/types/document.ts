@@ -5,7 +5,8 @@ export interface UploadedDocument {
 
 export interface DocumentRenderOptions {
   titlePosition: 'header' | 'footer' | 'none';
-  pageNumberPosition: 'header' | 'footer' | 'none';
+  pageNumberFormat: 'none' | 'page-n' | 'n-of-total' | 'n';
+  showDateInFooter: boolean;
 }
 
 export interface DocumentStoreState {
