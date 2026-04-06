@@ -186,20 +186,22 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
           <span className="opt-label">90도 단위 회전</span>
           <div className="chip-row">
             <button
-              className="chip"
+              className="chip rotate-quick-btn"
               onClick={() => patch('rotate', { degrees: rotateQuarter(s.degrees, -90) })}
               aria-label="왼쪽으로 90도 회전"
               title="왼쪽으로 90도 회전"
             >
-              ⟲
+              <span className="rotate-quick-icon">⟲</span>
+              <span className="rotate-quick-label">왼쪽</span>
             </button>
             <button
-              className="chip"
+              className="chip rotate-quick-btn"
               onClick={() => patch('rotate', { degrees: rotateQuarter(s.degrees, 90) })}
               aria-label="오른쪽으로 90도 회전"
               title="오른쪽으로 90도 회전"
             >
-              ⟳
+              <span className="rotate-quick-icon">⟳</span>
+              <span className="rotate-quick-label">오른쪽</span>
             </button>
           </div>
           <div className="chip-row">
