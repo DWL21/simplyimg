@@ -1588,6 +1588,11 @@ img {
   padding: 14px 16px;
 }
 
+.document-toggle-row {
+  display: flex;
+  margin-top: 10px;
+}
+
 .document-results {
   display: flex;
   flex-direction: column;

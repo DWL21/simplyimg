@@ -9,11 +9,13 @@ interface DocumentWorkspaceProps {
 export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
   const files = useDocumentStore((state) => state.files);
   const previewHtml = useDocumentStore((state) => state.previewHtml);
+  const options = useDocumentStore((state) => state.options);
   const isProcessing = useDocumentStore((state) => state.isProcessing);
   const progress = useDocumentStore((state) => state.progress);
   const error = useDocumentStore((state) => state.error);
   const addFiles = useDocumentStore((state) => state.addFiles);
   const removeFile = useDocumentStore((state) => state.removeFile);
+  const updateOptions = useDocumentStore((state) => state.updateOptions);
   const printDocument = useDocumentStore((state) => state.printDocument);
 
   const [selectedId, setSelectedId] = useState<string>('');
@@ -111,9 +113,9 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
         <section className="document-preview panel-surface">
           {previewHtml ? (
             <iframe
-              title="Print preview"
+              title="A4 preview"
               srcDoc={previewHtml}
-              sandbox="allow-same-origin"
+              sandbox="allow-scripts"
               className="document-preview-frame"
             />
           ) : (
@@ -140,15 +142,46 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
 
         <aside className="options-panel">
           <div className="options-scroll">
-            <h3 className="panel-title">출력</h3>
-            <div className="document-option-card"><strong>형식</strong><p>브라우저 인쇄</p></div>
+            <h3 className="panel-title">PDF export</h3>
+            <div className="document-option-card"><strong>형식</strong><p>PDF 저장</p></div>
             <div className="document-option-card"><strong>입력</strong><p>MD</p></div>
             <div className="document-option-card"><strong>파일명</strong><p>{selectedFile.file.name}</p></div>
+            <div className="document-option-card">
+              <strong>머리말</strong>
+              <div className="document-toggle-row">
+                <button
+                  className={options.header === 'fileName' ? 'segmented-option is-active' : 'segmented-option'}
+                  type="button"
+                  onClick={() => void updateOptions({ header: options.header === 'fileName' ? 'none' : 'fileName' })}
+                >
+                  파일명
+                </button>
+              </div>
+            </div>
+            <div className="document-option-card">
+              <strong>꼬리말</strong>
+              <div className="document-toggle-row">
+                <button
+                  className={options.footer === 'fileName' ? 'segmented-option is-active' : 'segmented-option'}
+                  type="button"
+                  onClick={() => void updateOptions({ footer: options.footer === 'fileName' ? 'none' : 'fileName' })}
+                >
+                  파일명
+                </button>
+                <button
+                  className={options.footer === 'pageNumber' ? 'segmented-option is-active' : 'segmented-option'}
+                  type="button"
+                  onClick={() => void updateOptions({ footer: options.footer === 'pageNumber' ? 'none' : 'pageNumber' })}
+                >
+                  페이지 번호
+                </button>
+              </div>
+            </div>
             <div className="document-option-card"><strong>상태</strong><p>{isProcessing ? '렌더링 중' : previewHtml ? '준비됨' : '대기 중'}</p></div>
           </div>
           <div className="panel-actions">
             <button className="process-btn" onClick={() => printDocument()} disabled={isProcessing || !previewHtml}>
-              {isProcessing ? '출력 중…' : '출력하기'}
+              {isProcessing ? '저장 준비 중…' : '저장하기'}
             </button>
             <button className="re-edit-btn" onClick={() => removeFile(selectedFile.id)}>
               파일 제거

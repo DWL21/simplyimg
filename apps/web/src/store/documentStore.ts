@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { printRenderedDocument, renderMarkdownPreviewDocument } from '../lib/markdownRenderer';
-import type { DocumentStoreState } from '../types/document';
+import type { DocumentRenderOptions, DocumentStoreState } from '../types/document';
 
 function makeId() {
   return crypto.randomUUID();
@@ -11,10 +11,16 @@ function isDocumentFile(file: File) {
   return file.type.includes('markdown') || lowered.endsWith('.md') || lowered.endsWith('.markdown');
 }
 
+const defaultOptions: DocumentRenderOptions = {
+  header: 'none',
+  footer: 'none',
+};
+
 export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
   files: [],
   previewHtml: null,
   printHtml: null,
+  options: defaultOptions,
   isProcessing: false,
   progress: 0,
   error: null,
@@ -25,6 +31,7 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
         files: [],
         previewHtml: null,
         printHtml: null,
+        options: defaultOptions,
         error: 'md 파일만 추가할 수 있습니다.',
       });
       return;
@@ -34,13 +41,14 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       files: [{ id: makeId(), file: nextFile }],
       previewHtml: null,
       printHtml: null,
+      options: defaultOptions,
       isProcessing: true,
       progress: 0,
       error: null,
     });
 
     try {
-      const rendered = await renderMarkdownPreviewDocument(nextFile);
+      const rendered = await renderMarkdownPreviewDocument(nextFile, get().options);
       set({
         previewHtml: rendered.previewHtml,
         printHtml: rendered.printHtml,
@@ -58,12 +66,35 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       });
     }
   },
+  async updateOptions(nextOptions) {
+    const file = get().files[0]?.file;
+    const merged = { ...get().options, ...nextOptions };
+    set({ options: merged });
+    if (!file) {
+      return;
+    }
+
+    set({ isProcessing: true, error: null });
+    try {
+      const rendered = await renderMarkdownPreviewDocument(file, merged);
+      set({
+        previewHtml: rendered.previewHtml,
+        printHtml: rendered.printHtml,
+        isProcessing: false,
+        progress: 100,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '문서 렌더링에 실패했습니다.';
+      set({ isProcessing: false, error: message });
+    }
+  },
   removeFile(id) {
     set((state) => {
       return {
         files: state.files.filter((file) => file.id !== id),
         previewHtml: null,
         printHtml: null,
+        options: defaultOptions,
         isProcessing: false,
         progress: 0,
         error: null,
@@ -89,6 +120,7 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       files: [],
       previewHtml: null,
       printHtml: null,
+      options: defaultOptions,
       isProcessing: false,
       progress: 0,
       error: null,

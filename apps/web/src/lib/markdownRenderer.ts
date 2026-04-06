@@ -9,6 +9,11 @@ import markdownWasmUrl from '../../../../packages/md-renderer/pkg/md_renderer_bg
 
 let ready: Promise<unknown> | null = null;
 
+interface RenderOptions {
+  header: 'none' | 'fileName';
+  footer: 'none' | 'fileName' | 'pageNumber';
+}
+
 function ensureRenderer() {
   if (!ready) {
     ready = initMarkdownRenderer(markdownWasmUrl);
@@ -54,10 +59,10 @@ function documentStyles() {
       --text: #1b1814;
       --muted: #6f675d;
       --line: rgba(60, 40, 10, 0.12);
-      --accent: #165a46;
+      --accent: #1b1814;
       --code-bg: #f5f0e8;
-      --quote-bg: #eef5f1;
-      --table-head: #eef5f1;
+      --quote-bg: #f3efe8;
+      --table-head: #f4f0ea;
       --shadow: 0 18px 42px rgba(40, 28, 10, 0.12);
       font-family: "Preview Noto Sans KR", system-ui, sans-serif;
     }
@@ -72,42 +77,59 @@ function documentStyles() {
       background: white;
       font-family: "Preview Noto Sans KR", system-ui, sans-serif;
     }
+    .page-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      align-items: center;
+    }
     .page {
       width: min(var(--page-width), 100%);
       margin: 0 auto;
       background: white;
       box-shadow: var(--shadow);
-      padding: var(--page-padding-y) var(--page-padding-x);
       overflow: hidden;
+      min-height: 297mm;
+      display: flex;
+      flex-direction: column;
+    }
+    .page-inner {
+      flex: 1;
+      padding: var(--page-padding-y) var(--page-padding-x);
+      display: flex;
+      flex-direction: column;
     }
     .doc-header {
       display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-bottom: 22px;
-      padding-bottom: 18px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
       border-bottom: 1px solid var(--line);
     }
-    .doc-kicker {
-      font-size: 11px;
-      font-weight: 700;
+    .doc-header.is-empty,
+    .doc-footer.is-empty {
+      visibility: hidden;
+      min-height: 18px;
+    }
+    .doc-header-label,
+    .doc-footer-label {
+      font-size: 12px;
       color: var(--muted);
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
+      letter-spacing: -0.01em;
     }
     .doc-title {
-      margin: 0;
+      margin: 0 0 18px;
       font-size: 34px;
       line-height: 1.08;
       letter-spacing: -0.04em;
     }
-    .doc-name {
-      font-size: 13px;
-      color: var(--muted);
-    }
     .doc-body {
+      flex: 1;
       font-size: 15px;
       line-height: 1.72;
+      color: var(--text);
       word-break: break-word;
     }
     .doc-body > :first-child { margin-top: 0; }
@@ -135,8 +157,9 @@ function documentStyles() {
       margin: 0 0 1.05em;
     }
     .doc-body a {
-      color: var(--accent);
+      color: var(--text);
       text-decoration: none;
+      border-bottom: 1px solid rgba(27, 24, 20, 0.24);
     }
     .doc-body hr {
       border: 0;
@@ -192,6 +215,25 @@ function documentStyles() {
       margin: 16px 0;
       border-radius: 12px;
     }
+    .doc-footer {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 18px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+    .doc-measure {
+      position: absolute;
+      inset: -99999px auto auto -99999px;
+      width: var(--page-width);
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .doc-measure .page {
+      width: var(--page-width);
+      min-height: 297mm;
+      box-shadow: none;
+    }
     @media print {
       @page {
         size: A4;
@@ -203,17 +245,144 @@ function documentStyles() {
       body.print {
         padding: 0;
       }
+      .page-stack {
+        gap: 0;
+      }
       .page {
         width: auto;
         margin: 0;
-        padding: 0;
         box-shadow: none;
+        min-height: auto;
+        break-after: page;
+      }
+      .page:last-child {
+        break-after: auto;
+      }
+      .page-inner {
+        padding: 0;
       }
     }
   `;
 }
 
-function buildDocumentHtml(fileName: string, renderedBody: string, mode: 'preview' | 'print') {
+function buildHeader(fileName: string, options: RenderOptions) {
+  const label = options.header === 'fileName' ? escapeHtml(fileName) : '&nbsp;';
+  const className = options.header === 'fileName' ? 'doc-header' : 'doc-header is-empty';
+  return `<header class="${className}"><span class="doc-header-label">${label}</span></header>`;
+}
+
+function buildFooter(fileName: string, options: RenderOptions) {
+  const label = options.footer === 'fileName'
+    ? escapeHtml(fileName)
+    : options.footer === 'pageNumber'
+      ? '페이지 1'
+      : '&nbsp;';
+  const className = options.footer === 'none' ? 'doc-footer is-empty' : 'doc-footer';
+  return `<footer class="${className}"><span class="doc-footer-label">${label}</span></footer>`;
+}
+
+function paginationScript(options: RenderOptions) {
+  return `
+    <script>
+      const pageStack = document.getElementById('page-stack');
+      const template = document.getElementById('doc-template');
+      const source = document.getElementById('doc-source');
+      const measureRoot = document.getElementById('doc-measure');
+      const footerMode = ${JSON.stringify(options.footer)};
+
+      function createPage() {
+        const fragment = template.content.cloneNode(true);
+        const page = fragment.querySelector('.page');
+        const body = fragment.querySelector('.doc-body');
+        pageStack.appendChild(fragment);
+        return { page: pageStack.lastElementChild, body };
+      }
+
+      function getAvailableHeight(page) {
+        const inner = page.querySelector('.page-inner');
+        const header = page.querySelector('.doc-header');
+        const footer = page.querySelector('.doc-footer');
+        const body = page.querySelector('.doc-body');
+        return inner.clientHeight - header.offsetHeight - footer.offsetHeight - (inner.offsetHeight - body.clientHeight);
+      }
+
+      function appendToMeasure(node, page) {
+        const clone = page.cloneNode(true);
+        const body = clone.querySelector('.doc-body');
+        body.appendChild(node.cloneNode(true));
+        measureRoot.replaceChildren(clone);
+        return body.scrollHeight;
+      }
+
+      function paginate() {
+        pageStack.innerHTML = '';
+        const nodes = Array.from(source.children);
+        if (nodes.length === 0) {
+          createPage();
+          updatePageNumbers();
+          return;
+        }
+
+        let current = createPage();
+        let availableHeight = getAvailableHeight(current.page);
+
+        for (const node of nodes) {
+          current.body.appendChild(node.cloneNode(true));
+          if (current.body.scrollHeight > availableHeight && current.body.childElementCount > 1) {
+            current.body.lastElementChild.remove();
+            current = createPage();
+            availableHeight = getAvailableHeight(current.page);
+            current.body.appendChild(node.cloneNode(true));
+          }
+
+          if (current.body.scrollHeight > availableHeight) {
+            appendToMeasure(node, current.page);
+          }
+        }
+
+        updatePageNumbers();
+      }
+
+      function updatePageNumbers() {
+        if (footerMode !== 'pageNumber') {
+          return;
+        }
+
+        Array.from(pageStack.querySelectorAll('.page')).forEach((page, index) => {
+          const label = page.querySelector('.doc-footer-label');
+          if (label) {
+            label.textContent = '페이지 ' + (index + 1);
+          }
+        });
+      }
+
+      window.addEventListener('load', paginate);
+      window.addEventListener('resize', paginate);
+    </script>
+  `;
+}
+
+function buildDocumentHtml(fileName: string, renderedBody: string, mode: 'preview' | 'print', options: RenderOptions) {
+  const title = escapeHtml(fileName.replace(/\\.[^.]+$/, ''));
+  const headerHtml = buildHeader(fileName, options);
+  const footerHtml = buildFooter(fileName, options);
+  const pageBody = `<h1 class="doc-title">${title}</h1><main class="doc-body">${renderedBody}</main>`;
+  const pagedDocument = `
+    <div id="page-stack" class="page-stack"></div>
+    <template id="doc-template">
+      <article class="page">
+        <div class="page-inner">
+          ${headerHtml}
+          ${pageBody}
+          ${footerHtml}
+        </div>
+      </article>
+    </template>
+    <div id="doc-source" style="display:none">${renderedBody}</div>
+    <div id="doc-measure" class="doc-measure"></div>
+    ${paginationScript(options)}
+  `;
+
   return `<!doctype html>
 <html lang="ko">
   <head>
@@ -223,26 +392,19 @@ function buildDocumentHtml(fileName: string, renderedBody: string, mode: 'previe
     <style>${documentStyles()}</style>
   </head>
   <body class="${mode}">
-    <article class="page">
-      <header class="doc-header">
-        <span class="doc-kicker">Markdown</span>
-        <h1 class="doc-title">${escapeHtml(fileName.replace(/\.[^.]+$/, ''))}</h1>
-        <span class="doc-name">${escapeHtml(fileName)}</span>
-      </header>
-      <main class="doc-body">${renderedBody}</main>
-    </article>
+    ${pagedDocument}
   </body>
 </html>`;
 }
 
-export async function renderMarkdownPreviewDocument(file: File) {
+export async function renderMarkdownPreviewDocument(file: File, options: RenderOptions) {
   await ensureRenderer();
   const markdown = await file.text();
   const renderedBody = renderMarkdown(markdown);
 
   return {
-    previewHtml: buildDocumentHtml(file.name, renderedBody, 'preview'),
-    printHtml: buildDocumentHtml(file.name, renderedBody, 'print'),
+    previewHtml: buildDocumentHtml(file.name, renderedBody, 'preview', options),
+    printHtml: buildDocumentHtml(file.name, renderedBody, 'print', options),
   };
 }
 
