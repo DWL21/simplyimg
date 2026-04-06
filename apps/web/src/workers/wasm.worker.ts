@@ -117,14 +117,16 @@ async function convertImage(file: File, options: ConvertOptions): Promise<Proces
 async function rotateImage(file: File, options: RotateOptions): Promise<ProcessedImage> {
   const bitmap = await createImageBitmap(file);
   try {
-    const swapSides = options.degrees === 90 || options.degrees === 270;
+    const radians = (options.degrees * Math.PI) / 180;
+    const width = Math.abs(bitmap.width * Math.cos(radians)) + Math.abs(bitmap.height * Math.sin(radians));
+    const height = Math.abs(bitmap.width * Math.sin(radians)) + Math.abs(bitmap.height * Math.cos(radians));
     const canvas = new OffscreenCanvas(
-      swapSides ? bitmap.height : bitmap.width,
-      swapSides ? bitmap.width : bitmap.height,
+      Math.max(1, Math.ceil(width)),
+      Math.max(1, Math.ceil(height)),
     );
     const ctx = getContext(canvas);
     ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate((options.degrees * Math.PI) / 180);
+    ctx.rotate(radians);
     ctx.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
 
     const blob = await canvas.convertToBlob({ type: inferMimeType(file) });
@@ -138,8 +140,8 @@ async function flipImage(file: File, options: FlipOptions): Promise<ProcessedIma
   return drawToBlob(file, {
     mimeType: inferMimeType(file),
     draw(ctx, bitmap) {
-      ctx.translate(options.horizontal ? bitmap.width : 0, options.horizontal ? 0 : bitmap.height);
-      ctx.scale(options.horizontal ? -1 : 1, options.horizontal ? 1 : -1);
+      ctx.translate(options.horizontal ? bitmap.width : 0, options.vertical ? bitmap.height : 0);
+      ctx.scale(options.horizontal ? -1 : 1, options.vertical ? -1 : 1);
       ctx.drawImage(bitmap, 0, 0);
     },
   });

@@ -39,6 +39,7 @@ export interface RotateOptions {
 
 export interface FlipOptions {
   horizontal: boolean;
+  vertical?: boolean;
 }
 
 export interface CropOptions {

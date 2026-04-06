@@ -48,11 +48,12 @@ export interface ConvertOptions {
 }
 
 export interface RotateOptions {
-  degrees: 0 | 90 | 180 | 270;
+  degrees: number;
 }
 
 export interface FlipOptions {
   horizontal: boolean;
+  vertical: boolean;
 }
 
 export interface CropOptions {

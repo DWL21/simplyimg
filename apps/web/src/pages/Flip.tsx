@@ -9,7 +9,7 @@ export function Flip() {
       title="Flip"
       description="Mirror the image horizontally or vertically in a single pass."
       tool="flip"
-      options={{ horizontal }}
+      options={{ horizontal, vertical: !horizontal }}
       optionsPanel={
         <div className="button-row">
           <button className={horizontal ? 'button' : 'button-ghost'} type="button" onClick={() => setHorizontal(true)}>

@@ -205,7 +205,10 @@ export const parseRotateOptions = (options: string): RotateOptions => {
 
 export const parseFlipOptions = (options: string): FlipOptions => {
   const parsed = parseJsonOptions<Record<string, unknown>>(options, "flip");
-  return { horizontal: requireBoolean(parsed.horizontal, "horizontal") };
+  return {
+    horizontal: requireBoolean(parsed.horizontal, "horizontal"),
+    vertical: parsed.vertical === undefined ? false : requireBoolean(parsed.vertical, "vertical"),
+  };
 };
 
 export const parseCropOptions = (options: string): CropOptions => {

@@ -150,7 +150,19 @@ export const createImageProcessor = (): ImageProcessor => ({
   async flip(input, options) {
     try {
       await wasmReady;
-      return wasmFlip(toUint8Array(input), options.horizontal);
+      if (options.horizontal && options.vertical) {
+        return wasmRotate(toUint8Array(input), 180);
+      }
+
+      if (options.horizontal) {
+        return wasmFlip(toUint8Array(input), true);
+      }
+
+      if (options.vertical) {
+        return wasmFlip(toUint8Array(input), false);
+      }
+
+      return toUint8Array(input);
     } catch (error) {
       return wrapWasmError(error);
     }

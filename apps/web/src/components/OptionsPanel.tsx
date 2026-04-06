@@ -4,8 +4,8 @@ export interface OptionsPanelState {
   compress: { quality: number; format: OutputFormat | undefined };
   resize: { width: number; height: number };
   convert: { to: OutputFormat; quality: number };
-  rotate: { degrees: 0 | 90 | 180 | 270 };
-  flip: { horizontal: boolean };
+  rotate: { degrees: number };
+  flip: { horizontal: boolean; vertical: boolean };
   crop: CropOptions | null;
 }
 
@@ -21,16 +21,16 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
   }
 
   function normalizeRotateDegrees(value: number) {
-    const allowed = [0, 90, 180, 270] as const;
-    const clamped = Math.max(0, Math.min(270, Math.round(value)));
-    return allowed.reduce(
-      (closest, current) => (Math.abs(current - clamped) < Math.abs(closest - clamped) ? current : closest),
-      allowed[0],
-    );
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+
+    const normalized = Math.round(value) % 360;
+    return normalized < 0 ? normalized + 360 : normalized;
   }
 
-  function rotateQuarter(current: OptionsPanelState['rotate']['degrees'], delta: -90 | 90) {
-    return (((current + delta + 360) % 360) as 0 | 90 | 180 | 270);
+  function rotateQuarter(current: number, delta: -90 | 90) {
+    return normalizeRotateDegrees(current + delta);
   }
 
   if (tool === 'compress') {
@@ -155,13 +155,23 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
         <div className="opt-group">
           <div className="opt-row">
             <span>회전 각도</span>
-            <strong>{s.degrees}°</strong>
+            <label className="angle-input">
+              <input
+                type="number"
+                min={0}
+                max={359}
+                step={1}
+                value={s.degrees}
+                onChange={(e) => patch('rotate', { degrees: normalizeRotateDegrees(+e.target.value) })}
+              />
+              <strong>°</strong>
+            </label>
           </div>
           <input
             type="range"
             min={0}
-            max={270}
-            step={90}
+            max={359}
+            step={1}
             value={s.degrees}
             onChange={(e) => patch('rotate', { degrees: normalizeRotateDegrees(+e.target.value) })}
             className="slider"
@@ -189,30 +199,6 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
             </button>
           </div>
         </div>
-        <div className="opt-group">
-          <div className="field">
-            <span>숫자 입력</span>
-            <input
-              type="number"
-              min={0}
-              max={270}
-              step={90}
-              value={s.degrees}
-              onChange={(e) => patch('rotate', { degrees: normalizeRotateDegrees(+e.target.value) })}
-            />
-          </div>
-          <div className="chip-row">
-            {([90, 180, 270] as const).map((d) => (
-              <button
-                key={d}
-                className={`chip ${s.degrees === d ? 'is-active' : ''}`}
-                onClick={() => patch('rotate', { degrees: d })}
-              >
-                {d}°
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     );
   }
@@ -225,13 +211,13 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
         <div className="chip-row">
           <button
             className={`chip ${s.horizontal ? 'is-active' : ''}`}
-            onClick={() => patch('flip', { horizontal: true })}
+            onClick={() => patch('flip', { ...s, horizontal: !s.horizontal })}
           >
             좌우 반전
           </button>
           <button
-            className={`chip ${!s.horizontal ? 'is-active' : ''}`}
-            onClick={() => patch('flip', { horizontal: false })}
+            className={`chip ${s.vertical ? 'is-active' : ''}`}
+            onClick={() => patch('flip', { ...s, vertical: !s.vertical })}
           >
             상하 반전
           </button>

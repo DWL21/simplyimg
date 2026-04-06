@@ -9,17 +9,15 @@ interface Props {
   onChange: (crop: CropOptions) => void;
 }
 
-type HitZone = 'tl' | 'tr' | 'bl' | 'br' | 'inside' | 'outside';
+type HitZone = 'tl' | 'tr' | 'bl' | 'br' | 'tm' | 'bm' | 'ml' | 'mr' | 'inside' | 'outside';
 type DragMode = 'move' | 'resize';
 
 interface DragState {
   mode: DragMode;
-  anchorX: number;
-  anchorY: number;
   offsetX: number;
   offsetY: number;
-  corner?: 'tl' | 'tr' | 'bl' | 'br';
   startCrop: CropOptions;
+  edge?: Exclude<HitZone, 'inside' | 'outside'>;
 }
 
 const HIT_RADIUS = 10;
@@ -28,6 +26,10 @@ const CURSOR: Record<HitZone, string> = {
   br: 'nwse-resize',
   tr: 'nesw-resize',
   bl: 'nesw-resize',
+  tm: 'ns-resize',
+  bm: 'ns-resize',
+  ml: 'ew-resize',
+  mr: 'ew-resize',
   inside: 'move',
   outside: 'default',
 };
@@ -51,10 +53,6 @@ export default function ResizeEditor({ imageUrl, width, height, value, onChange 
   useEffect(() => () => {
     document.body.style.cursor = '';
   }, []);
-
-  function getAspectRatio() {
-    return width / height;
-  }
 
   function getLayout() {
     const el = containerRef.current;
@@ -88,46 +86,21 @@ export default function ResizeEditor({ imageUrl, width, height, value, onChange 
 
   function clampRect(next: CropOptions) {
     const { w, h } = naturalSizeRef.current;
-    const x = Math.max(0, Math.min(next.x, w - 1));
-    const y = Math.max(0, Math.min(next.y, h - 1));
-    const widthLimit = w - x;
-    const heightLimit = h - y;
-    const aspectRatio = getAspectRatio();
-    const boundedWidth = Math.max(1, Math.min(next.width, widthLimit, heightLimit * aspectRatio));
-    const boundedHeight = Math.max(1, Math.min(next.height, heightLimit, widthLimit / aspectRatio));
-    const adjustedWidth = Math.min(boundedWidth, boundedHeight * aspectRatio);
-
     return {
-      x: Math.round(x),
-      y: Math.round(y),
-      width: Math.max(1, Math.round(adjustedWidth)),
-      height: Math.max(1, Math.round(adjustedWidth / aspectRatio)),
+      x: Math.round(Math.max(0, Math.min(next.x, w - 1))),
+      y: Math.round(Math.max(0, Math.min(next.y, h - 1))),
+      width: Math.max(1, Math.round(Math.min(next.width, w - Math.max(0, Math.min(next.x, w - 1))))),
+      height: Math.max(1, Math.round(Math.min(next.height, h - Math.max(0, Math.min(next.y, h - 1))))),
     };
   }
 
   function createDefaultRect() {
     const { w, h } = naturalSizeRef.current;
-    const aspectRatio = getAspectRatio();
-    const imageRatio = w / h;
-
-    if (imageRatio > aspectRatio) {
-      const rectHeight = h;
-      const rectWidth = rectHeight * aspectRatio;
-      return clampRect({
-        x: (w - rectWidth) / 2,
-        y: 0,
-        width: rectWidth,
-        height: rectHeight,
-      });
-    }
-
-    const rectWidth = w;
-    const rectHeight = rectWidth / aspectRatio;
     return clampRect({
-      x: 0,
-      y: (h - rectHeight) / 2,
-      width: rectWidth,
-      height: rectHeight,
+      x: w * 0.1,
+      y: h * 0.1,
+      width: w * 0.8,
+      height: h * 0.8,
     });
   }
 
@@ -166,40 +139,46 @@ export default function ResizeEditor({ imageUrl, width, height, value, onChange 
     const right = layout.ox + ((current.x + current.width) / layout.iw) * layout.rw;
     const bottom = layout.oy + ((current.y + current.height) / layout.ih) * layout.rh;
     const near = (px: number, py: number) => Math.abs(cx - px) <= HIT_RADIUS && Math.abs(cy - py) <= HIT_RADIUS;
+    const middleX = (left + right) / 2;
+    const middleY = (top + bottom) / 2;
 
     if (near(left, top)) return 'tl';
     if (near(right, top)) return 'tr';
     if (near(left, bottom)) return 'bl';
     if (near(right, bottom)) return 'br';
+    if (near(middleX, top)) return 'tm';
+    if (near(middleX, bottom)) return 'bm';
+    if (near(left, middleY)) return 'ml';
+    if (near(right, middleY)) return 'mr';
     if (cx >= left && cx <= right && cy >= top && cy <= bottom) return 'inside';
     return 'outside';
   }
 
-  function rectFromCorner(anchorX: number, anchorY: number, pointX: number, pointY: number) {
+  function rectFromEdge(startCrop: CropOptions, edge: Exclude<HitZone, 'inside' | 'outside'>, pointX: number, pointY: number) {
     const { w, h } = naturalSizeRef.current;
-    const aspectRatio = getAspectRatio();
-    const signX = pointX >= anchorX ? 1 : -1;
-    const signY = pointY >= anchorY ? 1 : -1;
-    const maxWidth = signX > 0 ? w - anchorX : anchorX;
-    const maxHeight = signY > 0 ? h - anchorY : anchorY;
+    let next = { ...startCrop };
 
-    let boxWidth = Math.abs(pointX - anchorX);
-    let boxHeight = boxWidth / aspectRatio;
-
-    if (boxHeight > Math.abs(pointY - anchorY)) {
-      boxHeight = Math.abs(pointY - anchorY);
-      boxWidth = boxHeight * aspectRatio;
+    if (edge.includes('l')) {
+      const right = startCrop.x + startCrop.width;
+      const nextX = Math.max(0, Math.min(pointX, right - 1));
+      next = { ...next, x: nextX, width: right - nextX };
     }
 
-    boxWidth = Math.max(1, Math.min(boxWidth, maxWidth, maxHeight * aspectRatio));
-    boxHeight = Math.max(1, boxWidth / aspectRatio);
+    if (edge.includes('r')) {
+      next.width = Math.max(1, Math.min(pointX - startCrop.x, w - startCrop.x));
+    }
 
-    return clampRect({
-      x: signX > 0 ? anchorX : anchorX - boxWidth,
-      y: signY > 0 ? anchorY : anchorY - boxHeight,
-      width: boxWidth,
-      height: boxHeight,
-    });
+    if (edge.includes('t')) {
+      const bottom = startCrop.y + startCrop.height;
+      const nextY = Math.max(0, Math.min(pointY, bottom - 1));
+      next = { ...next, y: nextY, height: bottom - nextY };
+    }
+
+    if (edge.includes('b')) {
+      next.height = Math.max(1, Math.min(pointY - startCrop.y, h - startCrop.y));
+    }
+
+    return clampRect(next);
   }
 
   useEffect(() => {
@@ -232,7 +211,9 @@ export default function ResizeEditor({ imageUrl, width, height, value, onChange 
         return;
       }
 
-      onChangeRef.current(rectFromCorner(drag.anchorX, drag.anchorY, point.x, point.y));
+      if (drag.edge) {
+        onChangeRef.current(rectFromEdge(drag.startCrop, drag.edge, point.x, point.y));
+      }
     }
 
     function handleMouseUp() {
@@ -290,8 +271,6 @@ export default function ResizeEditor({ imageUrl, width, height, value, onChange 
         if (hit === 'inside') {
           dragRef.current = {
             mode: 'move',
-            anchorX: 0,
-            anchorY: 0,
             offsetX: point.x - current.x,
             offsetY: point.y - current.y,
             startCrop: current,
@@ -299,16 +278,12 @@ export default function ResizeEditor({ imageUrl, width, height, value, onChange 
           return;
         }
 
-        if (hit === 'tl' || hit === 'tr' || hit === 'bl' || hit === 'br') {
-          const anchorX = hit === 'tl' || hit === 'bl' ? current.x + current.width : current.x;
-          const anchorY = hit === 'tl' || hit === 'tr' ? current.y + current.height : current.y;
+        if (hit !== 'outside') {
           dragRef.current = {
             mode: 'resize',
-            anchorX,
-            anchorY,
             offsetX: 0,
             offsetY: 0,
-            corner: hit,
+            edge: hit,
             startCrop: current,
           };
         }
@@ -353,6 +328,10 @@ export default function ResizeEditor({ imageUrl, width, height, value, onChange 
           <div className="crop-handle crop-handle-tr" />
           <div className="crop-handle crop-handle-bl" />
           <div className="crop-handle crop-handle-br" />
+          <div className="crop-handle crop-handle-tm" />
+          <div className="crop-handle crop-handle-bm" />
+          <div className="crop-handle crop-handle-ml" />
+          <div className="crop-handle crop-handle-mr" />
         </div>
       ) : null}
     </div>

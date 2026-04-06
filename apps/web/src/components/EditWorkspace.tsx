@@ -10,8 +10,8 @@ const DEFAULT_OPTIONS: OptionsPanelState = {
   compress: { quality: 80, format: undefined },
   resize: { width: 1920, height: 1080 },
   convert: { to: 'webp', quality: 85 },
-  rotate: { degrees: 90 },
-  flip: { horizontal: true },
+  rotate: { degrees: 0 },
+  flip: { horizontal: false, vertical: false },
   crop: null,
 };
 
@@ -107,19 +107,34 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   }
 
   function getPreviewTransform() {
-    if (showResult) {
-      return undefined;
-    }
-
     if (tool === 'rotate') {
       return `rotate(${options.rotate.degrees}deg)`;
     }
 
     if (tool === 'flip') {
-      return options.flip.horizontal ? 'scaleX(-1)' : 'scaleY(-1)';
+      if (!options.flip.horizontal && !options.flip.vertical) {
+        return undefined;
+      }
+      return `scale(${options.flip.horizontal ? -1 : 1}, ${options.flip.vertical ? -1 : 1})`;
     }
 
     return undefined;
+  }
+
+  function resetCurrentPreviewChanges() {
+    switch (tool) {
+      case 'rotate':
+        setOptions((current) => ({ ...current, rotate: DEFAULT_OPTIONS.rotate }));
+        break;
+      case 'flip':
+        setOptions((current) => ({ ...current, flip: DEFAULT_OPTIONS.flip }));
+        break;
+      case 'crop':
+        setOptions((current) => ({ ...current, crop: DEFAULT_OPTIONS.crop }));
+        break;
+      default:
+        break;
+    }
   }
 
   async function handleProcess() {
@@ -136,13 +151,20 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
 
   const previewUrl = showResult && selectedResult ? selectedResult.url : selectedFile?.previewUrl;
   const isCropMode = tool === 'crop' && !showResult && !!selectedFile;
-  const canProcess = !isProcessing && (tool !== 'crop' || options.crop !== null);
+  const canProcess = !isProcessing
+    && (tool !== 'crop' || options.crop !== null)
+    && (tool !== 'rotate' || options.rotate.degrees !== 0)
+    && (tool !== 'flip' || options.flip.horizontal || options.flip.vertical);
   const previewTransform = getPreviewTransform();
   const canResetSelected = Boolean(
     selectedFile
       && (selectedFile.file !== selectedFile.originalFile
         || selectedFile.previewUrl !== selectedFile.originalPreviewUrl
-        || selectedResult),
+        || selectedResult
+        || options.rotate.degrees !== 0
+        || options.flip.horizontal
+        || options.flip.vertical
+        || options.crop !== null),
   );
 
   return (
@@ -325,6 +347,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                       return;
                     }
                     resetFile(selectedFile.id);
+                    resetCurrentPreviewChanges();
                     setShowResult(false);
                   }}
                   disabled={!canResetSelected || isProcessing}
