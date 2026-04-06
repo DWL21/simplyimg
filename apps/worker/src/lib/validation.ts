@@ -196,11 +196,11 @@ export const parseConvertOptions = (options: string): ConvertOptions => {
 export const parseRotateOptions = (options: string): RotateOptions => {
   const parsed = parseJsonOptions<Record<string, unknown>>(options, "rotate");
   const degrees = requireNumber(parsed.degrees, "degrees");
-  if (degrees !== 90 && degrees !== 180 && degrees !== 270) {
-    throw new ApiError("INVALID_OPTIONS", "degrees must be 90, 180, or 270");
+  if (degrees !== 0 && degrees !== 90 && degrees !== 180 && degrees !== 270) {
+    throw new ApiError("INVALID_OPTIONS", "degrees must be 0, 90, 180, or 270");
   }
 
-  return { degrees: degrees as 90 | 180 | 270 };
+  return { degrees: degrees as 0 | 90 | 180 | 270 };
 };
 
 export const parseFlipOptions = (options: string): FlipOptions => {

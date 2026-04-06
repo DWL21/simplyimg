@@ -1,10 +1,10 @@
-import type { ToolName, OutputFormat, FitMode, CropOptions } from '../types/image';
+import type { ToolName, OutputFormat, CropOptions } from '../types/image';
 
 export interface OptionsPanelState {
   compress: { quality: number; format: OutputFormat | undefined };
-  resize: { width: number; height: number; fit: FitMode };
+  resize: { width: number; height: number };
   convert: { to: OutputFormat; quality: number };
-  rotate: { degrees: 90 | 180 | 270 };
+  rotate: { degrees: 0 | 90 | 180 | 270 };
   flip: { horizontal: boolean };
   crop: CropOptions | null;
 }
@@ -18,6 +18,19 @@ interface Props {
 export default function OptionsPanel({ tool, state, onChange }: Props) {
   function patch<K extends keyof OptionsPanelState>(key: K, val: OptionsPanelState[K]) {
     onChange({ ...state, [key]: val });
+  }
+
+  function normalizeRotateDegrees(value: number) {
+    const allowed = [0, 90, 180, 270] as const;
+    const clamped = Math.max(0, Math.min(270, Math.round(value)));
+    return allowed.reduce(
+      (closest, current) => (Math.abs(current - clamped) < Math.abs(closest - clamped) ? current : closest),
+      allowed[0],
+    );
+  }
+
+  function rotateQuarter(current: OptionsPanelState['rotate']['degrees'], delta: -90 | 90) {
+    return (((current + delta + 360) % 360) as 0 | 90 | 180 | 270);
   }
 
   if (tool === 'compress') {
@@ -64,11 +77,6 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
 
   if (tool === 'resize') {
     const s = state.resize;
-    const fits: { label: string; value: FitMode }[] = [
-      { label: 'Contain', value: 'contain' },
-      { label: 'Cover', value: 'cover' },
-      { label: 'Exact', value: 'exact' },
-    ];
     return (
       <div className="opt-stack">
         <div className="opt-group">
@@ -92,20 +100,6 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
                 onChange={(e) => patch('resize', { ...s, height: +e.target.value })}
               />
             </div>
-          </div>
-        </div>
-        <div className="opt-group">
-          <span className="opt-label">채우기 방식</span>
-          <div className="chip-row">
-            {fits.map((f) => (
-              <button
-                key={f.value}
-                className={`chip ${s.fit === f.value ? 'is-active' : ''}`}
-                onClick={() => patch('resize', { ...s, fit: f.value })}
-              >
-                {f.label}
-              </button>
-            ))}
           </div>
         </div>
       </div>
@@ -157,18 +151,67 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
   if (tool === 'rotate') {
     const s = state.rotate;
     return (
-      <div className="opt-group">
-        <span className="opt-label">회전 각도</span>
-        <div className="chip-row">
-          {([90, 180, 270] as const).map((d) => (
+      <div className="opt-stack">
+        <div className="opt-group">
+          <div className="opt-row">
+            <span>회전 각도</span>
+            <strong>{s.degrees}°</strong>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={270}
+            step={90}
+            value={s.degrees}
+            onChange={(e) => patch('rotate', { degrees: normalizeRotateDegrees(+e.target.value) })}
+            className="slider"
+          />
+          <div className="slider-scale">
+            {[0, 90, 180, 270].map((value) => (
+              <span key={value}>{value}°</span>
+            ))}
+          </div>
+        </div>
+        <div className="opt-group">
+          <span className="opt-label">90도 단위 회전</span>
+          <div className="chip-row">
             <button
-              key={d}
-              className={`chip ${s.degrees === d ? 'is-active' : ''}`}
-              onClick={() => patch('rotate', { degrees: d })}
+              className="chip"
+              onClick={() => patch('rotate', { degrees: rotateQuarter(s.degrees, -90) })}
             >
-              {d}°
+              왼쪽 90°
             </button>
-          ))}
+            <button
+              className="chip"
+              onClick={() => patch('rotate', { degrees: rotateQuarter(s.degrees, 90) })}
+            >
+              오른쪽 90°
+            </button>
+          </div>
+        </div>
+        <div className="opt-group">
+          <div className="field">
+            <span>숫자 입력</span>
+            <input
+              type="number"
+              min={0}
+              max={270}
+              step={90}
+              value={s.degrees}
+              onChange={(e) => patch('rotate', { degrees: normalizeRotateDegrees(+e.target.value) })}
+            />
+          </div>
+          <div className="chip-row">
+            {([90, 180, 270] as const).map((d) => (
+              <button
+                key={d}
+                className={`chip ${s.degrees === d ? 'is-active' : ''}`}
+                onClick={() => patch('rotate', { degrees: d })}
+              >
+                {d}°
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     );

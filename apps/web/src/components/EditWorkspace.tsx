@@ -8,7 +8,7 @@ import type { ToolName, ToolOptions } from '../types/image';
 
 const DEFAULT_OPTIONS: OptionsPanelState = {
   compress: { quality: 80, format: undefined },
-  resize: { width: 1920, height: 1080, fit: 'contain' },
+  resize: { width: 1920, height: 1080 },
   convert: { to: 'webp', quality: 85 },
   rotate: { degrees: 90 },
   flip: { horizontal: true },
@@ -31,6 +31,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const downloadSingle = useImageStore((s) => s.downloadSingle);
   const downloadAll = useImageStore((s) => s.downloadAll);
   const removeFile = useImageStore((s) => s.removeFile);
+  const resetFile = useImageStore((s) => s.resetFile);
   const addFiles = useImageStore((s) => s.addFiles);
 
   const [selectedId, setSelectedId] = useState<string>(() => files[0]?.id ?? '');
@@ -105,6 +106,22 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     }
   }
 
+  function getPreviewTransform() {
+    if (showResult) {
+      return undefined;
+    }
+
+    if (tool === 'rotate') {
+      return `rotate(${options.rotate.degrees}deg)`;
+    }
+
+    if (tool === 'flip') {
+      return options.flip.horizontal ? 'scaleX(-1)' : 'scaleY(-1)';
+    }
+
+    return undefined;
+  }
+
   async function handleProcess() {
     await processAll(tool, getToolOptions());
     setShowResult(true);
@@ -120,6 +137,13 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const previewUrl = showResult && selectedResult ? selectedResult.url : selectedFile?.previewUrl;
   const isCropMode = tool === 'crop' && !showResult && !!selectedFile;
   const canProcess = !isProcessing && (tool !== 'crop' || options.crop !== null);
+  const previewTransform = getPreviewTransform();
+  const canResetSelected = Boolean(
+    selectedFile
+      && (selectedFile.file !== selectedFile.originalFile
+        || selectedFile.previewUrl !== selectedFile.originalPreviewUrl
+        || selectedResult),
+  );
 
   return (
     <div className="edit-page">
@@ -210,7 +234,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
           ) : (
             <div className="preview-frame">
               {previewUrl
-                ? <img src={previewUrl} alt="" className="preview-img" />
+                ? <img src={previewUrl} alt="" className="preview-img" style={previewTransform ? { transform: previewTransform } : undefined} />
                 : <div className="preview-empty">이미지를 선택하세요</div>
               }
               {selectedResult && (
@@ -229,9 +253,9 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                 <>
                   <span className="meta-arrow">→</span>
                   <span className="meta-result-size">{bytesToHuman(selectedResult.size)}</span>
-                  {selectedResult.size < selectedFile.file.size && (
+                  {selectedResult.size < selectedResult.sourceSize && (
                     <span className="meta-savings">
-                      −{Math.round((1 - selectedResult.size / selectedFile.file.size) * 100)}%
+                      −{Math.round((1 - selectedResult.size / selectedResult.sourceSize) * 100)}%
                     </span>
                   )}
                 </>
@@ -253,15 +277,14 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               </div>
               <div className="done-list">
                 {results.map((r, i) => {
-                  const src = files.find((f) => f.id === r.sourceFileId);
-                  const saved = src && r.size < src.file.size
-                    ? Math.round((1 - r.size / src.file.size) * 100) : null;
+                  const saved = r.size < r.sourceSize
+                    ? Math.round((1 - r.size / r.sourceSize) * 100) : null;
                   return (
                     <div key={r.id} className="done-item">
                       <div className="done-item-info">
                         <span className="done-item-name">{r.name}</span>
                         <div className="done-item-meta">
-                          {src && <span>{bytesToHuman(src.file.size)} → {bytesToHuman(r.size)}</span>}
+                          <span>{bytesToHuman(r.sourceSize)} → {bytesToHuman(r.size)}</span>
                           {saved !== null && <span className="done-item-saved">−{saved}%</span>}
                         </div>
                       </div>
@@ -295,6 +318,19 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                 )}
               </div>
               <div className="panel-actions">
+                <button
+                  className="re-edit-btn"
+                  onClick={() => {
+                    if (!selectedFile) {
+                      return;
+                    }
+                    resetFile(selectedFile.id);
+                    setShowResult(false);
+                  }}
+                  disabled={!canResetSelected || isProcessing}
+                >
+                  현재 이미지 변경사항 초기화
+                </button>
                 <button className="process-btn" onClick={handleProcess} disabled={!canProcess}>
                   {isProcessing ? '처리 중…' : `${TOOL_LABELS[tool]} 적용`}
                 </button>

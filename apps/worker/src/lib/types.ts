@@ -34,7 +34,7 @@ export interface ConvertOptions {
 }
 
 export interface RotateOptions {
-  degrees: 90 | 180 | 270;
+  degrees: 0 | 90 | 180 | 270;
 }
 
 export interface FlipOptions {

@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { createImageUrl, revokeImageUrl } from '../lib/canvasUtils';
 import { bytesToHuman, extensionFromMime, inferMimeType } from '../lib/formatUtils';
 import { wasmClient } from '../lib/wasmClient';
-import type { ImageStoreState, ProcessedResult, ToolName, ToolOptions } from '../types/image';
+import type { ImageStoreState, ProcessedResult, ToolName, ToolOptions, UploadedFile } from '../types/image';
 
 function makeId() {
   return crypto.randomUUID();
@@ -30,6 +30,21 @@ function deriveResultName(file: File, mimeType: string) {
   return `${base}.${extensionFromMime(mimeType)}`;
 }
 
+function createProcessedFile(blob: Blob, filename: string, mimeType: string) {
+  return new File([blob], filename, {
+    type: mimeType,
+    lastModified: Date.now(),
+  });
+}
+
+function revokeUploadedFileUrls(file: { previewUrl: string; originalPreviewUrl: string }) {
+  if (file.previewUrl !== file.originalPreviewUrl) {
+    revokeImageUrl(file.previewUrl);
+  }
+
+  revokeImageUrl(file.originalPreviewUrl);
+}
+
 export const useImageStore = create<ImageStoreState>((set, get) => ({
   files: [],
   results: [],
@@ -42,11 +57,16 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
     set((state) => ({
       files: [
         ...state.files,
-        ...files.map((file) => ({
-          id: makeId(),
-          file,
-          previewUrl: createImageUrl(file),
-        })),
+        ...files.map((file) => {
+          const previewUrl = createImageUrl(file);
+          return {
+            id: makeId(),
+            file,
+            originalFile: file,
+            previewUrl,
+            originalPreviewUrl: previewUrl,
+          };
+        }),
       ],
       results: [],
       error: null,
@@ -56,7 +76,7 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
     set((state) => {
       const target = state.files.find((file) => file.id === id);
       if (target) {
-        revokeImageUrl(target.previewUrl);
+        revokeUploadedFileUrls(target);
       }
       state.results
         .filter((result) => result.sourceFileId === id)
@@ -71,7 +91,7 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
     set({ activeTool: tool });
   },
   async processAll(tool, options) {
-    const files = get().files;
+    const { files, results: previousResults } = get();
     if (files.length === 0) {
       set({ error: 'Upload at least one image before processing.' });
       return;
@@ -79,32 +99,84 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
 
     set({ isProcessing: true, progress: 0, error: null });
 
+    const nextResults: ProcessedResult[] = [];
+    const nextFiles: UploadedFile[] = [];
+
     try {
-      get().results.forEach((result) => URL.revokeObjectURL(result.url));
-      const nextResults: ProcessedResult[] = [];
       for (let index = 0; index < files.length; index += 1) {
         const uploaded = files[index];
         const processed = await wasmClient.process(tool, uploaded.file, options);
         const blob = processed.blob;
         const mimeType = processed.mimeType || inferMimeType(uploaded.file);
+        const name = deriveResultName(uploaded.file, mimeType);
         const url = URL.createObjectURL(blob);
+        const nextFile = createProcessedFile(blob, name, mimeType);
         nextResults.push({
           id: makeId(),
-          name: deriveResultName(uploaded.file, mimeType),
+          name,
           mimeType,
           size: blob.size,
           url,
           sourceFileId: uploaded.id,
+          sourceSize: uploaded.file.size,
+        });
+        nextFiles.push({
+          ...uploaded,
+          file: nextFile,
+          previewUrl: createImageUrl(nextFile),
         });
 
         set({ progress: Math.round(((index + 1) / files.length) * 100) });
       }
 
-      set({ results: nextResults, isProcessing: false, progress: 100 });
+      previousResults.forEach((result) => URL.revokeObjectURL(result.url));
+      files.forEach((file) => {
+        if (file.previewUrl !== file.originalPreviewUrl) {
+          revokeImageUrl(file.previewUrl);
+        }
+      });
+
+      set({ files: nextFiles, results: nextResults, isProcessing: false, progress: 100 });
     } catch (error) {
+      nextResults.forEach((result) => URL.revokeObjectURL(result.url));
+      nextFiles.forEach((file) => {
+        if (file.previewUrl !== file.originalPreviewUrl) {
+          revokeImageUrl(file.previewUrl);
+        }
+      });
       const message = error instanceof Error ? error.message : 'Processing failed.';
       set({ isProcessing: false, error: message });
     }
+  },
+  resetFile(id) {
+    set((state) => {
+      const target = state.files.find((file) => file.id === id);
+      if (!target) {
+        return state;
+      }
+
+      if (target.previewUrl !== target.originalPreviewUrl) {
+        revokeImageUrl(target.previewUrl);
+      }
+
+      state.results
+        .filter((result) => result.sourceFileId === id)
+        .forEach((result) => URL.revokeObjectURL(result.url));
+
+      return {
+        files: state.files.map((file) =>
+          file.id === id
+            ? {
+                ...file,
+                file: file.originalFile,
+                previewUrl: file.originalPreviewUrl,
+              }
+            : file,
+        ),
+        results: state.results.filter((result) => result.sourceFileId !== id),
+        error: null,
+      };
+    });
   },
   downloadSingle(index) {
     const result = get().results[index];
@@ -120,6 +192,11 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
       return;
     }
 
+    if (results.length === 1) {
+      downloadUrl(results[0].url, results[0].name);
+      return;
+    }
+
     const zip = new JSZip();
     for (const result of results) {
       const response = await fetch(result.url);
@@ -130,7 +207,7 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
     downloadBlob(blob, `simplyimg-${bytesToHuman(blob.size)}.zip`);
   },
   reset() {
-    get().files.forEach((file) => revokeImageUrl(file.previewUrl));
+    get().files.forEach((file) => revokeUploadedFileUrls(file));
     get().results.forEach((result) => URL.revokeObjectURL(result.url));
     set({
       files: [],

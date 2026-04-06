@@ -1,11 +1,12 @@
 export type ToolName = 'compress' | 'resize' | 'convert' | 'rotate' | 'crop' | 'flip';
-export type FitMode = 'contain' | 'cover' | 'exact';
 export type OutputFormat = 'jpeg' | 'png' | 'webp' | 'gif';
 
 export interface UploadedFile {
   id: string;
   file: File;
+  originalFile: File;
   previewUrl: string;
+  originalPreviewUrl: string;
 }
 
 export interface ProcessedResult {
@@ -15,6 +16,7 @@ export interface ProcessedResult {
   size: number;
   url: string;
   sourceFileId: string;
+  sourceSize: number;
 }
 
 export interface ImageInfo {
@@ -37,7 +39,6 @@ export interface CompressOptions {
 export interface ResizeOptions {
   width: number;
   height: number;
-  fit: FitMode;
 }
 
 export interface ConvertOptions {
@@ -46,7 +47,7 @@ export interface ConvertOptions {
 }
 
 export interface RotateOptions {
-  degrees: 90 | 180 | 270;
+  degrees: 0 | 90 | 180 | 270;
 }
 
 export interface FlipOptions {
@@ -79,6 +80,7 @@ export interface ImageStoreState {
   removeFile: (id: string) => void;
   setActiveTool: (tool: ToolName) => void;
   processAll: (tool: ToolName, options: ToolOptions) => Promise<void>;
+  resetFile: (id: string) => void;
   downloadSingle: (index: number) => void;
   downloadAll: () => Promise<void>;
   reset: () => void;
