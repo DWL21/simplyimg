@@ -2,5 +2,9 @@ name = "simplyimg-worker"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
 
+routes = [
+  { pattern = "api.simplyimg.com/*", zone_name = "simplyimg.com" }
+]
+
 [vars]
 MAX_UPLOAD_BYTES = "10485760"

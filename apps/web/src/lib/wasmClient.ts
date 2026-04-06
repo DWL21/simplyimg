@@ -14,12 +14,13 @@ const noopInfo: ImageInfo = {
   size: 0,
 };
 
-const workerUrl = new URL('../workers/wasm.worker.ts', import.meta.url);
+import WasmWorker from '../workers/wasm.worker.ts?worker';
+
 let worker: Worker | null = null;
 
 function getWorker() {
   if (!worker) {
-    worker = new Worker(workerUrl, { type: 'module' });
+    worker = new WasmWorker();
   }
 
   return worker;
