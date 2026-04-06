@@ -28,7 +28,6 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const isProcessing = useImageStore((s) => s.isProcessing);
   const progress = useImageStore((s) => s.progress);
   const error = useImageStore((s) => s.error);
-  const processAll = useImageStore((s) => s.processAll);
   const processSingle = useImageStore((s) => s.processSingle);
   const downloadSingle = useImageStore((s) => s.downloadSingle);
   const downloadAll = useImageStore((s) => s.downloadAll);
@@ -50,9 +49,22 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
 
   const bodyRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewFrameRef = useRef<HTMLDivElement>(null);
+  const [frameDims, setFrameDims] = useState({ w: 0, h: 0 });
 
   useEffect(() => {
     return () => { document.body.style.cursor = ''; };
+  }, []);
+
+  useEffect(() => {
+    const el = previewFrameRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setFrameDims({ w: width, h: height });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   // Auto-select first file when files are added
@@ -249,6 +261,15 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
       || selectedFile.committedFlipHorizontal !== options.flip.horizontal
       || selectedFile.committedFlipVertical !== options.flip.vertical);
   const previewTransform = getPreviewTransform();
+  const isOrthogonalRotation = Boolean(previewTransform?.match(/rotate\((90|270)deg\)/));
+  const rotatedImgStyle: React.CSSProperties = previewTransform
+    ? {
+        transform: previewTransform,
+        ...(isOrthogonalRotation && frameDims.w && frameDims.h
+          ? { maxWidth: frameDims.h, maxHeight: frameDims.w }
+          : {}),
+      }
+    : {};
   const canResetSelected = Boolean(
     selectedFile
       && (selectedFile.file !== selectedFile.originalFile
@@ -381,6 +402,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
             />
           ) : (
             <div
+              ref={previewFrameRef}
               className="preview-frame"
               onWheel={handleWheelZoom}
               onDoubleClick={resetZoom}
@@ -400,7 +422,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                     src={previewUrl}
                     alt=""
                     className="preview-img"
-                    style={previewTransform ? { transform: previewTransform } : undefined}
+                    style={Object.keys(rotatedImgStyle).length ? rotatedImgStyle : undefined}
                     draggable={false}
                   />
                 </div>
