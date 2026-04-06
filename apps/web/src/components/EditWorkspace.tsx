@@ -149,7 +149,10 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     setIsDone(false);
   }
 
-  const previewUrl = showResult && selectedResult ? selectedResult.url : selectedFile?.previewUrl;
+  const basePreviewUrl = tool === 'rotate' || tool === 'flip'
+    ? selectedFile?.originalPreviewUrl
+    : selectedFile?.previewUrl;
+  const previewUrl = showResult && selectedResult ? selectedResult.url : basePreviewUrl;
   const isCropMode = tool === 'crop' && !showResult && !!selectedFile;
   const canProcess = !isProcessing
     && (tool !== 'crop' || options.crop !== null)

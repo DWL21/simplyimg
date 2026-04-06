@@ -105,9 +105,12 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
     try {
       for (let index = 0; index < files.length; index += 1) {
         const uploaded = files[index];
-        const processed = await wasmClient.process(tool, uploaded.file, options);
+        const sourceFile = tool === 'rotate' || tool === 'flip'
+          ? uploaded.originalFile
+          : uploaded.file;
+        const processed = await wasmClient.process(tool, sourceFile, options);
         const blob = processed.blob;
-        const mimeType = processed.mimeType || inferMimeType(uploaded.file);
+        const mimeType = processed.mimeType || inferMimeType(sourceFile);
         const name = deriveResultName(uploaded.file, mimeType);
         const url = URL.createObjectURL(blob);
         const nextFile = createProcessedFile(blob, name, mimeType);
@@ -118,7 +121,7 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
           size: blob.size,
           url,
           sourceFileId: uploaded.id,
-          sourceSize: uploaded.file.size,
+          sourceSize: sourceFile.size,
         });
         nextFiles.push({
           ...uploaded,
