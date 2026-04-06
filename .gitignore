@@ -4,6 +4,7 @@ dist
 *.tsbuildinfo
 coverage
 packages/img-processor/target
+packages/md-renderer/target
 .codex
 apps/web/vite.config.js
 apps/web/vite.config.d.ts

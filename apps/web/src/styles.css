@@ -1102,6 +1102,14 @@ img {
   gap: 6px;
 }
 
+.slider-scale {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
 .chip {
   padding: 0.38rem 0.7rem;
   border-radius: 999px;

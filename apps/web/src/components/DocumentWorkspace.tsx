@@ -8,15 +8,13 @@ interface DocumentWorkspaceProps {
 
 export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
   const files = useDocumentStore((state) => state.files);
-  const results = useDocumentStore((state) => state.results);
+  const previewHtml = useDocumentStore((state) => state.previewHtml);
   const isProcessing = useDocumentStore((state) => state.isProcessing);
   const progress = useDocumentStore((state) => state.progress);
   const error = useDocumentStore((state) => state.error);
   const addFiles = useDocumentStore((state) => state.addFiles);
   const removeFile = useDocumentStore((state) => state.removeFile);
-  const processAll = useDocumentStore((state) => state.processAll);
-  const downloadSingle = useDocumentStore((state) => state.downloadSingle);
-  const downloadAll = useDocumentStore((state) => state.downloadAll);
+  const printDocument = useDocumentStore((state) => state.printDocument);
 
   const [selectedId, setSelectedId] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -25,8 +23,6 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
     () => files.find((file) => file.id === selectedId) ?? files[0],
     [files, selectedId],
   );
-  const selectedResultIndex = results.findIndex((result) => result.sourceFileId === selectedFile?.id);
-  const selectedResult = selectedResultIndex >= 0 ? results[selectedResultIndex] : undefined;
 
   useEffect(() => {
     if (files.length > 0 && !files.find((file) => file.id === selectedId)) {
@@ -39,17 +35,17 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
     }
   }, [files, selectedId]);
 
-  function handleFiles(incoming: File[]) {
-    addFiles(incoming);
+  async function handleFiles(incoming: File[]) {
+    await addFiles(incoming);
   }
 
   function handleDrop(event: React.DragEvent<HTMLDivElement>) {
     event.preventDefault();
-    handleFiles(Array.from(event.dataTransfer.files));
+    void handleFiles(Array.from(event.dataTransfer.files));
   }
 
   function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
-    handleFiles(Array.from(event.target.files ?? []));
+    void handleFiles(Array.from(event.target.files ?? []));
     event.target.value = '';
   }
 
@@ -113,23 +109,23 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
 
       <div className="document-workspace">
         <section className="document-preview panel-surface">
-          {selectedResult ? (
+          {previewHtml ? (
             <iframe
-              key={selectedResult.url}
-              title="PDF preview"
-              src={selectedResult.url}
+              title="Print preview"
+              srcDoc={previewHtml}
+              sandbox="allow-same-origin"
               className="document-preview-frame"
             />
           ) : (
             <div className="document-preview-empty">
               <strong>{selectedFile.file.name}</strong>
-              <span>출력하기를 누르면 PDF 미리보기가 표시됩니다.</span>
+              <span>{isProcessing ? '미리보기를 준비하는 중입니다.' : '미리보기를 불러오지 못했습니다.'}</span>
             </div>
           )}
           <div className="document-preview-meta">
             <span>{selectedFile.file.name}</span>
             <span>{bytesToHuman(selectedFile.file.size)}</span>
-            {selectedResult ? <span>{bytesToHuman(selectedResult.size)}</span> : null}
+            <span>MD</span>
           </div>
           {error ? <p className="error-msg">{error}</p> : null}
           {isProcessing ? (
@@ -145,34 +141,14 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
         <aside className="options-panel">
           <div className="options-scroll">
             <h3 className="panel-title">출력</h3>
-            <div className="document-option-card"><strong>형식</strong><p>PDF</p></div>
+            <div className="document-option-card"><strong>형식</strong><p>브라우저 인쇄</p></div>
             <div className="document-option-card"><strong>입력</strong><p>MD</p></div>
             <div className="document-option-card"><strong>파일명</strong><p>{selectedFile.file.name}</p></div>
-            {results.length > 0 ? (
-              <div className="document-results">
-                <strong>결과</strong>
-                <div className="done-list">
-                  {results.map((result, index) => (
-                    <div key={result.id} className="done-item">
-                      <div className="done-item-info">
-                        <span className="done-item-name">{result.name}</span>
-                        <div className="done-item-meta">
-                          <span>{bytesToHuman(result.size)}</span>
-                        </div>
-                      </div>
-                      <button className="done-item-dl" onClick={() => downloadSingle(index)}>↓</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
+            <div className="document-option-card"><strong>상태</strong><p>{isProcessing ? '렌더링 중' : previewHtml ? '준비됨' : '대기 중'}</p></div>
           </div>
           <div className="panel-actions">
-            <button className="process-btn" onClick={() => processAll()} disabled={isProcessing || files.length === 0}>
+            <button className="process-btn" onClick={() => printDocument()} disabled={isProcessing || !previewHtml}>
               {isProcessing ? '출력 중…' : '출력하기'}
-            </button>
-            <button className="re-edit-btn" onClick={() => downloadAll()} disabled={results.length === 0}>
-              다운로드
             </button>
             <button className="re-edit-btn" onClick={() => removeFile(selectedFile.id)}>
               파일 제거

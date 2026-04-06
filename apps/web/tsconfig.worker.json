@@ -16,5 +16,5 @@
     "types": ["vite/client"]
   },
   "include": ["src/workers/**/*.ts", "src/lib/**/*.ts", "src/types/**/*.ts"],
-  "exclude": ["src/lib/markdownPdf.ts"]
+  "exclude": ["src/lib/markdownPdf.ts", "src/lib/markdownRenderer.ts"]
 }
