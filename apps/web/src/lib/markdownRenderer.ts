@@ -354,6 +354,7 @@ function paginationScript(options: RenderOptions) {
         }
 
         updatePageNumbers();
+        notifyPageCount();
       }
 
       function formatPageNum(index, total) {
@@ -373,14 +374,45 @@ function paginationScript(options: RenderOptions) {
         });
       }
 
+      function notifyPageCount() {
+        const count = pageStack.querySelectorAll('.page').length;
+        window.parent.postMessage({ type: 'doc-page-count', count }, '*');
+      }
+
+      function notifyActivePage() {
+        const pages = Array.from(pageStack.querySelectorAll('.page'));
+        if (!pages.length) return;
+        const mid = window.scrollY + window.innerHeight / 2;
+        let active = 0;
+        for (let i = 0; i < pages.length; i++) {
+          if (pages[i].getBoundingClientRect().top + window.scrollY <= mid) active = i;
+        }
+        window.parent.postMessage({ type: 'doc-active-page', index: active }, '*');
+      }
+
+      window.addEventListener('message', (e) => {
+        if (e.data && e.data.type === 'doc-scroll-to-page') {
+          const pages = Array.from(pageStack.querySelectorAll('.page'));
+          const target = pages[e.data.index];
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+
+      window.addEventListener('scroll', notifyActivePage, { passive: true });
+
       function schedulePaginate() {
         window.requestAnimationFrame(() => {
           window.requestAnimationFrame(paginate);
         });
       }
 
+      function paginateAndNotify() {
+        paginate();
+        notifyPageCount();
+      }
+
       window.addEventListener('load', schedulePaginate);
-      window.addEventListener('resize', paginate);
+      window.addEventListener('resize', paginateAndNotify);
       if (document.fonts && document.fonts.ready) {
         document.fonts.ready.then(schedulePaginate).catch(() => {});
       }

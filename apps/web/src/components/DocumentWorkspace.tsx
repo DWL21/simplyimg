@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBeforeUnloadWarning } from '../hooks/useBeforeUnloadWarning';
 import { useDocumentStore } from '../store/documentStore';
 import { bytesToHuman } from '../lib/formatUtils';
@@ -21,7 +21,10 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
   const printDocument = useDocumentStore((state) => state.printDocument);
 
   const [selectedId, setSelectedId] = useState<string>('');
+  const [pageCount, setPageCount] = useState(0);
+  const [activePage, setActivePage] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const selectedFile = useMemo(
     () => files.find((file) => file.id === selectedId) ?? files[0],
@@ -41,6 +44,30 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
       setSelectedId('');
     }
   }, [files, selectedId]);
+
+  // Reset page state when preview HTML changes
+  useEffect(() => {
+    setPageCount(0);
+    setActivePage(0);
+  }, [previewHtml]);
+
+  const handleMessage = useCallback((event: MessageEvent) => {
+    if (event.data?.type === 'doc-page-count') {
+      setPageCount(event.data.count as number);
+    } else if (event.data?.type === 'doc-active-page') {
+      setActivePage(event.data.index as number);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [handleMessage]);
+
+  function scrollToPage(index: number) {
+    iframeRef.current?.contentWindow?.postMessage({ type: 'doc-scroll-to-page', index }, '*');
+    setActivePage(index);
+  }
 
   async function handleFiles(incoming: File[]) {
     await addFiles(incoming);
@@ -116,9 +143,28 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
 
       <div className="document-workspace">
         <UnsavedChangesAlert className="document-unsaved-alert" />
+
+        {/* Left: page strip */}
+        <aside className="doc-page-strip">
+          {pageCount > 0
+            ? Array.from({ length: pageCount }, (_, i) => (
+                <button
+                  key={i}
+                  className={`doc-page-item ${activePage === i ? 'is-active' : ''}`}
+                  onClick={() => scrollToPage(i)}
+                  title={`${i + 1}페이지`}
+                >
+                  <span className="doc-page-item-num">{i + 1}</span>
+                </button>
+              ))
+            : null}
+        </aside>
+
+        {/* Center: preview */}
         <section className="document-preview panel-surface">
           {previewHtml ? (
             <iframe
+              ref={iframeRef}
               title="A4 preview"
               srcDoc={previewHtml}
               sandbox="allow-scripts"
@@ -134,6 +180,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
             <span>{selectedFile.file.name}</span>
             <span>{bytesToHuman(selectedFile.file.size)}</span>
             <span>MD</span>
+            {pageCount > 0 && <span>{pageCount}페이지</span>}
           </div>
           {error ? <p className="error-msg">{error}</p> : null}
           {isProcessing ? (
@@ -146,6 +193,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
           ) : null}
         </section>
 
+        {/* Right: options */}
         <aside className="options-panel">
           <div className="options-scroll">
             <h3 className="panel-title">PDF export</h3>
@@ -173,22 +221,22 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
                   onChange={(event) => void updateOptions({ pageNumberFormat: event.target.value as 'none' | 'page-n' | 'n-of-total' | 'n' })}
                 >
                   <option value="none">표시 안함</option>
-                  <option value="page-n">페이지 1</option>
-                  <option value="n-of-total">1/전체</option>
-                  <option value="n">1</option>
+                  <option value="page-n">페이지 1, 페이지 2…</option>
+                  <option value="n-of-total">1/5, 2/5…</option>
+                  <option value="n">1, 2, 3…</option>
                 </select>
               </label>
             </div>
             <div className="document-option-card">
-              <strong>오늘 날짜</strong>
+              <strong>날짜</strong>
               <label className="document-select-field">
                 <select
                   className="document-select"
-                  value={options.showDateInFooter ? 'footer' : 'none'}
-                  onChange={(event) => void updateOptions({ showDateInFooter: event.target.value === 'footer' })}
+                  value={options.showDateInFooter ? 'show' : 'none'}
+                  onChange={(event) => void updateOptions({ showDateInFooter: event.target.value === 'show' })}
                 >
                   <option value="none">표시 안함</option>
-                  <option value="footer">꼬리말</option>
+                  <option value="show">표시</option>
                 </select>
               </label>
             </div>
