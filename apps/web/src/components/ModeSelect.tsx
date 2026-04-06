@@ -4,7 +4,7 @@ import { TOOL_LABELS, ALL_TOOLS } from '../lib/toolConstants';
 const TOOL_DESCS: Record<ToolName, string> = {
   compress: '파일 크기를 줄이고 품질을 최적화합니다',
   resize: '가로/세로 픽셀 크기를 바꿉니다',
-  convert: 'JPEG · PNG · WebP · GIF로 변환합니다',
+  convert: 'JPG · PNG · WebP · SVG로 변환합니다',
   crop: '드래그로 원하는 영역을 선택합니다',
   rotate: '90° · 180° · 270° 방향을 바꿉니다',
   flip: '좌우 또는 상하로 뒤집습니다',
@@ -35,7 +35,7 @@ export default function ModeSelect({ onSelectImage, onSelectDocument }: Props) {
         <div className="mode-section-head">
           <div>
             <span className="mode-section-label">IMAGE</span>
-            <h2>이미지 섹션</h2>
+            <h2>이미지 작업</h2>
           </div>
         </div>
         <div className="mode-grid">
@@ -56,7 +56,7 @@ export default function ModeSelect({ onSelectImage, onSelectDocument }: Props) {
         <div className="mode-section-head">
           <div>
             <span className="mode-section-label">DOCUMENT</span>
-            <h2>문서 섹션</h2>
+            <h2>문서 작업</h2>
           </div>
         </div>
         <div className="mode-grid mode-grid-single">
