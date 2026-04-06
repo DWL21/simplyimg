@@ -36,67 +36,59 @@ export default function EditWorkspace({ tool, onChangeTool, onBack, onAddMore }:
   const [selectedId, setSelectedId] = useState<string>(() => files[0]?.id ?? '');
   const [options, setOptions] = useState<OptionsPanelState>(DEFAULT_OPTIONS);
   const [showResult, setShowResult] = useState(false);
+  const [isDone, setIsDone] = useState(false);
 
   const selectedFile = files.find((f) => f.id === selectedId) ?? files[0];
   const selectedResultIndex = results.findIndex((r) => r.sourceFileId === selectedFile?.id);
   const selectedResult = selectedResultIndex >= 0 ? results[selectedResultIndex] : undefined;
-  const hasResults = results.length > 0;
 
   function getToolOptions(): ToolOptions {
     switch (tool) {
-      case 'compress':
-        return options.compress;
-      case 'resize':
-        return options.resize;
-      case 'convert':
-        return options.convert;
-      case 'rotate':
-        return options.rotate;
-      case 'flip':
-        return options.flip;
-      case 'crop':
-        return options.crop ?? { x: 0, y: 0, width: 100, height: 100 };
+      case 'compress': return options.compress;
+      case 'resize':   return options.resize;
+      case 'convert':  return options.convert;
+      case 'rotate':   return options.rotate;
+      case 'flip':     return options.flip;
+      case 'crop':     return options.crop ?? { x: 0, y: 0, width: 100, height: 100 };
     }
   }
 
   async function handleProcess() {
     await processAll(tool, getToolOptions());
     setShowResult(true);
+    setIsDone(true);
   }
 
-  const previewUrl =
-    showResult && selectedResult ? selectedResult.url : selectedFile?.previewUrl;
+  function switchTool(t: ToolName) {
+    onChangeTool(t);
+    setShowResult(false);
+    setIsDone(false);
+  }
 
+  const previewUrl = showResult && selectedResult ? selectedResult.url : selectedFile?.previewUrl;
   const isCropMode = tool === 'crop' && !showResult && !!selectedFile;
-  const canProcess =
-    !isProcessing && (tool !== 'crop' || options.crop !== null);
+  const canProcess = !isProcessing && (tool !== 'crop' || options.crop !== null);
 
   return (
     <div className="edit-page">
       <header className="edit-header">
-        <button className="back-btn" onClick={onBack}>
-          ← 처음으로
-        </button>
+        <button className="back-btn" onClick={onBack}>← 처음으로</button>
         <nav className="tool-tabs">
           {ALL_TOOLS.map((t) => (
             <button
               key={t}
               className={`tool-tab ${tool === t ? 'is-active' : ''}`}
-              onClick={() => {
-                onChangeTool(t);
-                setShowResult(false);
-              }}
+              onClick={() => switchTool(t)}
             >
               {TOOL_LABELS[t]}
             </button>
           ))}
         </nav>
-        <button className="add-more-btn" onClick={onAddMore}>
-          + 파일 추가
-        </button>
+        <button className="add-more-btn" onClick={onAddMore}>+ 파일 추가</button>
       </header>
 
       <div className="edit-body">
+        {/* Left: file strip */}
         <aside className="file-strip">
           {files.map((f) => {
             const res = results.find((r) => r.sourceFileId === f.id);
@@ -105,10 +97,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack, onAddMore }:
               <div
                 key={f.id}
                 className={`strip-item ${isSelected ? 'is-selected' : ''}`}
-                onClick={() => {
-                  setSelectedId(f.id);
-                  setShowResult(!!res);
-                }}
+                onClick={() => { setSelectedId(f.id); setShowResult(!!res); }}
               >
                 <img src={f.previewUrl} alt="" className="strip-thumb" />
                 {res && <span className="strip-done">✓</span>}
@@ -123,14 +112,13 @@ export default function EditWorkspace({ tool, onChangeTool, onBack, onAddMore }:
                       if (next) setSelectedId(next.id);
                     }
                   }}
-                >
-                  ×
-                </button>
+                >×</button>
               </div>
             );
           })}
         </aside>
 
+        {/* Center: preview */}
         <div className="preview-area">
           {isCropMode ? (
             <CropEditor
@@ -140,12 +128,11 @@ export default function EditWorkspace({ tool, onChangeTool, onBack, onAddMore }:
             />
           ) : (
             <div className="preview-frame">
-              {previewUrl ? (
-                <img src={previewUrl} alt="" className="preview-img" />
-              ) : (
-                <div className="preview-empty">이미지를 선택하세요</div>
-              )}
-              {hasResults && selectedResult && (
+              {previewUrl
+                ? <img src={previewUrl} alt="" className="preview-img" />
+                : <div className="preview-empty">이미지를 선택하세요</div>
+              }
+              {selectedResult && (
                 <button className="toggle-btn" onClick={() => setShowResult((v) => !v)}>
                   {showResult ? '원본' : '결과'}
                 </button>
@@ -172,44 +159,72 @@ export default function EditWorkspace({ tool, onChangeTool, onBack, onAddMore }:
           )}
         </div>
 
+        {/* Right: options or results */}
         <aside className="options-panel">
-          <div className="options-scroll">
-            <h3 className="panel-title">{TOOL_LABELS[tool]} 옵션</h3>
-            <OptionsPanel tool={tool} state={options} onChange={setOptions} />
-
-            {error && <p className="error-msg">{error}</p>}
-
-            {isProcessing && (
-              <div className="progress-wrap">
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: `${progress}%` }} />
+          {isDone ? (
+            <div className="done-panel">
+              <div className="done-header">
+                <span className="done-check">✓</span>
+                <div>
+                  <strong className="done-title">처리 완료</strong>
+                  <span className="done-sub">{results.length}개 파일</span>
                 </div>
-                <span className="progress-label">{progress}%</span>
               </div>
-            )}
-          </div>
 
-          <div className="panel-actions">
-            <button className="process-btn" onClick={handleProcess} disabled={!canProcess}>
-              {isProcessing ? '처리 중…' : `${TOOL_LABELS[tool]} 적용`}
-            </button>
+              <div className="done-list">
+                {results.map((r, i) => {
+                  const src = files.find((f) => f.id === r.sourceFileId);
+                  const saved = src && r.size < src.file.size
+                    ? Math.round((1 - r.size / src.file.size) * 100)
+                    : null;
+                  return (
+                    <div key={r.id} className="done-item">
+                      <div className="done-item-info">
+                        <span className="done-item-name">{r.name}</span>
+                        <div className="done-item-meta">
+                          {src && <span>{bytesToHuman(src.file.size)} → {bytesToHuman(r.size)}</span>}
+                          {saved !== null && <span className="done-item-saved">−{saved}%</span>}
+                        </div>
+                      </div>
+                      <button className="done-item-dl" onClick={() => downloadSingle(i)} title="다운로드">
+                        ↓
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
 
-            {hasResults && (
-              <>
-                {selectedResult && (
-                  <button
-                    className="download-btn"
-                    onClick={() => downloadSingle(selectedResultIndex)}
-                  >
-                    이 파일 다운로드
-                  </button>
-                )}
-                <button className="download-all-btn" onClick={() => downloadAll()}>
+              <div className="done-actions">
+                <button className="process-btn" onClick={() => downloadAll()}>
                   전체 다운로드 ({results.length}개)
                 </button>
-              </>
-            )}
-          </div>
+                <button className="re-edit-btn" onClick={() => { setIsDone(false); setShowResult(false); }}>
+                  다시 편집
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="options-scroll">
+                <h3 className="panel-title">{TOOL_LABELS[tool]} 옵션</h3>
+                <OptionsPanel tool={tool} state={options} onChange={setOptions} />
+                {error && <p className="error-msg">{error}</p>}
+                {isProcessing && (
+                  <div className="progress-wrap">
+                    <div className="progress-bar">
+                      <div className="progress-fill" style={{ width: `${progress}%` }} />
+                    </div>
+                    <span className="progress-label">{progress}%</span>
+                  </div>
+                )}
+              </div>
+              <div className="panel-actions">
+                <button className="process-btn" onClick={handleProcess} disabled={!canProcess}>
+                  {isProcessing ? '처리 중…' : `${TOOL_LABELS[tool]} 적용`}
+                </button>
+              </div>
+            </>
+          )}
         </aside>
       </div>
     </div>

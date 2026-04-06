@@ -1,50 +1,21 @@
-import { useState } from 'react';
-import { useImageStore } from './store/imageStore';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import ModeSelect from './components/ModeSelect';
-import UploadZone from './components/UploadZone';
-import EditWorkspace from './components/EditWorkspace';
+import ToolFlow from './components/ToolFlow';
 import type { ToolName } from './types/image';
 
-type Step = 'select' | 'upload' | 'edit';
+function HomeRoute() {
+  const navigate = useNavigate();
+  return <ModeSelect onSelect={(t: ToolName) => navigate(`/${t}`)} />;
+}
 
 export default function App() {
-  const [step, setStep] = useState<Step>('select');
-  const [tool, setTool] = useState<ToolName>('compress');
-  const reset = useImageStore((s) => s.reset);
-
-  function handleSelectTool(t: ToolName) {
-    setTool(t);
-    setStep('upload');
-  }
-
-  function handleFilesAdded() {
-    setStep('edit');
-  }
-
-  function handleBack() {
-    reset();
-    setStep('select');
-  }
-
-  function handleAddMore() {
-    reset();
-    setStep('upload');
-  }
-
   return (
     <div className="app">
-      {step === 'select' && <ModeSelect onSelect={handleSelectTool} />}
-      {step === 'upload' && (
-        <UploadZone tool={tool} onConfirm={handleFilesAdded} onBack={handleBack} />
-      )}
-      {step === 'edit' && (
-        <EditWorkspace
-          tool={tool}
-          onChangeTool={setTool}
-          onBack={handleBack}
-          onAddMore={handleAddMore}
-        />
-      )}
+      <Routes>
+        <Route path="/" element={<HomeRoute />} />
+        <Route path="/:tool" element={<ToolFlow />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
   );
 }
