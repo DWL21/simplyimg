@@ -4,8 +4,8 @@ export interface UploadedDocument {
 }
 
 export interface DocumentRenderOptions {
-  header: 'none' | 'fileName';
-  footer: 'none' | 'fileName' | 'pageNumber';
+  header: 'none' | 'title' | 'pageNumber';
+  footer: 'none' | 'title' | 'pageNumber';
 }
 
 export interface DocumentStoreState {

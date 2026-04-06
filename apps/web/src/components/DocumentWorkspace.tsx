@@ -150,10 +150,11 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
                 <select
                   className="document-select"
                   value={options.header}
-                  onChange={(event) => void updateOptions({ header: event.target.value as 'none' | 'fileName' })}
+                  onChange={(event) => void updateOptions({ header: event.target.value as 'none' | 'title' | 'pageNumber' })}
                 >
-                  <option value="none">표시 안함</option>
-                  <option value="fileName">파일명</option>
+                  <option value="none">선택 안함</option>
+                  <option value="title">제목</option>
+                  <option value="pageNumber">페이지 번호</option>
                 </select>
               </label>
             </div>
@@ -163,10 +164,10 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
                 <select
                   className="document-select"
                   value={options.footer}
-                  onChange={(event) => void updateOptions({ footer: event.target.value as 'none' | 'fileName' | 'pageNumber' })}
+                  onChange={(event) => void updateOptions({ footer: event.target.value as 'none' | 'title' | 'pageNumber' })}
                 >
-                  <option value="none">표시 안함</option>
-                  <option value="fileName">파일명</option>
+                  <option value="none">선택 안함</option>
+                  <option value="title">제목</option>
                   <option value="pageNumber">페이지 번호</option>
                 </select>
               </label>

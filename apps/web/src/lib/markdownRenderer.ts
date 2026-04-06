@@ -10,8 +10,8 @@ import markdownWasmUrl from '../../../../packages/md-renderer/pkg/md_renderer_bg
 let ready: Promise<unknown> | null = null;
 
 interface RenderOptions {
-  header: 'none' | 'fileName';
-  footer: 'none' | 'fileName' | 'pageNumber';
+  header: 'none' | 'title' | 'pageNumber';
+  footer: 'none' | 'title' | 'pageNumber';
 }
 
 function ensureRenderer() {
@@ -265,17 +265,15 @@ function documentStyles() {
 }
 
 function buildHeader(fileName: string, options: RenderOptions) {
-  const label = options.header === 'fileName' ? escapeHtml(fileName) : '&nbsp;';
-  const className = options.header === 'fileName' ? 'doc-header' : 'doc-header is-empty';
+  const title = escapeHtml(fileName.replace(/\.[^.]+$/, ''));
+  const label = options.header === 'title' ? title : options.header === 'pageNumber' ? '1' : '&nbsp;';
+  const className = options.header === 'none' ? 'doc-header is-empty' : 'doc-header';
   return `<header class="${className}"><span class="doc-header-label">${label}</span></header>`;
 }
 
 function buildFooter(fileName: string, options: RenderOptions) {
-  const label = options.footer === 'fileName'
-    ? escapeHtml(fileName)
-    : options.footer === 'pageNumber'
-      ? '페이지 1'
-      : '&nbsp;';
+  const title = escapeHtml(fileName.replace(/\.[^.]+$/, ''));
+  const label = options.footer === 'title' ? title : options.footer === 'pageNumber' ? '1' : '&nbsp;';
   const className = options.footer === 'none' ? 'doc-footer is-empty' : 'doc-footer';
   return `<footer class="${className}"><span class="doc-footer-label">${label}</span></footer>`;
 }
@@ -287,6 +285,7 @@ function paginationScript(options: RenderOptions) {
       const template = document.getElementById('doc-template');
       const source = document.getElementById('doc-source');
       const measureRoot = document.getElementById('doc-measure');
+      const headerMode = ${JSON.stringify(options.header)};
       const footerMode = ${JSON.stringify(options.footer)};
 
       function createPage() {
@@ -340,14 +339,15 @@ function paginationScript(options: RenderOptions) {
       }
 
       function updatePageNumbers() {
-        if (footerMode !== 'pageNumber') {
-          return;
-        }
-
         Array.from(pageStack.querySelectorAll('.page')).forEach((page, index) => {
-          const label = page.querySelector('.doc-footer-label');
-          if (label) {
-            label.textContent = '페이지 ' + (index + 1);
+          const num = index + 1;
+          if (headerMode === 'pageNumber') {
+            const label = page.querySelector('.doc-header-label');
+            if (label) label.textContent = String(num);
+          }
+          if (footerMode === 'pageNumber') {
+            const label = page.querySelector('.doc-footer-label');
+            if (label) label.textContent = String(num);
           }
         });
       }
