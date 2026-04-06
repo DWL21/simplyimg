@@ -54,6 +54,10 @@ export default function ResizeEditor({ imageUrl, width, height, value, onChange 
     document.body.style.cursor = '';
   }, []);
 
+  function getOutputRatio() {
+    return width / height;
+  }
+
   function getLayout() {
     const el = containerRef.current;
     if (!el || !naturalSizeRef.current.w) {
@@ -181,6 +185,40 @@ export default function ResizeEditor({ imageUrl, width, height, value, onChange 
     return clampRect(next);
   }
 
+  function rectFromCorner(
+    startCrop: CropOptions,
+    corner: 'tl' | 'tr' | 'bl' | 'br',
+    pointX: number,
+    pointY: number,
+  ) {
+    const ratio = getOutputRatio();
+    const anchorX = corner === 'tl' || corner === 'bl'
+      ? startCrop.x + startCrop.width
+      : startCrop.x;
+    const anchorY = corner === 'tl' || corner === 'tr'
+      ? startCrop.y + startCrop.height
+      : startCrop.y;
+    const signX = corner === 'tl' || corner === 'bl' ? -1 : 1;
+    const signY = corner === 'tl' || corner === 'tr' ? -1 : 1;
+    const rawWidth = Math.abs(pointX - anchorX);
+    const rawHeight = Math.abs(pointY - anchorY);
+
+    let nextWidth = rawWidth;
+    let nextHeight = nextWidth / ratio;
+
+    if (nextHeight > rawHeight) {
+      nextHeight = rawHeight;
+      nextWidth = nextHeight * ratio;
+    }
+
+    return clampRect({
+      x: signX < 0 ? anchorX - nextWidth : anchorX,
+      y: signY < 0 ? anchorY - nextHeight : anchorY,
+      width: nextWidth,
+      height: nextHeight,
+    });
+  }
+
   useEffect(() => {
     function handleMouseMove(event: MouseEvent) {
       const drag = dragRef.current;
@@ -212,6 +250,11 @@ export default function ResizeEditor({ imageUrl, width, height, value, onChange 
       }
 
       if (drag.edge) {
+        if (drag.edge === 'tl' || drag.edge === 'tr' || drag.edge === 'bl' || drag.edge === 'br') {
+          onChangeRef.current(rectFromCorner(drag.startCrop, drag.edge, point.x, point.y));
+          return;
+        }
+
         onChangeRef.current(rectFromEdge(drag.startCrop, drag.edge, point.x, point.y));
       }
     }

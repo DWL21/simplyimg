@@ -198,6 +198,17 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
               오른쪽 90°
             </button>
           </div>
+          <div className="chip-row">
+            {[0, 90, 180, 270].map((value) => (
+              <button
+                key={value}
+                className={`chip ${s.degrees === value ? 'is-active' : ''}`}
+                onClick={() => patch('rotate', { degrees: value })}
+              >
+                {value}°
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     );
