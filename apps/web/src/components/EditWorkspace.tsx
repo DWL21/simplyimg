@@ -38,7 +38,6 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const [selectedId, setSelectedId] = useState<string>(() => files[0]?.id ?? '');
   const [options, setOptions] = useState<OptionsPanelState>(DEFAULT_OPTIONS);
   const [showResult, setShowResult] = useState(false);
-  const [isDone, setIsDone] = useState(false);
   const [stripWidth, setStripWidth] = useState(280);
 
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -141,13 +140,11 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   async function handleProcess() {
     await processAll(tool, getToolOptions());
     setShowResult(true);
-    setIsDone(true);
   }
 
   function switchTool(t: ToolName) {
     onChangeTool(t);
     setShowResult(false);
-    setIsDone(false);
   }
 
   const basePreviewUrl = tool === 'rotate' || tool === 'flip'
@@ -299,59 +296,61 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
           )}
         </div>
 
-        {/* Right: options or results */}
+        {/* Right: options */}
         <aside className="options-panel">
-          {isDone ? (
-            <div className="done-panel">
-              <div className="done-header">
-                <span className="done-check">✓</span>
-                <div>
-                  <strong className="done-title">처리 완료</strong>
-                  <span className="done-sub">{results.length}개 파일</span>
+          <>
+            <div className="options-scroll">
+              {hasFiles ? (
+                <>
+                  <h3 className="panel-title">{TOOL_LABELS[tool]} 옵션</h3>
+                  <OptionsPanel tool={tool} state={options} onChange={setOptions} />
+                </>
+              ) : (
+                <div className="crop-guide">
+                  <div className="crop-guide-icon">＋</div>
+                  <p>이미지를 추가하면<br />{TOOL_LABELS[tool]} 기능을 사용할 수 있습니다</p>
                 </div>
-              </div>
-              <div className="done-list">
-                {results.map((r, i) => {
-                  const saved = r.size < r.sourceSize
-                    ? Math.round((1 - r.size / r.sourceSize) * 100) : null;
-                  return (
-                    <div key={r.id} className="done-item">
-                      <div className="done-item-info">
-                        <span className="done-item-name">{r.name}</span>
-                        <div className="done-item-meta">
-                          <span>{bytesToHuman(r.sourceSize)} → {bytesToHuman(r.size)}</span>
-                          {saved !== null && <span className="done-item-saved">−{saved}%</span>}
-                        </div>
-                      </div>
-                      <button className="done-item-dl" onClick={() => downloadSingle(i)}>↓</button>
+              )}
+              {results.length > 0 ? (
+                <div className="done-panel">
+                  <div className="done-header">
+                    <span className="done-check">✓</span>
+                    <div>
+                      <strong className="done-title">처리 완료</strong>
+                      <span className="done-sub">{results.length}개 파일</span>
                     </div>
-                  );
-                })}
-              </div>
-              <div className="done-actions">
-                <button className="process-btn" onClick={() => downloadAll()}>
-                  전체 다운로드 ({results.length}개)
-                </button>
-                <button className="re-edit-btn" onClick={() => { setIsDone(false); setShowResult(false); }}>
-                  다시 편집
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="options-scroll">
-                <h3 className="panel-title">{TOOL_LABELS[tool]} 옵션</h3>
-                <OptionsPanel tool={tool} state={options} onChange={setOptions} />
-                {error && <p className="error-msg">{error}</p>}
-                {isProcessing && (
-                  <div className="progress-wrap">
-                    <div className="progress-bar">
-                      <div className="progress-fill" style={{ width: `${progress}%` }} />
-                    </div>
-                    <span className="progress-label">{progress}%</span>
                   </div>
-                )}
-              </div>
+                  <div className="done-list">
+                    {results.map((r, i) => {
+                      const saved = r.size < r.sourceSize
+                        ? Math.round((1 - r.size / r.sourceSize) * 100) : null;
+                      return (
+                        <div key={r.id} className="done-item">
+                          <div className="done-item-info">
+                            <span className="done-item-name">{r.name}</span>
+                            <div className="done-item-meta">
+                              <span>{bytesToHuman(r.sourceSize)} → {bytesToHuman(r.size)}</span>
+                              {saved !== null && <span className="done-item-saved">−{saved}%</span>}
+                            </div>
+                          </div>
+                          <button className="done-item-dl" onClick={() => downloadSingle(i)}>↓</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+              {error && <p className="error-msg">{error}</p>}
+              {isProcessing && (
+                <div className="progress-wrap">
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${progress}%` }} />
+                  </div>
+                  <span className="progress-label">{progress}%</span>
+                </div>
+              )}
+            </div>
+            {hasFiles ? (
               <div className="panel-actions">
                 <button
                   className="re-edit-btn"
@@ -370,9 +369,16 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                 <button className="process-btn" onClick={handleProcess} disabled={!canProcess}>
                   {isProcessing ? '처리 중…' : `${TOOL_LABELS[tool]} 적용`}
                 </button>
+                <button
+                  className="re-edit-btn"
+                  onClick={() => downloadAll()}
+                  disabled={results.length === 0}
+                >
+                  전체 다운로드 ({results.length}개)
+                </button>
               </div>
-            </>
-          )}
+            ) : null}
+          </>
         </aside>
       </div>
     </div>

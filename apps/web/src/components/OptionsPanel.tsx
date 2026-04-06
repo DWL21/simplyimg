@@ -79,6 +79,10 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
     const s = state.resize;
     return (
       <div className="opt-stack">
+        <div className="crop-guide">
+          <div className="crop-guide-icon">↔</div>
+          <p>이미지 위에서 프레임을 드래그해 위치를 옮기고<br />핸들을 끌어 크기를 조절하세요</p>
+        </div>
         <div className="opt-group">
           <span className="opt-label">크기 (px)</span>
           <div className="size-row">

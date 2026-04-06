@@ -1160,13 +1160,13 @@ img {
   align-items: center;
   gap: 8px;
   padding: 0.55rem 0.9rem;
-  background: linear-gradient(135deg, rgba(249, 115, 22, 0.14), rgba(31, 122, 95, 0.18));
-  border-color: rgba(31, 122, 95, 0.28);
+  background: rgba(31, 122, 95, 0.08);
+  border-color: rgba(31, 122, 95, 0.24);
   color: var(--text);
 }
 
 .rotate-quick-btn:hover {
-  background: linear-gradient(135deg, rgba(249, 115, 22, 0.24), rgba(31, 122, 95, 0.3));
+  background: rgba(31, 122, 95, 0.14);
   border-color: rgba(31, 122, 95, 0.44);
 }
 
