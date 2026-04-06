@@ -181,6 +181,91 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
       return false;
     }
   },
+  async processSingle(id, tool, options) {
+    const { files, results: previousResults } = get();
+    const uploaded = files.find((f) => f.id === id);
+    if (!uploaded) {
+      set({ error: 'File not found.' });
+      return false;
+    }
+
+    set({ isProcessing: true, progress: 0, error: null });
+
+    try {
+      const sourceFile = uploaded.file;
+      const processOptions =
+        tool === 'rotate'
+          ? {
+              degrees: normalizeDegrees(
+                (options as { degrees: number }).degrees - uploaded.committedRotateDegrees,
+              ),
+            }
+          : tool === 'flip'
+            ? {
+                horizontal: (options as { horizontal: boolean; vertical: boolean }).horizontal !== uploaded.committedFlipHorizontal,
+                vertical: (options as { horizontal: boolean; vertical: boolean }).vertical !== uploaded.committedFlipVertical,
+              }
+            : options;
+
+      const processed = await wasmClient.process(tool, sourceFile, processOptions);
+      const blob = processed.blob;
+      const mimeType = processed.mimeType || inferMimeType(sourceFile);
+      const name = deriveResultName(uploaded.file, mimeType);
+      const url = URL.createObjectURL(blob);
+      const nextFile = createProcessedFile(blob, name, mimeType);
+
+      const newResult: ProcessedResult = {
+        id: makeId(),
+        name,
+        mimeType,
+        size: blob.size,
+        url,
+        sourceFileId: uploaded.id,
+        sourceSize: sourceFile.size,
+      };
+
+      const updatedFile: UploadedFile = {
+        ...uploaded,
+        file: nextFile,
+        previewUrl: createImageUrl(nextFile),
+        committedRotateDegrees: tool === 'rotate'
+          ? normalizeDegrees((options as { degrees: number }).degrees)
+          : uploaded.committedRotateDegrees,
+        committedFlipHorizontal: tool === 'flip'
+          ? (options as { horizontal: boolean; vertical: boolean }).horizontal
+          : uploaded.committedFlipHorizontal,
+        committedFlipVertical: tool === 'flip'
+          ? (options as { horizontal: boolean; vertical: boolean }).vertical
+          : uploaded.committedFlipVertical,
+      };
+
+      // Revoke old result for this file if exists
+      const oldResult = previousResults.find((r) => r.sourceFileId === id);
+      if (oldResult) {
+        URL.revokeObjectURL(oldResult.url);
+      }
+
+      // Revoke old preview if it changed
+      if (uploaded.previewUrl !== uploaded.originalPreviewUrl) {
+        revokeImageUrl(uploaded.previewUrl);
+      }
+
+      set((state) => ({
+        files: state.files.map((f) => (f.id === id ? updatedFile : f)),
+        results: [
+          ...state.results.filter((r) => r.sourceFileId !== id),
+          newResult,
+        ],
+        isProcessing: false,
+        progress: 100,
+      }));
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Processing failed.';
+      set({ isProcessing: false, error: message });
+      return false;
+    }
+  },
   resetFile(id) {
     set((state) => {
       const target = state.files.find((file) => file.id === id);

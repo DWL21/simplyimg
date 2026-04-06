@@ -85,6 +85,7 @@ export interface ImageStoreState {
   removeFile: (id: string) => void;
   setActiveTool: (tool: ToolName) => void;
   processAll: (tool: ToolName, options: ToolOptions) => Promise<boolean>;
+  processSingle: (id: string, tool: ToolName, options: ToolOptions) => Promise<boolean>;
   resetFile: (id: string) => void;
   downloadSingle: (index: number) => void;
   downloadAll: () => Promise<void>;

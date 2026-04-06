@@ -29,6 +29,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const progress = useImageStore((s) => s.progress);
   const error = useImageStore((s) => s.error);
   const processAll = useImageStore((s) => s.processAll);
+  const processSingle = useImageStore((s) => s.processSingle);
   const downloadSingle = useImageStore((s) => s.downloadSingle);
   const downloadAll = useImageStore((s) => s.downloadAll);
   const removeFile = useImageStore((s) => s.removeFile);
@@ -150,7 +151,10 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   }
 
   async function handleProcess() {
-    const completed = await processAll(tool, getToolOptions());
+    if (!selectedFile) {
+      return;
+    }
+    const completed = await processSingle(selectedFile.id, tool, getToolOptions());
     if (!completed) {
       return;
     }
@@ -168,10 +172,12 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const isCropMode = tool === 'crop' && !showResult && !!selectedFile;
   const isResizeMode = tool === 'resize' && !!selectedFile;
   const canProcess = !isProcessing
+    && !!selectedFile
     && (tool !== 'crop' || options.crop !== null)
-    && (tool !== 'rotate' || files.some((file) => file.committedRotateDegrees !== options.rotate.degrees))
+    && (tool !== 'rotate' || selectedFile.committedRotateDegrees !== options.rotate.degrees)
     && (tool !== 'flip'
-      || files.some((file) => file.committedFlipHorizontal !== options.flip.horizontal || file.committedFlipVertical !== options.flip.vertical));
+      || selectedFile.committedFlipHorizontal !== options.flip.horizontal
+      || selectedFile.committedFlipVertical !== options.flip.vertical);
   const previewTransform = getPreviewTransform();
   const canResetSelected = Boolean(
     selectedFile
