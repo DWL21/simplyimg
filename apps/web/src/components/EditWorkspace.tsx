@@ -67,12 +67,6 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     setPan({ x: 0, y: 0 });
   }, [selectedId, showResult]);
 
-  // Sync options.crop from cropMap when selected file changes
-  useEffect(() => {
-    if (tool === 'crop' && selectedId) {
-      setOptions((o) => ({ ...o, crop: cropMap[selectedId] ?? null }));
-    }
-  }, [selectedId, tool]);
 
   function handleWheelZoom(e: React.WheelEvent) {
     e.preventDefault();
@@ -108,7 +102,6 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   function handleCropChange(crop: import('../types/image').CropOptions) {
     if (!selectedFile) return;
     setCropMap((m) => ({ ...m, [selectedFile.id]: crop }));
-    setOptions((o) => ({ ...o, crop }));
   }
 
   function handleOptionsChange(next: OptionsPanelState) {
@@ -160,6 +153,9 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const selectedResult = selectedResultIndex >= 0 ? results[selectedResultIndex] : undefined;
   const hasFiles = files.length > 0;
 
+  // Derived directly from cropMap — no async effect lag
+  const currentCrop = cropMap[selectedFile?.id ?? ''] ?? null;
+
   function getToolOptions(): ToolOptions {
     switch (tool) {
       case 'compress': return options.compress;
@@ -167,7 +163,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
       case 'convert':  return options.convert;
       case 'rotate':   return options.rotate;
       case 'flip':     return options.flip;
-      case 'crop':     return options.crop ?? { x: 0, y: 0, width: 100, height: 100 };
+      case 'crop':     return currentCrop ?? { x: 0, y: 0, width: 100, height: 100 };
     }
   }
 
@@ -211,7 +207,6 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
         setFlipMap((m) => { const n = { ...m }; delete n[id]; return n; });
         break;
       case 'crop':
-        setOptions((current) => ({ ...current, crop: null }));
         setCropMap((m) => ({ ...m, [id]: null }));
         break;
       default:
@@ -248,7 +243,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const isResizeMode = tool === 'resize' && !!selectedFile;
   const canProcess = !isProcessing
     && !!selectedFile
-    && (tool !== 'crop' || options.crop !== null)
+    && (tool !== 'crop' || currentCrop !== null)
     && (tool !== 'rotate' || selectedFile.committedRotateDegrees !== options.rotate.degrees)
     && (tool !== 'flip'
       || selectedFile.committedFlipHorizontal !== options.flip.horizontal
@@ -262,7 +257,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
         || options.rotate.degrees !== selectedFile.committedRotateDegrees
         || options.flip.horizontal !== selectedFile.committedFlipHorizontal
         || options.flip.vertical !== selectedFile.committedFlipVertical
-        || options.crop !== null),
+        || currentCrop !== null),
   );
 
   useEffect(() => {
@@ -371,8 +366,9 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
             </div>
           ) : isCropMode ? (
             <CropEditor
+              key={selectedFile.id}
               imageUrl={selectedFile.previewUrl}
-              value={options.crop}
+              value={currentCrop}
               onChange={handleCropChange}
             />
           ) : isResizeMode ? (
@@ -450,7 +446,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               {hasFiles ? (
                 <>
                   <h3 className="panel-title">{TOOL_LABELS[tool]} 옵션</h3>
-                  <OptionsPanel tool={tool} state={options} onChange={handleOptionsChange} />
+                  <OptionsPanel tool={tool} state={{ ...options, crop: currentCrop }} onChange={handleOptionsChange} />
                 </>
               ) : (
                 <div className="crop-guide">
