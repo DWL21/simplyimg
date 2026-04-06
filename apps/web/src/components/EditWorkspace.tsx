@@ -40,6 +40,10 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const [options, setOptions] = useState<OptionsPanelState>(DEFAULT_OPTIONS);
   const [showResult, setShowResult] = useState(false);
   const [stripWidth, setStripWidth] = useState(280);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const panStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
 
   const bodyRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -54,6 +58,42 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
       setSelectedId(files[0].id);
     }
   }, [files, selectedId]);
+
+  useEffect(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }, [selectedId, showResult]);
+
+  function handleWheelZoom(e: React.WheelEvent) {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+    setZoom((z) => Math.min(8, Math.max(0.25, z * factor)));
+  }
+
+  function handleZoomPointerDown(e: React.PointerEvent) {
+    if (zoom <= 1 && pan.x === 0 && pan.y === 0) return;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    panStartRef.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
+    setIsPanning(true);
+  }
+
+  function handleZoomPointerMove(e: React.PointerEvent) {
+    if (!panStartRef.current) return;
+    setPan({
+      x: panStartRef.current.panX + (e.clientX - panStartRef.current.x),
+      y: panStartRef.current.panY + (e.clientY - panStartRef.current.y),
+    });
+  }
+
+  function handleZoomPointerUp() {
+    panStartRef.current = null;
+    setIsPanning(false);
+  }
+
+  function resetZoom() {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }
 
   function handleAddFiles(incoming: File[]) {
     const images = incoming.filter(isSupportedImageFile);
@@ -268,7 +308,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
       >
         {/* Left: file strip */}
         <aside className="file-strip">
-          {files.map((f) => {
+          {files.map((f, index) => {
             const res = results.find((r) => r.sourceFileId === f.id);
             const isSelected = f.id === (selectedFile?.id ?? '');
             return (
@@ -278,6 +318,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                 onClick={() => { setSelectedId(f.id); setShowResult(!!res); }}
               >
                 <img src={f.previewUrl} alt="" className="strip-thumb" />
+                <span className="strip-page">{index + 1}</span>
                 {res && <span className="strip-done">✓</span>}
                 <button
                   className="strip-remove"
@@ -325,11 +366,38 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               onChange={(nextResize) => setOptions((current) => ({ ...current, resize: nextResize }))}
             />
           ) : (
-            <div className="preview-frame">
-              {previewUrl
-                ? <img src={previewUrl} alt="" className="preview-img" style={previewTransform ? { transform: previewTransform } : undefined} />
-                : <div className="preview-empty">이미지를 선택하세요</div>
-              }
+            <div
+              className="preview-frame"
+              onWheel={handleWheelZoom}
+              onDoubleClick={resetZoom}
+            >
+              {previewUrl ? (
+                <div
+                  className="zoom-container"
+                  style={{
+                    transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                    cursor: zoom > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default',
+                  }}
+                  onPointerDown={handleZoomPointerDown}
+                  onPointerMove={handleZoomPointerMove}
+                  onPointerUp={handleZoomPointerUp}
+                >
+                  <img
+                    src={previewUrl}
+                    alt=""
+                    className="preview-img"
+                    style={previewTransform ? { transform: previewTransform } : undefined}
+                    draggable={false}
+                  />
+                </div>
+              ) : (
+                <div className="preview-empty">이미지를 선택하세요</div>
+              )}
+              <div className="zoom-controls">
+                <button className="zoom-btn" onClick={() => setZoom((z) => Math.min(8, z * 1.25))} title="확대">+</button>
+                <button className="zoom-level" onClick={resetZoom} title="맞춤 (더블클릭)">{Math.round(zoom * 100)}%</button>
+                <button className="zoom-btn" onClick={() => setZoom((z) => Math.max(0.25, z / 1.25))} title="축소">−</button>
+              </div>
               {selectedResult && (
                 <button className="toggle-btn" onClick={() => setShowResult((v) => !v)}>
                   {showResult ? '원본' : '결과'}
@@ -385,8 +453,10 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                     {results.map((r, i) => {
                       const saved = r.size < r.sourceSize
                         ? Math.round((1 - r.size / r.sourceSize) * 100) : null;
+                      const pageNum = files.findIndex((f) => f.id === r.sourceFileId) + 1;
                       return (
                         <div key={r.id} className="done-item">
+                          {pageNum > 0 && <span className="done-item-page">{pageNum}</span>}
                           <div className="done-item-info">
                             <span className="done-item-name">{r.name}</span>
                             <div className="done-item-meta">
