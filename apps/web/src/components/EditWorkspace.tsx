@@ -138,8 +138,13 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   }
 
   async function handleProcess() {
-    await processAll(tool, getToolOptions());
-    setShowResult(true);
+    const completed = await processAll(tool, getToolOptions());
+    if (!completed) {
+      return;
+    }
+
+    resetCurrentPreviewChanges();
+    setShowResult(false);
   }
 
   function switchTool(t: ToolName) {
@@ -147,9 +152,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     setShowResult(false);
   }
 
-  const basePreviewUrl = tool === 'rotate' || tool === 'flip'
-    ? selectedFile?.originalPreviewUrl
-    : selectedFile?.previewUrl;
+  const basePreviewUrl = selectedFile?.previewUrl;
   const previewUrl = showResult && selectedResult ? selectedResult.url : basePreviewUrl;
   const isCropMode = tool === 'crop' && !showResult && !!selectedFile;
   const isResizeMode = tool === 'resize' && !!selectedFile;

@@ -94,7 +94,7 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
     const { files, results: previousResults } = get();
     if (files.length === 0) {
       set({ error: 'Upload at least one image before processing.' });
-      return;
+      return false;
     }
 
     set({ isProcessing: true, progress: 0, error: null });
@@ -105,9 +105,7 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
     try {
       for (let index = 0; index < files.length; index += 1) {
         const uploaded = files[index];
-        const sourceFile = tool === 'rotate' || tool === 'flip'
-          ? uploaded.originalFile
-          : uploaded.file;
+        const sourceFile = uploaded.file;
         const processed = await wasmClient.process(tool, sourceFile, options);
         const blob = processed.blob;
         const mimeType = processed.mimeType || inferMimeType(sourceFile);
@@ -140,6 +138,7 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
       });
 
       set({ files: nextFiles, results: nextResults, isProcessing: false, progress: 100 });
+      return true;
     } catch (error) {
       nextResults.forEach((result) => URL.revokeObjectURL(result.url));
       nextFiles.forEach((file) => {
@@ -149,6 +148,7 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
       });
       const message = error instanceof Error ? error.message : 'Processing failed.';
       set({ isProcessing: false, error: message });
+      return false;
     }
   },
   resetFile(id) {
