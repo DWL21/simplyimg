@@ -8,6 +8,7 @@ export type ToolName =
 
 export type ImageFormat = "jpeg" | "png" | "webp" | "gif";
 export type ResizeFit = "contain" | "cover" | "exact";
+export type DocumentFormat = "md" | "docx";
 
 export interface ImageInfo {
   width: number;

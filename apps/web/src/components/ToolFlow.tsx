@@ -15,7 +15,7 @@ export default function ToolFlow() {
   return (
     <EditWorkspace
       tool={validTool}
-      onChangeTool={(t) => navigate(`/${t}`)}
+      onChangeTool={(t) => navigate(`/image/${t}`)}
       onBack={() => { reset(); navigate('/'); }}
     />
   );

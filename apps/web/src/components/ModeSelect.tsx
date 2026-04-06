@@ -21,10 +21,11 @@ const TOOL_ICONS: Record<ToolName, string> = {
 };
 
 interface Props {
-  onSelect: (tool: ToolName) => void;
+  onSelectImage: (tool: ToolName) => void;
+  onSelectDocument: () => void;
 }
 
-export default function ModeSelect({ onSelect }: Props) {
+export default function ModeSelect({ onSelectImage, onSelectDocument }: Props) {
   return (
     <div className="select-page">
       <header className="select-header">
@@ -33,22 +34,51 @@ export default function ModeSelect({ onSelect }: Props) {
 
       <div className="select-hero">
         <h1 className="select-title">
-          어떤 작업을<br />하실 건가요?
+          이미지 작업은 그대로 두고<br />문서 작업 섹션을 추가했습니다.
         </h1>
       </div>
 
-      <div className="mode-grid">
-        {ALL_TOOLS.map((id) => (
-          <button key={id} className="mode-card" onClick={() => onSelect(id)}>
-            <span className="mode-icon">{TOOL_ICONS[id]}</span>
+      <section className="mode-section">
+        <div className="mode-section-head">
+          <div>
+            <span className="mode-section-label">IMAGE</span>
+            <h2>이미지 섹션</h2>
+            <p>기존 구현은 이 섹션으로 묶고 그대로 유지합니다.</p>
+          </div>
+        </div>
+        <div className="mode-grid">
+          {ALL_TOOLS.map((id) => (
+            <button key={id} className="mode-card" onClick={() => onSelectImage(id)}>
+              <span className="mode-icon">{TOOL_ICONS[id]}</span>
+              <div className="mode-copy">
+                <strong>{TOOL_LABELS[id]}</strong>
+                <p>{TOOL_DESCS[id]}</p>
+              </div>
+              <span className="mode-arrow">→</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="mode-section">
+        <div className="mode-section-head">
+          <div>
+            <span className="mode-section-label">DOCUMENT</span>
+            <h2>문서 섹션</h2>
+            <p>md, docx 문서를 PDF로 변환하는 새 흐름입니다.</p>
+          </div>
+        </div>
+        <div className="mode-grid mode-grid-single">
+          <button className="mode-card mode-card-document" onClick={onSelectDocument}>
+            <span className="mode-icon">PDF</span>
             <div className="mode-copy">
-              <strong>{TOOL_LABELS[id]}</strong>
-              <p>{TOOL_DESCS[id]}</p>
+              <strong>문서를 PDF로 변환</strong>
+              <p>Markdown과 Word 문서를 업로드해서 PDF로 일괄 변환합니다.</p>
             </div>
             <span className="mode-arrow">→</span>
           </button>
-        ))}
-      </div>
+        </div>
+      </section>
     </div>
   );
 }

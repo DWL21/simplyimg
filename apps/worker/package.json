@@ -11,6 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@simplyimg/document-processor": "workspace:*",
     "hono": "^4.5.10"
   },
   "devDependencies": {

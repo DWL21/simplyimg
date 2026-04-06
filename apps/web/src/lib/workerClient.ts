@@ -3,7 +3,7 @@ import { inferMimeType } from './formatUtils';
 
 const defaultBaseUrl = 'http://localhost:8787';
 
-function getWorkerBaseUrl() {
+export function getWorkerBaseUrl() {
   const configured = import.meta.env.VITE_WORKER_URL?.trim();
   return configured && configured.length > 0 ? configured : defaultBaseUrl;
 }

@@ -5,6 +5,7 @@ import { errorResponse } from "./lib/errors";
 import { registerCompressRoute } from "./routes/compress";
 import { registerConvertRoute } from "./routes/convert";
 import { registerCropRoute } from "./routes/crop";
+import { registerDocumentConvertRoute } from "./routes/documentConvert";
 import { registerFlipRoute } from "./routes/flip";
 import { registerInfoRoute } from "./routes/info";
 import { registerResizeRoute } from "./routes/resize";
@@ -31,6 +32,7 @@ registerConvertRoute(app, processor);
 registerRotateRoute(app, processor);
 registerFlipRoute(app, processor);
 registerCropRoute(app, processor);
+registerDocumentConvertRoute(app);
 
 app.notFound((c) => c.json({ error: "Not found", code: "NOT_FOUND" }, 404));
 app.onError((err, c) => {

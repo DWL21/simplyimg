@@ -1,4 +1,4 @@
-import type { ImageInfo, ImageFormat } from "./types";
+import type { DocumentFormat, ImageInfo, ImageFormat } from "./types";
 
 export const getOutputFilename = (inputName: string | undefined, format: ImageFormat): string => {
   const base = inputName?.replace(/\.[^.]+$/, "") || "result";
@@ -63,3 +63,47 @@ export const buildBinaryResponse = (
 
 export const infoResponse = (info: ImageInfo): Response =>
   Response.json(info, { status: 200 });
+
+export const getPdfFilename = (inputName: string | undefined): string => {
+  const base = inputName?.replace(/\.[^.]+$/, "") || "result";
+  return `${base}.pdf`;
+};
+
+export const inferDocumentFormat = (file: File): DocumentFormat | null => {
+  const loweredType = file.type.toLowerCase();
+  if (loweredType.includes("markdown")) return "md";
+  if (
+    loweredType.includes(
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+  ) {
+    return "docx";
+  }
+
+  const match = file.name.toLowerCase().match(/\.([a-z0-9]+)$/);
+  switch (match?.[1]) {
+    case "md":
+    case "markdown":
+      return "md";
+    case "docx":
+      return "docx";
+    default:
+      return null;
+  }
+};
+
+export const buildPdfResponse = (file: File, result: Uint8Array): Response => {
+  const payload = new Uint8Array(result.byteLength);
+  payload.set(result);
+  const headers = new Headers({
+    "Content-Type": "application/pdf",
+    "Content-Disposition": `attachment; filename="${getPdfFilename(file.name)}"`,
+    "X-Original-Size": String(file.size),
+    "X-Result-Size": String(result.byteLength),
+  });
+
+  return new Response(payload, {
+    status: 200,
+    headers,
+  });
+};

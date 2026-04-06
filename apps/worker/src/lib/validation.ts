@@ -3,6 +3,7 @@ import type {
   CompressOptions,
   ConvertOptions,
   CropOptions,
+  DocumentFormat,
   FlipOptions,
   ImageFormat,
   MultipartPayload,
@@ -12,7 +13,9 @@ import type {
 } from "./types";
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const MAX_DOCUMENT_UPLOAD_BYTES = 25 * 1024 * 1024;
 const SUPPORTED_FORMATS: ImageFormat[] = ["jpeg", "png", "webp", "gif"];
+const SUPPORTED_DOCUMENT_FORMATS: DocumentFormat[] = ["md", "docx"];
 
 export const parseMultipart = async (request: Request): Promise<MultipartPayload> => {
   const contentType = request.headers.get("content-type") ?? "";
@@ -61,6 +64,30 @@ export const parseFileMultipart = async (request: Request): Promise<File> => {
 
   if (file.size > MAX_UPLOAD_BYTES) {
     throw new ApiError("FILE_TOO_LARGE", `File exceeds ${MAX_UPLOAD_BYTES} bytes`);
+  }
+
+  return file;
+};
+
+export const parseDocumentMultipart = async (request: Request): Promise<File> => {
+  const contentType = request.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().includes("multipart/form-data")) {
+    throw new ApiError("INVALID_REQUEST", "Expected multipart/form-data request");
+  }
+
+  const formData = await request.formData();
+  const file = formData.get("file");
+
+  if (!(file instanceof File)) {
+    throw new ApiError("MISSING_FILE", "Missing file field");
+  }
+
+  if (file.size <= 0) {
+    throw new ApiError("EMPTY_FILE", "Uploaded file is empty");
+  }
+
+  if (file.size > MAX_DOCUMENT_UPLOAD_BYTES) {
+    throw new ApiError("FILE_TOO_LARGE", `File exceeds ${MAX_DOCUMENT_UPLOAD_BYTES} bytes`);
   }
 
   return file;
@@ -197,4 +224,12 @@ export const requireOptions = (options: string | undefined, tool: ToolName): str
   }
 
   return options;
+};
+
+export const requireDocumentFormat = (format: DocumentFormat | null): DocumentFormat => {
+  if (!format || !SUPPORTED_DOCUMENT_FORMATS.includes(format)) {
+    throw new ApiError("UNSUPPORTED_DOCUMENT", "Only md and docx files can be converted to PDF");
+  }
+
+  return format;
 };

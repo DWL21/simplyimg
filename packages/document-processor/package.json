@@ -1,0 +1,10 @@
+{
+  "name": "@simplyimg/document-processor",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "mammoth": "^1.8.0",
+    "pdf-lib": "^1.17.1"
+  }
+}
