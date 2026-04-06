@@ -298,11 +298,8 @@ function paginationScript(options: RenderOptions) {
       }
 
       function getAvailableHeight(page) {
-        const inner = page.querySelector('.page-inner');
-        const header = page.querySelector('.doc-header');
-        const footer = page.querySelector('.doc-footer');
         const body = page.querySelector('.doc-body');
-        return inner.clientHeight - header.offsetHeight - footer.offsetHeight - (inner.offsetHeight - body.clientHeight);
+        return body.clientHeight;
       }
 
       function appendToMeasure(node, page) {
