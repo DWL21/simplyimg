@@ -191,7 +191,7 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
               aria-label="왼쪽으로 90도 회전"
               title="왼쪽으로 90도 회전"
             >
-              ↶ 90°
+              ⟲
             </button>
             <button
               className="chip"
@@ -199,7 +199,7 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
               aria-label="오른쪽으로 90도 회전"
               title="오른쪽으로 90도 회전"
             >
-              ↷ 90°
+              ⟳
             </button>
           </div>
           <div className="chip-row">
