@@ -9,6 +9,8 @@ export interface LegalDocumentContent {
   sections: LegalSection[];
 }
 
+const privacyPolicyEffectiveDate = '2026년 4월 7일';
+const termsEffectiveDate = '2026년 4월 7일';
 const contactChannel = 'simplyimg.com@gmail.com';
 
 export const privacyPolicyContent: LegalDocumentContent = {
@@ -17,7 +19,6 @@ export const privacyPolicyContent: LegalDocumentContent = {
     {
       title: '1. 총칙',
       paragraphs: [
-        '본 개인정보 처리방침은 SimplyImg 웹 서비스에서 개인정보를 어떻게 처리하는지 설명합니다.',
         '본 방침은 대한민국 개인정보 보호 관련 법령을 참고하여 작성되었으며, 서비스 기능 변경이나 법령 개정에 따라 수정될 수 있습니다.',
       ],
     },
@@ -91,6 +92,12 @@ export const privacyPolicyContent: LegalDocumentContent = {
         `문의 채널: ${contactChannel}`,
       ],
     },
+    {
+      title: '부칙',
+      paragraphs: [
+        `본 개인정보 처리방침은 ${privacyPolicyEffectiveDate}부터 적용됩니다.`,
+      ],
+    },
   ],
 };
 
@@ -98,13 +105,7 @@ export const termsContent: LegalDocumentContent = {
   title: '이용약관',
   sections: [
     {
-      title: '1. 목적',
-      paragraphs: [
-        '본 약관은 SimplyImg 웹 서비스의 이용과 관련하여 서비스와 이용자 간의 권리, 의무 및 책임사항을 규정하는 것을 목적으로 합니다.',
-      ],
-    },
-    {
-      title: '2. 서비스 내용',
+      title: '1. 서비스 내용',
       bullets: [
         '이미지 압축, 크기 조절, 형식 변환, 회전, 뒤집기, 자르기 기능',
         'Markdown 문서의 미리보기 및 PDF 변환 기능',
@@ -112,13 +113,13 @@ export const termsContent: LegalDocumentContent = {
       ],
     },
     {
-      title: '3. 약관의 효력 및 변경',
+      title: '2. 약관의 효력 및 변경',
       paragraphs: [
         '운영자는 관련 법령, 서비스 정책 또는 기능 변경에 따라 약관을 수정할 수 있으며, 중요한 변경은 서비스 내 고지합니다.',
       ],
     },
     {
-      title: '4. 서비스 이용',
+      title: '3. 서비스 이용',
       bullets: [
         '서비스는 별도의 회원가입 없이 사용할 수 있습니다.',
         '서비스는 현재 별도 유료 결제 고지 없이 제공됩니다. 향후 유료 기능이 추가될 경우 별도 안내합니다.',
@@ -126,7 +127,7 @@ export const termsContent: LegalDocumentContent = {
       ],
     },
     {
-      title: '5. 이용자의 의무',
+      title: '4. 이용자의 의무',
       bullets: [
         '이용자는 법령, 본 약관 및 서비스 안내를 준수해야 합니다.',
         '이용자는 자신이 업로드하거나 처리하는 파일에 대한 적법한 권리를 보유해야 합니다.',
@@ -134,14 +135,14 @@ export const termsContent: LegalDocumentContent = {
       ],
     },
     {
-      title: '6. 파일 및 결과물에 대한 책임',
+      title: '5. 파일 및 결과물에 대한 책임',
       paragraphs: [
         '이용자가 업로드한 파일과 그 처리 결과에 대한 책임은 이용자에게 있습니다.',
         '운영자는 이용자가 요청한 형식 변환이나 문서 출력 결과가 특정 목적에 완전히 부합함을 보증하지 않으며, 이용자는 중요한 결과물에 대해 별도 검수 책임을 집니다.',
       ],
     },
     {
-      title: '7. 지식재산권',
+      title: '6. 지식재산권',
       bullets: [
         'SimplyImg 서비스, 소스코드, 디자인, 문서 및 관련 자산의 권리는 운영자 또는 정당한 권리자에게 귀속됩니다.',
         '서비스에서 생성된 결과물에 대한 권리는 원본 파일에 대한 권리 관계 및 적용 법령에 따릅니다.',
@@ -149,30 +150,36 @@ export const termsContent: LegalDocumentContent = {
       ],
     },
     {
-      title: '8. 서비스 변경 및 중단',
+      title: '7. 서비스 변경 및 중단',
       paragraphs: [
         '운영자는 유지보수, 보안, 성능 개선, 법적 요구, 외부 서비스 변경 등의 사유로 서비스의 전부 또는 일부를 수정하거나 중단할 수 있습니다.',
         '불가항력, 인프라 장애, 통신 문제 등 운영자가 합리적으로 통제하기 어려운 사유로 서비스 제공이 제한될 수 있습니다.',
       ],
     },
     {
-      title: '9. 책임의 제한',
+      title: '8. 책임의 제한',
       bullets: [
         '운영자는 무료로 제공되는 서비스 범위에서, 고의 또는 중대한 과실이 없는 한 간접손해나 특별손해에 대해 책임을 지지 않습니다.',
         '이용자의 귀책사유, 제3자 행위, 외부 플랫폼 장애, 브라우저 환경 차이로 발생한 문제에 대해 운영자의 책임은 제한될 수 있습니다.',
       ],
     },
     {
-      title: '10. 준거법 및 분쟁 해결',
+      title: '9. 준거법 및 분쟁 해결',
       paragraphs: [
         '본 약관은 대한민국 법령을 준거법으로 합니다.',
         '본 서비스와 관련한 분쟁은 관계 법령 및 민사소송법상 관할 법원에 따릅니다.',
       ],
     },
     {
-      title: '11. 문의',
+      title: '10. 문의',
       paragraphs: [
         `문의 채널: ${contactChannel}`,
+      ],
+    },
+    {
+      title: '부칙',
+      paragraphs: [
+        `본 약관은 ${termsEffectiveDate}부터 적용됩니다.`,
       ],
     },
   ],
