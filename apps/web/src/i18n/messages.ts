@@ -1,16 +1,11 @@
 import { useSyncExternalStore } from 'react';
 import { acceptedImageFormatsHint, acceptedImageFormatsKicker } from '../lib/formatUtils';
 
-const localeStorageKey = 'simplyimg.locale';
 const allToolIds = ['compress', 'resize', 'convert', 'crop', 'rotate', 'flip'] as const;
 const cardToolIds = ['compress', 'resize', 'convert'] as const;
 
 type ToolId = (typeof allToolIds)[number];
 type CardToolId = (typeof cardToolIds)[number];
-type StorageLike = {
-  getItem: (key: string) => string | null;
-  setItem: (key: string, value: string) => void;
-};
 type DocumentLike = {
   documentElement: {
     lang: string;
@@ -645,23 +640,6 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
 
 export type AppLocale = keyof typeof localeMessages;
 
-function readStoredLocale(): AppLocale | null {
-  const localStorageRef = typeof globalThis !== 'undefined' && 'localStorage' in globalThis
-    ? (globalThis as { localStorage?: StorageLike }).localStorage ?? null
-    : null;
-
-  if (!localStorageRef) {
-    return null;
-  }
-
-  const storedLocale = localStorageRef.getItem(localeStorageKey);
-  if (storedLocale === 'ko' || storedLocale === 'en') {
-    return storedLocale;
-  }
-
-  return null;
-}
-
 function detectNavigatorLocale(): AppLocale {
   if (typeof navigator === 'undefined') {
     return 'en';
@@ -692,7 +670,7 @@ export function resolveLocale(locale?: string): AppLocale {
   return locale.toLowerCase().startsWith('ko') ? 'ko' : 'en';
 }
 
-let currentLocale: AppLocale = readStoredLocale() ?? detectNavigatorLocale();
+let currentLocale: AppLocale = detectNavigatorLocale();
 
 applyDocumentLocale(currentLocale);
 
@@ -717,15 +695,6 @@ export function setAppLocale(locale: AppLocale) {
 
   currentLocale = nextLocale;
   applyDocumentLocale(nextLocale);
-
-  const localStorageRef = typeof globalThis !== 'undefined' && 'localStorage' in globalThis
-    ? (globalThis as { localStorage?: StorageLike }).localStorage ?? null
-    : null;
-
-  if (localStorageRef) {
-    localStorageRef.setItem(localeStorageKey, nextLocale);
-  }
-
   listeners.forEach((listener) => listener());
 }
 

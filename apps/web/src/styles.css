@@ -112,12 +112,13 @@ img {
    STEP 1 — MODE SELECT
 ═══════════════════════════════════════════════════════════ */
 .select-page {
-  min-height: 100vh;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 32px 24px 0;
-  overflow: hidden;
+  padding: 32px 24px 32px;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .select-main {
@@ -128,8 +129,7 @@ img {
   align-items: center;
   justify-content: flex-start;
   gap: 28px;
-  overflow-y: auto;
-  padding-bottom: 28px;
+  padding-bottom: 36px;
 }
 
 .select-header {
