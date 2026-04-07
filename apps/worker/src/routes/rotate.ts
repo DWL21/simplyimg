@@ -7,7 +7,7 @@ import type { ImageProcessor } from "../lib/processor";
 export const registerRotateRoute = (app: Hono, processor: ImageProcessor) => {
   app.post("/api/rotate", async (c) => {
     try {
-      const { file, options } = await parseMultipart(c.req.raw);
+      const { file, options } = await parseMultipart(c.req.raw, c.env);
       const parsed = parseRotateOptions(requireOptions(options, "rotate"));
       const input = new Uint8Array(await file.arrayBuffer());
       const result = await processor.rotate(input, parsed);

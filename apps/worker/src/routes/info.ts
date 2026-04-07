@@ -7,7 +7,7 @@ import { errorResponse } from "../lib/errors";
 export const registerInfoRoute = (app: Hono, processor: ImageProcessor) => {
   app.post("/api/info", async (c) => {
     try {
-      const file = await parseFileMultipart(c.req.raw);
+      const file = await parseFileMultipart(c.req.raw, c.env);
       const result = await processor.info(new Uint8Array(await file.arrayBuffer()));
       return infoResponse(result);
     } catch (error) {

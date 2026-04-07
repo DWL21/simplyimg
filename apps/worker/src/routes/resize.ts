@@ -7,7 +7,7 @@ import type { ImageProcessor } from "../lib/processor";
 export const registerResizeRoute = (app: Hono, processor: ImageProcessor) => {
   app.post("/api/resize", async (c) => {
     try {
-      const { file, options } = await parseMultipart(c.req.raw);
+      const { file, options } = await parseMultipart(c.req.raw, c.env);
       const parsed = parseResizeOptions(requireOptions(options, "resize"));
       const input = new Uint8Array(await file.arrayBuffer());
       const result = await processor.resize(input, parsed);

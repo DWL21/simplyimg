@@ -7,7 +7,7 @@ import type { ImageProcessor } from "../lib/processor";
 export const registerCropRoute = (app: Hono, processor: ImageProcessor) => {
   app.post("/api/crop", async (c) => {
     try {
-      const { file, options } = await parseMultipart(c.req.raw);
+      const { file, options } = await parseMultipart(c.req.raw, c.env);
       const parsed = parseCropOptions(requireOptions(options, "crop"));
       const input = new Uint8Array(await file.arrayBuffer());
       const result = await processor.crop(input, parsed);

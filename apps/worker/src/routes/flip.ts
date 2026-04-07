@@ -7,7 +7,7 @@ import type { ImageProcessor } from "../lib/processor";
 export const registerFlipRoute = (app: Hono, processor: ImageProcessor) => {
   app.post("/api/flip", async (c) => {
     try {
-      const { file, options } = await parseMultipart(c.req.raw);
+      const { file, options } = await parseMultipart(c.req.raw, c.env);
       const parsed = parseFlipOptions(requireOptions(options, "flip"));
       const input = new Uint8Array(await file.arrayBuffer());
       const result = await processor.flip(input, parsed);

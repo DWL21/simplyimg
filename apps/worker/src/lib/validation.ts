@@ -12,12 +12,38 @@ import type {
   ToolName,
 } from "./types";
 
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
-const MAX_DOCUMENT_UPLOAD_BYTES = 25 * 1024 * 1024;
+const DEFAULT_MAX_UPLOAD_BYTES = 30 * 1024 * 1024;
+const DEFAULT_MAX_DOCUMENT_UPLOAD_BYTES = 50 * 1024 * 1024;
 const SUPPORTED_FORMATS: ImageFormat[] = ["jpeg", "png", "webp", "gif", "svg"];
 const SUPPORTED_DOCUMENT_FORMATS: DocumentFormat[] = ["md", "docx"];
 
-export const parseMultipart = async (request: Request): Promise<MultipartPayload> => {
+const resolveUploadLimit = (rawValue: unknown, fallback: number): number => {
+  if (typeof rawValue !== "string") {
+    return fallback;
+  }
+
+  if (!rawValue) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(rawValue, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const readEnvLimit = (
+  env: unknown,
+  key: "MAX_UPLOAD_BYTES" | "MAX_DOCUMENT_UPLOAD_BYTES",
+  fallback: number,
+): number => {
+  if (typeof env !== "object" || env === null) {
+    return fallback;
+  }
+
+  return resolveUploadLimit((env as Record<string, unknown>)[key], fallback);
+};
+
+export const parseMultipart = async (request: Request, env?: unknown): Promise<MultipartPayload> => {
+  const maxUploadBytes = readEnvLimit(env, "MAX_UPLOAD_BYTES", DEFAULT_MAX_UPLOAD_BYTES);
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().includes("multipart/form-data")) {
     throw new ApiError("INVALID_REQUEST", "Expected multipart/form-data request");
@@ -35,8 +61,8 @@ export const parseMultipart = async (request: Request): Promise<MultipartPayload
     throw new ApiError("EMPTY_FILE", "Uploaded file is empty");
   }
 
-  if (file.size > MAX_UPLOAD_BYTES) {
-    throw new ApiError("FILE_TOO_LARGE", `File exceeds ${MAX_UPLOAD_BYTES} bytes`);
+  if (file.size > maxUploadBytes) {
+    throw new ApiError("FILE_TOO_LARGE", `File exceeds ${maxUploadBytes} bytes`);
   }
 
   return {
@@ -45,7 +71,8 @@ export const parseMultipart = async (request: Request): Promise<MultipartPayload
   };
 };
 
-export const parseFileMultipart = async (request: Request): Promise<File> => {
+export const parseFileMultipart = async (request: Request, env?: unknown): Promise<File> => {
+  const maxUploadBytes = readEnvLimit(env, "MAX_UPLOAD_BYTES", DEFAULT_MAX_UPLOAD_BYTES);
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().includes("multipart/form-data")) {
     throw new ApiError("INVALID_REQUEST", "Expected multipart/form-data request");
@@ -62,14 +89,19 @@ export const parseFileMultipart = async (request: Request): Promise<File> => {
     throw new ApiError("EMPTY_FILE", "Uploaded file is empty");
   }
 
-  if (file.size > MAX_UPLOAD_BYTES) {
-    throw new ApiError("FILE_TOO_LARGE", `File exceeds ${MAX_UPLOAD_BYTES} bytes`);
+  if (file.size > maxUploadBytes) {
+    throw new ApiError("FILE_TOO_LARGE", `File exceeds ${maxUploadBytes} bytes`);
   }
 
   return file;
 };
 
-export const parseDocumentMultipart = async (request: Request): Promise<File> => {
+export const parseDocumentMultipart = async (request: Request, env?: unknown): Promise<File> => {
+  const maxDocumentUploadBytes = readEnvLimit(
+    env,
+    "MAX_DOCUMENT_UPLOAD_BYTES",
+    DEFAULT_MAX_DOCUMENT_UPLOAD_BYTES,
+  );
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().includes("multipart/form-data")) {
     throw new ApiError("INVALID_REQUEST", "Expected multipart/form-data request");
@@ -86,8 +118,8 @@ export const parseDocumentMultipart = async (request: Request): Promise<File> =>
     throw new ApiError("EMPTY_FILE", "Uploaded file is empty");
   }
 
-  if (file.size > MAX_DOCUMENT_UPLOAD_BYTES) {
-    throw new ApiError("FILE_TOO_LARGE", `File exceeds ${MAX_DOCUMENT_UPLOAD_BYTES} bytes`);
+  if (file.size > maxDocumentUploadBytes) {
+    throw new ApiError("FILE_TOO_LARGE", `File exceeds ${maxDocumentUploadBytes} bytes`);
   }
 
   return file;

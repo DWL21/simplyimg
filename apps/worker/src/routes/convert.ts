@@ -7,7 +7,7 @@ import type { ImageProcessor } from "../lib/processor";
 export const registerConvertRoute = (app: Hono, processor: ImageProcessor) => {
   app.post("/api/convert", async (c) => {
     try {
-      const { file, options } = await parseMultipart(c.req.raw);
+      const { file, options } = await parseMultipart(c.req.raw, c.env);
       const parsed = parseConvertOptions(requireOptions(options, "convert"));
       const input = new Uint8Array(await file.arrayBuffer());
       const result = await processor.convert(input, parsed);

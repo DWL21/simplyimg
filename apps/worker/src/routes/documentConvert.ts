@@ -7,7 +7,7 @@ import { parseDocumentMultipart, requireDocumentFormat } from "../lib/validation
 export const registerDocumentConvertRoute = (app: Hono) => {
   app.post("/api/document/convert", async (c) => {
     try {
-      const file = await parseDocumentMultipart(c.req.raw);
+      const file = await parseDocumentMultipart(c.req.raw, c.env);
       const format = requireDocumentFormat(inferDocumentFormat(file));
       const input = new Uint8Array(await file.arrayBuffer());
       const result = await convertDocumentToPdf(input, file.name, format);
