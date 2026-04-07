@@ -11,7 +11,7 @@ import CropEditor from './CropEditor';
 import { Footer } from './layout/Footer';
 import OptionsPanel, { type OptionsPanelState } from './OptionsPanel';
 import ResizeEditor from './ResizeEditor';
-import { acceptedImageInput, bytesToHuman } from '../lib/formatUtils';
+import { acceptedImageFormatsHint, acceptedImageInput, bytesToHuman } from '../lib/formatUtils';
 import { ALL_TOOLS, getToolDisplayLabel } from '../lib/toolConstants';
 import type { ToolName, ToolOptions } from '../types/image';
 
@@ -489,7 +489,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
               <strong>{messages.editor.emptyDropTitle}</strong>
-              <span>JPG · PNG · WebP · GIF</span>
+              <span>{acceptedImageFormatsHint}</span>
             </div>
           ) : isCropMode ? (
             <CropEditor

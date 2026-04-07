@@ -1,5 +1,11 @@
 import type { OutputFormat } from '../types/image';
 
+export const acceptedImageExtensionLabels = ['JPG', 'JPEG', 'PNG', 'WebP', 'SVG', 'HEIC/HEIF', 'GIF'] as const;
+export const acceptedImageFormatsHint = acceptedImageExtensionLabels.join(' · ');
+export const acceptedImageFormatsKicker = acceptedImageExtensionLabels
+  .map((label) => (label === 'WebP' ? 'WEBP' : label))
+  .join(', ');
+
 export const acceptedImageInput = [
   '.jpg',
   '.jpeg',

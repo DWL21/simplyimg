@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { acceptedImageFormatsHint, acceptedImageFormatsKicker } from '../lib/formatUtils';
 
 const localeStorageKey = 'simplyimg.locale';
 const allToolIds = ['compress', 'resize', 'convert', 'crop', 'rotate', 'flip'] as const;
@@ -316,7 +317,7 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       },
     },
     dropzone: {
-      formats: 'JPG, PNG, WEBP, SVG, HEIC',
+      formats: acceptedImageFormatsKicker,
       title: '이미지 선택하기',
       description: '여러 파일을 한 번에 추가할 수 있습니다. 드래그 앤 드롭도 지원합니다.',
       button: '파일 고르기',
@@ -325,7 +326,7 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       back: '← 뒤로',
       dropTitle: '이미지를 끌어다 놓거나',
       dropDescription: '클릭해서 파일을 선택하세요',
-      hint: 'JPG · PNG · WebP · SVG · HEIC/HEIF · 여러 파일 동시 가능',
+      hint: `${acceptedImageFormatsHint} · 여러 파일 동시 가능`,
       remove: '삭제',
       addFiles: '+ 파일 추가',
       chooseFiles: '파일 선택',
@@ -532,7 +533,7 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       },
     },
     dropzone: {
-      formats: 'JPG, PNG, WEBP, SVG, HEIC',
+      formats: acceptedImageFormatsKicker,
       title: 'Select images',
       description: 'You can add multiple files at once. Drag and drop is supported too.',
       button: 'Choose files',
@@ -541,7 +542,7 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       back: '← Back',
       dropTitle: 'Drag and drop images',
       dropDescription: 'or click to choose files',
-      hint: 'JPG · PNG · WebP · SVG · HEIC/HEIF · multiple files supported',
+      hint: `${acceptedImageFormatsHint} · multiple files supported`,
       remove: 'Remove',
       addFiles: '+ Add files',
       chooseFiles: 'Choose files',
