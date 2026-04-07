@@ -50,7 +50,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -300,6 +301,7 @@ img {
 
 .legal-page {
   height: 100%;
+  min-height: 100dvh;
   overflow-y: auto;
 }
 
@@ -463,7 +465,8 @@ img {
    STEP 2 — UPLOAD
 ═══════════════════════════════════════════════════════════ */
 .upload-page {
-  height: 100vh;
+  height: 100%;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -633,7 +636,7 @@ img {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 0 20px;
+  padding: 14px 0 calc(20px + env(safe-area-inset-bottom));
   flex-shrink: 0;
 }
 
@@ -683,7 +686,8 @@ img {
   flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
+  min-height: 100dvh;
   overflow: hidden;
 }
 
@@ -752,8 +756,11 @@ img {
 .edit-body {
   flex: 1;
   display: grid;
-  /* columns set via inline style: stripWidth 4px 1fr 280px */
-  grid-template-columns: 100px 4px 1fr 280px;
+  grid-template-columns:
+    var(--edit-strip-width, 100px)
+    var(--edit-divider-width, 4px)
+    minmax(0, 1fr)
+    var(--edit-options-width, 280px);
   overflow: hidden;
   min-height: 0;
 }
@@ -785,6 +792,8 @@ img {
   flex-direction: column;
   gap: 8px;
   background: rgba(255, 255, 255, 0.5);
+  min-height: 0;
+  min-width: 0;
 }
 
 .strip-item {
@@ -896,6 +905,8 @@ img {
   flex-direction: column;
   overflow: hidden;
   background: rgba(25, 18, 8, 0.025);
+  min-width: 0;
+  min-height: 0;
 }
 
 .edit-empty {
@@ -1068,6 +1079,7 @@ img {
   font-size: 0.82rem;
   flex-shrink: 0;
   background: rgba(255, 255, 255, 0.6);
+  min-width: 0;
 }
 
 .meta-filename {
@@ -1116,6 +1128,10 @@ img {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.options-scroll > * {
+  min-width: 0;
 }
 
 .panel-title {
@@ -1254,6 +1270,7 @@ img {
   gap: 6px;
   font-size: 0.76rem;
   color: var(--muted);
+  flex-wrap: wrap;
 }
 
 .done-item-saved {
@@ -1848,13 +1865,13 @@ img {
 }
 
 .document-page {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
 
 .markdown-editor-page {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -1873,6 +1890,7 @@ img {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-height: 0;
 }
 
 .markdown-editor-field {
@@ -2089,6 +2107,7 @@ img {
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  min-width: 0;
 }
 
 .document-workspace .options-panel {
@@ -2213,6 +2232,24 @@ img {
   background: rgba(255, 255, 255, 0.86);
 }
 
+@media (hover: none) {
+  .upload-thumb-remove,
+  .strip-remove {
+    opacity: 1;
+  }
+
+  .mode-card:hover {
+    transform: none;
+    box-shadow: var(--shadow-sm);
+    border-color: var(--line);
+  }
+
+  .mode-card:hover .mode-arrow {
+    color: var(--muted);
+    transform: none;
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════
    RESPONSIVE
 ═══════════════════════════════════════════════════════════ */
@@ -2222,14 +2259,31 @@ img {
   }
 
   .edit-body {
-    grid-template-columns: 80px 1fr;
-    grid-template-rows: 1fr auto;
+    grid-template-columns: 80px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .file-strip {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .preview-area {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .strip-divider {
+    display: none;
   }
 
   .options-panel {
     grid-column: 1 / -1;
+    grid-row: 2;
     flex-direction: row;
     max-height: 220px;
+    border-left: none;
+    border-top: 1px solid var(--line);
   }
 
   .options-scroll {
@@ -2240,6 +2294,11 @@ img {
     gap: 10px;
   }
 
+  .options-scroll > * {
+    min-width: 240px;
+    flex-shrink: 0;
+  }
+
   .panel-actions {
     flex-direction: column;
     flex-shrink: 0;
@@ -2248,8 +2307,8 @@ img {
   }
 
   .document-workspace {
-    grid-template-columns: 88px 1fr;
-    grid-template-rows: auto auto 1fr;
+    grid-template-columns: 88px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
   }
 
   .document-workspace.is-short-viewport {
@@ -2257,8 +2316,14 @@ img {
     grid-template-rows: minmax(0, 1fr);
   }
 
-  .doc-strip-divider {
-    display: none;
+  .doc-page-strip {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .document-preview {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .document-workspace .options-panel {
@@ -2266,6 +2331,17 @@ img {
     grid-row: 2;
     max-height: 220px;
     flex-direction: row;
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+
+  .document-workspace .options-scroll > * {
+    min-width: 260px;
+    flex-shrink: 0;
+  }
+
+  .doc-strip-divider {
+    display: none;
   }
 
   .document-workspace.is-short-viewport .document-preview {
@@ -2278,10 +2354,27 @@ img {
     grid-row: 1;
     max-height: none;
     flex-direction: column;
+    border-top: none;
+    border-left: 1px solid var(--line);
+  }
+
+  .document-workspace.is-short-viewport .options-scroll {
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
+    align-items: stretch;
+  }
+
+  .document-workspace.is-short-viewport .options-scroll > * {
+    min-width: 0;
   }
 }
 
 @media (max-width: 640px) {
+  body {
+    background-attachment: scroll;
+  }
+
   .select-page {
     padding: 28px 16px 60px;
     gap: 36px;
@@ -2291,10 +2384,85 @@ img {
     grid-template-columns: 1fr;
   }
 
+  .mode-card {
+    gap: 14px;
+    padding: 22px 18px 18px;
+  }
+
+  .mode-copy strong {
+    font-size: 1.08rem;
+  }
+
+  .app-footer {
+    padding: 16px 0 4px;
+  }
+
+  .app-footer-inner {
+    align-items: flex-start;
+  }
+
+  .app-footer-links {
+    width: 100%;
+  }
+
+  .app-footer-locale {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+
+  .app-footer-locale-btn {
+    flex: 1;
+  }
+
+  .legal-shell {
+    padding: 24px 16px 32px;
+  }
+
+  .legal-card {
+    padding: 22px 16px;
+  }
+
+  .upload-page {
+    padding: 0 16px;
+  }
+
+  .upload-header {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 16px 0 12px;
+  }
+
+  .upload-preview-area {
+    padding: 2px 0 0;
+  }
+
+  .upload-thumb-grid {
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 10px;
+  }
+
+  .upload-footer {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 0 calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .upload-count {
+    flex: 1 0 100%;
+    margin-right: 0;
+  }
+
+  .upload-add-btn,
+  .upload-confirm-btn {
+    width: 100%;
+    text-align: center;
+  }
+
   .edit-header {
     flex-wrap: wrap;
     gap: 10px;
-    padding: 10px 14px;
+    padding: 10px 12px;
   }
 
   .tool-tabs {
@@ -2306,12 +2474,19 @@ img {
     padding-bottom: 2px;
   }
 
+  .add-more-btn {
+    width: 100%;
+    text-align: center;
+  }
+
   .edit-body {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
   }
 
   .file-strip {
+    grid-column: 1;
+    grid-row: 1;
     flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;
@@ -2327,16 +2502,87 @@ img {
     flex-shrink: 0;
   }
 
+  .strip-add-btn {
+    width: 68px;
+    min-width: 68px;
+    height: 68px;
+  }
+
   .strip-remove {
     opacity: 1;
   }
 
+  .preview-area {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 300px;
+  }
+
+  .preview-frame,
+  .preview-frame-editor {
+    min-height: 280px;
+  }
+
+  .zoom-controls {
+    right: 10px;
+    bottom: 10px;
+    gap: 3px;
+    padding: 3px 4px;
+  }
+
+  .zoom-select {
+    min-width: 64px;
+    font-size: 0.72rem;
+  }
+
+  .toggle-btn {
+    bottom: 52px;
+    max-width: calc(100% - 24px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .file-meta-bar {
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    padding: 8px 12px;
+  }
+
+  .meta-filename {
+    flex: 1 0 100%;
+    max-width: none;
+  }
+
   .options-panel {
-    max-height: 240px;
+    grid-column: 1;
+    grid-row: 3;
+    max-height: min(320px, 42vh);
   }
 
   .panel-actions {
-    width: 180px;
+    width: 160px;
+  }
+
+  .options-scroll {
+    padding: 14px 12px;
+    gap: 8px;
+  }
+
+  .options-scroll > * {
+    min-width: min(82vw, 260px);
+  }
+
+  .size-row {
+    flex-direction: column;
+  }
+
+  .crop-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .rotate-quick-btn {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
   }
 
   .mode-section-head {
@@ -2345,7 +2591,41 @@ img {
   }
 
   .document-workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr) auto;
     padding: 12px;
+    gap: 12px;
+  }
+
+  .doc-page-strip {
+    grid-column: 1;
+    grid-row: 1;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 0 4px;
+    gap: 8px;
+  }
+
+  .doc-page-entry {
+    width: 64px;
+    flex-shrink: 0;
+  }
+
+  .document-preview {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 300px;
+  }
+
+  .document-workspace .options-panel {
+    grid-column: 1;
+    grid-row: 3;
+    max-height: min(320px, 42vh);
+  }
+
+  .document-workspace .options-scroll > * {
+    min-width: min(82vw, 280px);
   }
 
   .markdown-editor-shell {
@@ -2357,7 +2637,7 @@ img {
   }
 
   .markdown-editor-textarea {
-    min-height: 300px;
+    min-height: 50svh;
   }
 
   .markdown-editor-actions {
@@ -2371,9 +2651,22 @@ img {
     min-width: 0;
   }
 
+  .field input,
+  .field select,
+  .document-select,
+  .markdown-editor-input,
+  .markdown-editor-textarea {
+    font-size: 16px;
+  }
+
   .document-workspace.is-short-viewport {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .document-workspace.is-short-viewport .document-preview {
+    grid-column: 1;
+    grid-row: 1;
   }
 
   .document-workspace.is-short-viewport .options-panel {

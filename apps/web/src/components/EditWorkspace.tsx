@@ -641,7 +641,11 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
       <div
         className={`edit-body ${compactStrip ? 'is-compact-strip' : ''}`}
         ref={bodyRef}
-        style={{ gridTemplateColumns: `${effectiveStripWidth}px ${compactStrip ? '0px' : '4px'} 1fr 280px` }}
+        style={{
+          '--edit-strip-width': `${effectiveStripWidth}px`,
+          '--edit-divider-width': compactStrip ? '0px' : '4px',
+          '--edit-options-width': '280px',
+        } as React.CSSProperties}
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
       >
