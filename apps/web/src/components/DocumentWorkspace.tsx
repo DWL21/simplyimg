@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { Footer } from './layout/Footer';
 import {
   formatPageCount,
   formatPageLabel,
@@ -173,7 +172,11 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
           <span className="tool-badge">MD</span>
         </header>
 
-        <label className="upload-dropzone" htmlFor="document-upload-input">
+        <button
+          type="button"
+          className="upload-dropzone"
+          onClick={() => inputRef.current?.click()}
+        >
           <div className="upload-inner">
             <div className="upload-icon">
               <svg width="52" height="52" viewBox="0 0 24 24" fill="none"
@@ -188,7 +191,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
             <span className="upload-sub">{messages.document.dropDescription}</span>
             <span className="upload-hint">MD</span>
           </div>
-        </label>
+        </button>
         {error ? <p className="error-msg">{error.message}</p> : null}
       </div>
     );
@@ -361,7 +364,6 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
         </aside>
       </div>
 
-      <Footer />
     </div>
   );
 }

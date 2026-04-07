@@ -8,7 +8,6 @@ import {
 } from '../i18n/messages';
 import { useImageStore } from '../store/imageStore';
 import CropEditor from './CropEditor';
-import { Footer } from './layout/Footer';
 import OptionsPanel, { type OptionsPanelState } from './OptionsPanel';
 import ResizeEditor from './ResizeEditor';
 import { acceptedImageFormatsHint, acceptedImageInput, bytesToHuman } from '../lib/formatUtils';
@@ -17,6 +16,8 @@ import type { ToolName, ToolOptions } from '../types/image';
 
 const MIN_STRIP_WIDTH = 72;
 const MAX_STRIP_WIDTH = 440;
+const COMPACT_STRIP_HEIGHT_BREAKPOINT = 780;
+const COMPACT_STRIP_WIDTH = 58;
 const ZOOM_PRESET_LEVELS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 
 const DEFAULT_OPTIONS: OptionsPanelState = {
@@ -58,6 +59,9 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const [flipMap, setFlipMap] = useState<Record<string, { horizontal: boolean; vertical: boolean }>>({});
   const [showResult, setShowResult] = useState(false);
   const [stripWidth, setStripWidth] = useState(280);
+  const [compactStrip, setCompactStrip] = useState(
+    () => typeof window !== 'undefined' && window.innerHeight <= COMPACT_STRIP_HEIGHT_BREAKPOINT,
+  );
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
@@ -103,6 +107,16 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   }, []);
 
   useEffect(() => {
+    function handleWindowResize() {
+      setCompactStrip(window.innerHeight <= COMPACT_STRIP_HEIGHT_BREAKPOINT);
+    }
+
+    handleWindowResize();
+    window.addEventListener('resize', handleWindowResize);
+    return () => window.removeEventListener('resize', handleWindowResize);
+  }, []);
+
+  useEffect(() => {
     const el = previewFrameRef.current;
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
@@ -119,11 +133,6 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
       setSelectedId(files[0].id);
     }
   }, [files, selectedId]);
-
-  useEffect(() => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-  }, [selectedId, showResult]);
 
   useEffect(() => {
     setPan((currentPan) => {
@@ -211,6 +220,10 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   }
 
   function handleDividerMouseDown(e: React.MouseEvent) {
+    if (compactStrip) {
+      return;
+    }
+
     if (e.button !== 0) {
       return;
     }
@@ -370,6 +383,8 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const isResizeMode = tool === 'resize' && !!selectedFile;
 
   useEffect(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
     setPreviewNaturalSize(emptyPreviewSize);
   }, [previewUrl]);
 
@@ -437,6 +452,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const zoomPresetValue = ZOOM_PRESET_LEVELS.some((level) => Math.abs(level - zoom) < 0.001)
     ? String(zoom)
     : 'custom';
+  const effectiveStripWidth = compactStrip ? COMPACT_STRIP_WIDTH : stripWidth;
 
   useEffect(() => {
     if (!selectedFile) return;
@@ -491,9 +507,9 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
       </header>
 
       <div
-        className="edit-body"
+        className={`edit-body ${compactStrip ? 'is-compact-strip' : ''}`}
         ref={bodyRef}
-        style={{ gridTemplateColumns: `${stripWidth}px 4px 1fr 280px` }}
+        style={{ gridTemplateColumns: `${effectiveStripWidth}px ${compactStrip ? '0px' : '4px'} 1fr 280px` }}
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
       >
@@ -782,7 +798,6 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
         </aside>
       </div>
 
-      <Footer />
     </div>
   );
 }

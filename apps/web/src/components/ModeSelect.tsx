@@ -34,7 +34,6 @@ export default function ModeSelect({ onSelectImage, onSelectDocument }: Props) {
             />
             <div className="select-signature-copy">
               <strong>{messages.brand.name}</strong>
-              <span>{messages.brand.tagline}</span>
             </div>
           </div>
           <h1 className="select-title">{messages.modeSelect.title}</h1>

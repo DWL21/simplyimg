@@ -148,15 +148,8 @@ img {
 
 .select-signature {
   display: inline-flex;
-  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 16px 18px 14px;
-  border-radius: 28px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 248, 238, 0.72));
-  border: 1px solid rgba(25, 18, 8, 0.08);
-  box-shadow: 0 12px 30px rgba(40, 28, 10, 0.08);
+  gap: 12px;
 }
 
 .select-signature-mark {
@@ -167,22 +160,13 @@ img {
 
 .select-signature-copy {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 3px;
 }
 
 .select-signature-copy strong {
-  font-size: 1rem;
+  font-size: 1.02rem;
+  font-weight: 800;
   letter-spacing: -0.04em;
-}
-
-.select-signature-copy span {
-  color: var(--muted);
-  font-size: 0.76rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 .select-eyebrow {
@@ -516,12 +500,15 @@ img {
   flex: 1;
   display: grid;
   place-items: center;
+  width: 100%;
+  padding: 0;
   border-radius: var(--r-xl);
   border: 2px dashed rgba(31, 122, 95, 0.22);
   background: linear-gradient(170deg, rgba(255, 255, 255, 0.82) 0%, rgba(245, 240, 230, 0.65) 100%);
   cursor: pointer;
   transition: border-color 170ms, background 170ms, transform 150ms;
   margin-bottom: 16px;
+  appearance: none;
 }
 
 .upload-dropzone:hover {
