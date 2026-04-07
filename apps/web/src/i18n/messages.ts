@@ -54,6 +54,8 @@ type LocaleMessages = {
     documentToolDescription: string;
     documentEditorTitle: string;
     documentEditorDescription: string;
+    documentOpenTitle: string;
+    documentOpenDescription: string;
     toolDescriptions: Record<ToolId, string>;
   };
   toolCard: {
@@ -200,7 +202,6 @@ type LocaleMessages = {
     title: string;
     fileNameLabel: string;
     sourceLabel: string;
-    openMarkdown: string;
     preview: string;
     edit: string;
     fileNamePlaceholder: string;
@@ -257,7 +258,9 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       documentToolTitle: 'Markdown을 PDF로 변환',
       documentToolDescription: 'Markdown 파일을 PDF로 변환합니다.',
       documentEditorTitle: 'Markdown 작성하기',
-      documentEditorDescription: '본문을 직접 작성하거나 MD 파일을 불러와 편집합니다.',
+      documentEditorDescription: '새 Markdown 문서를 직접 작성합니다.',
+      documentOpenTitle: 'MD 파일 열기',
+      documentOpenDescription: '기존 MD 파일을 불러와 바로 편집합니다.',
       toolDescriptions: {
         compress: '파일 크기를 줄이고 품질을 최적화합니다',
         resize: '가로/세로 픽셀 크기를 바꿉니다',
@@ -439,7 +442,6 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       title: 'Markdown 작성하기',
       fileNameLabel: '파일명',
       sourceLabel: '본문',
-      openMarkdown: 'MD 파일 불러오기',
       preview: '미리보기',
       edit: '편집',
       fileNamePlaceholder: '새문서.md',
@@ -494,7 +496,9 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       documentToolTitle: 'Convert Markdown to PDF',
       documentToolDescription: 'Turn Markdown files into PDFs.',
       documentEditorTitle: 'Write Markdown',
-      documentEditorDescription: 'Write raw Markdown or open an MD file to edit it.',
+      documentEditorDescription: 'Start a new Markdown draft and edit it directly.',
+      documentOpenTitle: 'Open MD file',
+      documentOpenDescription: 'Open an existing MD file and continue editing it.',
       toolDescriptions: {
         compress: 'Reduce file size and optimize quality',
         resize: 'Change the image width and height in pixels',
@@ -676,7 +680,6 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       title: 'Write Markdown',
       fileNameLabel: 'File name',
       sourceLabel: 'Markdown source',
-      openMarkdown: 'Open MD file',
       preview: 'Preview',
       edit: 'Edit',
       fileNamePlaceholder: 'untitled.md',

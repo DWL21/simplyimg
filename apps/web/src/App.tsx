@@ -7,6 +7,7 @@ import { useAppLocale } from './i18n/messages';
 import { getPrivacyPolicyContent, getTermsContent } from './lib/legalContent';
 import { LegalDocumentPage } from './pages/LegalDocumentPage';
 import { useDocumentStore } from './store/documentStore';
+import { useMarkdownEditorStore } from './store/markdownEditorStore';
 import type { ToolName } from './types/image';
 
 interface DocumentRouteState {
@@ -20,6 +21,10 @@ function HomeRoute() {
       onSelectImage={(t: ToolName) => navigate(`/image/${t}`)}
       onSelectDocument={() => navigate('/document/pdf')}
       onSelectDocumentEditor={() => navigate('/document/write')}
+      onOpenDocumentEditorFile={async (file) => {
+        await useMarkdownEditorStore.getState().loadFile(file);
+        navigate('/document/write');
+      }}
     />
   );
 }

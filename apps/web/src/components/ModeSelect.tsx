@@ -1,3 +1,4 @@
+import { useRef, type ChangeEvent } from 'react';
 import { useI18n } from '../i18n/messages';
 import { ALL_TOOLS, getToolDisplayLabel } from '../lib/toolConstants';
 import type { ToolName } from '../types/image';
@@ -16,10 +17,28 @@ interface Props {
   onSelectImage: (tool: ToolName) => void;
   onSelectDocument: () => void;
   onSelectDocumentEditor: () => void;
+  onOpenDocumentEditorFile: (file: File) => Promise<void>;
 }
 
-export default function ModeSelect({ onSelectImage, onSelectDocument, onSelectDocumentEditor }: Props) {
+export default function ModeSelect({
+  onSelectImage,
+  onSelectDocument,
+  onSelectDocumentEditor,
+  onOpenDocumentEditorFile,
+}: Props) {
   const { locale, messages } = useI18n();
+  const markdownFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  async function handleMarkdownFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    await onOpenDocumentEditorFile(file);
+  }
 
   return (
     <div className="select-page">
@@ -65,6 +84,13 @@ export default function ModeSelect({ onSelectImage, onSelectDocument, onSelectDo
               <h2>{messages.modeSelect.documentSectionTitle}</h2>
             </div>
           </div>
+          <input
+            ref={markdownFileInputRef}
+            type="file"
+            accept=".md,.markdown,text/markdown"
+            hidden
+            onChange={(event) => void handleMarkdownFileChange(event)}
+          />
           <div className="mode-grid">
             <button className="mode-card mode-card-document" onClick={onSelectDocument}>
               <span className="mode-icon">PDF</span>
@@ -79,6 +105,17 @@ export default function ModeSelect({ onSelectImage, onSelectDocument, onSelectDo
               <div className="mode-copy">
                 <strong>{messages.modeSelect.documentEditorTitle}</strong>
                 <p>{messages.modeSelect.documentEditorDescription}</p>
+              </div>
+              <span className="mode-arrow">→</span>
+            </button>
+            <button
+              className="mode-card mode-card-document"
+              onClick={() => markdownFileInputRef.current?.click()}
+            >
+              <span className="mode-icon">OPEN</span>
+              <div className="mode-copy">
+                <strong>{messages.modeSelect.documentOpenTitle}</strong>
+                <p>{messages.modeSelect.documentOpenDescription}</p>
               </div>
               <span className="mode-arrow">→</span>
             </button>

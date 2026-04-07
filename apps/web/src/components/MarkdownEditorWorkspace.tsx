@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { useI18n } from '../i18n/messages';
 import { normalizeMarkdownFileName } from '../lib/markdownFiles';
 import { renderMarkdownMarkup } from '../lib/markdownRenderer';
@@ -22,13 +22,11 @@ function downloadMarkdown(markdown: string, fileName: string) {
 
 export default function MarkdownEditorWorkspace({ onBack, onOpenPdf }: MarkdownEditorWorkspaceProps) {
   const { locale, messages } = useI18n();
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const fileName = useMarkdownEditorStore((state) => state.fileName);
   const markdown = useMarkdownEditorStore((state) => state.markdown);
   const uploadError = useMarkdownEditorStore((state) => state.error);
   const setFileName = useMarkdownEditorStore((state) => state.setFileName);
   const setMarkdown = useMarkdownEditorStore((state) => state.setMarkdown);
-  const loadFile = useMarkdownEditorStore((state) => state.loadFile);
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit');
   const [isOpeningPdf, setIsOpeningPdf] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
@@ -102,20 +100,6 @@ export default function MarkdownEditorWorkspace({ onBack, onOpenPdf }: MarkdownE
     }
   }
 
-  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-
-    if (!file) {
-      return;
-    }
-
-    setActionErrorMessage(null);
-    setPreviewErrorMessage(null);
-    setViewMode('edit');
-    await loadFile(file);
-  }
-
   return (
     <div className="markdown-editor-page">
       <header className="edit-header">
@@ -133,22 +117,6 @@ export default function MarkdownEditorWorkspace({ onBack, onOpenPdf }: MarkdownE
               <button
                 type="button"
                 className="re-edit-btn markdown-editor-toolbar-btn"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {messages.markdownEditor.openMarkdown}
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".md,.markdown,text/markdown"
-                hidden
-                onChange={(event) => void handleFileChange(event)}
-              />
-            </div>
-            <div className="markdown-editor-toolbar-group">
-              <button
-                type="button"
-                className="re-edit-btn markdown-editor-toolbar-btn"
                 onClick={() => {
                   setActionErrorMessage(null);
                   setPreviewErrorMessage(null);
@@ -156,6 +124,26 @@ export default function MarkdownEditorWorkspace({ onBack, onOpenPdf }: MarkdownE
                 }}
               >
                 {viewMode === 'edit' ? messages.markdownEditor.preview : messages.markdownEditor.edit}
+              </button>
+            </div>
+            <div className="markdown-editor-toolbar-group markdown-editor-toolbar-actions">
+              <button
+                type="button"
+                className="re-edit-btn markdown-editor-toolbar-btn"
+                onClick={() => {
+                  setActionErrorMessage(null);
+                  downloadMarkdown(markdown, resolvedFileName);
+                }}
+              >
+                {messages.markdownEditor.saveMarkdown}
+              </button>
+              <button
+                type="button"
+                className="process-btn markdown-editor-toolbar-btn"
+                onClick={() => void handleOpenPdf()}
+                disabled={isOpeningPdf}
+              >
+                {isOpeningPdf ? messages.markdownEditor.openingPdf : messages.markdownEditor.savePdf}
               </button>
             </div>
           </div>
@@ -218,27 +206,6 @@ export default function MarkdownEditorWorkspace({ onBack, onOpenPdf }: MarkdownE
           </div>
 
           {errorMessage ? <p className="error-msg">{errorMessage}</p> : null}
-
-          <div className="markdown-editor-actions">
-            <button
-              type="button"
-              className="re-edit-btn"
-              onClick={() => {
-                setActionErrorMessage(null);
-                downloadMarkdown(markdown, resolvedFileName);
-              }}
-            >
-              {messages.markdownEditor.saveMarkdown}
-            </button>
-            <button
-              type="button"
-              className="process-btn"
-              onClick={() => void handleOpenPdf()}
-              disabled={isOpeningPdf}
-            >
-              {isOpeningPdf ? messages.markdownEditor.openingPdf : messages.markdownEditor.savePdf}
-            </button>
-          </div>
         </section>
       </div>
     </div>
