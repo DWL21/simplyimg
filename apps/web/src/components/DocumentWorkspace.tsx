@@ -14,6 +14,7 @@ interface DocumentWorkspaceProps {
 
 const MIN_PAGE_STRIP_WIDTH = 112;
 const MAX_PAGE_STRIP_WIDTH = 280;
+const SHORT_DOC_HEIGHT_BREAKPOINT = 820;
 
 export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
   const defaultStripWidth = 144;
@@ -34,6 +35,9 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
   const [activePage, setActivePage] = useState(0);
   const [pageThumbs, setPageThumbs] = useState<{ headHtml: string; pages: string[] }>({ headHtml: '', pages: [] });
   const [pageStripWidth, setPageStripWidth] = useState(defaultStripWidth);
+  const [isShortViewport, setIsShortViewport] = useState(
+    () => typeof window !== 'undefined' && window.innerHeight <= SHORT_DOC_HEIGHT_BREAKPOINT,
+  );
   const stripResizeCleanupRef = useRef<(() => void) | null>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -88,6 +92,16 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
   useEffect(() => () => {
     stripResizeCleanupRef.current?.();
     document.body.style.cursor = '';
+  }, []);
+
+  useEffect(() => {
+    function handleWindowResize() {
+      setIsShortViewport(window.innerHeight <= SHORT_DOC_HEIGHT_BREAKPOINT);
+    }
+
+    handleWindowResize();
+    window.addEventListener('resize', handleWindowResize);
+    return () => window.removeEventListener('resize', handleWindowResize);
   }, []);
 
   function scrollToPage(index: number) {
@@ -222,7 +236,11 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
         </button>
       </header>
 
-      <div className="document-workspace" ref={workspaceRef} style={workspaceStyle}>
+      <div
+        className={`document-workspace ${isShortViewport ? 'is-short-viewport' : ''}`}
+        ref={workspaceRef}
+        style={workspaceStyle}
+      >
         {/* Left: page strip */}
         <aside className="doc-page-strip">
           {pageCount > 0
