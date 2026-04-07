@@ -34,6 +34,48 @@ const numericAttributes = new Set([
 const listAttributes = new Set(['d', 'points', 'transform', 'viewBox']);
 const colorAttributes = new Set(['fill', 'stroke', 'stop-color']);
 
+interface SvgAttributeLike {
+  name: string;
+  localName: string;
+  prefix?: string | null;
+  value: string;
+}
+
+interface SvgNodeLike {
+  nodeType: number;
+  textContent?: string | null;
+  parentNode?: {
+    removeChild: (child: SvgNodeLike) => void;
+  } | null;
+}
+
+interface SvgElementLike extends SvgNodeLike {
+  localName: string;
+  prefix?: string | null;
+  attributes: ArrayLike<SvgAttributeLike>;
+  childNodes: ArrayLike<SvgNodeLike>;
+  removeAttribute: (name: string) => void;
+  setAttribute: (name: string, value: string) => void;
+}
+
+interface SvgDocumentLike {
+  documentElement: SvgElementLike;
+  querySelector?: (selector: string) => unknown;
+}
+
+interface SvgParserLike {
+  parseFromString: (input: string, mimeType: string) => SvgDocumentLike;
+}
+
+interface SvgSerializerLike {
+  serializeToString: (node: SvgNodeLike) => string;
+}
+
+interface SvgDomScopeLike {
+  DOMParser?: new () => SvgParserLike;
+  XMLSerializer?: new () => SvgSerializerLike;
+}
+
 function precisionFromQuality(quality?: number) {
   const value = typeof quality === 'number' ? Math.max(1, Math.min(100, Math.round(quality))) : 80;
   if (value >= 90) return 4;
@@ -125,7 +167,7 @@ function optimizeStyleValue(value: string, precision: number) {
   return declarations.join(';');
 }
 
-function shouldRemoveElement(element: Element) {
+function shouldRemoveElement(element: SvgElementLike) {
   if (element.localName === 'metadata') {
     return true;
   }
@@ -141,7 +183,7 @@ function shouldRemoveElement(element: Element) {
   return false;
 }
 
-function shouldRemoveAttribute(attribute: Attr) {
+function shouldRemoveAttribute(attribute: SvgAttributeLike) {
   if (attribute.prefix && editorPrefixes.has(attribute.prefix)) {
     return true;
   }
@@ -151,7 +193,7 @@ function shouldRemoveAttribute(attribute: Attr) {
     || attribute.name === 'xmlns:serif';
 }
 
-function optimizeElement(element: Element, precision: number) {
+function optimizeElement(element: SvgElementLike, precision: number) {
   const attributes = Array.from(element.attributes);
   for (const attribute of attributes) {
     if (shouldRemoveAttribute(attribute)) {
@@ -203,7 +245,7 @@ function optimizeElement(element: Element, precision: number) {
       continue;
     }
 
-    const childElement = child as Element;
+    const childElement = child as SvgElementLike;
     if (shouldRemoveElement(childElement)) {
       child.parentNode?.removeChild(child);
       continue;
@@ -214,9 +256,18 @@ function optimizeElement(element: Element, precision: number) {
 }
 
 export function optimizeSvgMarkup(source: string, quality?: number) {
-  const parser = new DOMParser();
+  const domScope = globalThis as unknown as SvgDomScopeLike;
+  const parserCtor = domScope.DOMParser;
+  const serializerCtor = domScope.XMLSerializer;
+  if (!parserCtor || !serializerCtor) {
+    throw new Error('SVG 최적화를 지원하지 않는 환경입니다.');
+  }
+
+  const parser = new parserCtor();
   const document = parser.parseFromString(source, 'image/svg+xml');
-  const parserError = document.querySelector('parsererror');
+  const parserError = typeof document.querySelector === 'function'
+    ? document.querySelector('parsererror')
+    : null;
   if (parserError || document.documentElement.localName !== 'svg') {
     throw new Error('SVG 파일을 해석할 수 없습니다.');
   }
@@ -224,7 +275,7 @@ export function optimizeSvgMarkup(source: string, quality?: number) {
   const svg = document.documentElement;
   optimizeElement(svg, precisionFromQuality(quality));
 
-  const serialized = new XMLSerializer().serializeToString(svg);
+  const serialized = new serializerCtor().serializeToString(svg);
   return serialized
     .replace(/>\s+</g, '><')
     .replace(/\s{2,}/g, ' ')
