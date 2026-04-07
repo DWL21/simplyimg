@@ -7,6 +7,9 @@ import { acceptedImageInput, bytesToHuman } from '../lib/formatUtils';
 import { TOOL_LABELS, ALL_TOOLS } from '../lib/toolConstants';
 import type { ToolName, ToolOptions } from '../types/image';
 
+const MIN_STRIP_WIDTH = 72;
+const MAX_STRIP_WIDTH = 440;
+
 const DEFAULT_OPTIONS: OptionsPanelState = {
   compress: { quality: 80 },
   resize: { width: 1920, height: 1080 },
@@ -49,6 +52,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const stripResizeCleanupRef = useRef<(() => void) | null>(null);
 
   const bodyRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,7 +61,10 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const [previewNaturalSize, setPreviewNaturalSize] = useState(emptyPreviewSize);
 
   useEffect(() => {
-    return () => { document.body.style.cursor = ''; };
+    return () => {
+      stripResizeCleanupRef.current?.();
+      document.body.style.cursor = '';
+    };
   }, []);
 
   useEffect(() => {
@@ -143,24 +150,41 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   }
 
   function handleDividerMouseDown(e: React.MouseEvent) {
+    if (e.button !== 0) {
+      return;
+    }
+
     e.preventDefault();
+    stripResizeCleanupRef.current?.();
     document.body.style.cursor = 'col-resize';
 
+    function stopResizing() {
+      document.body.style.cursor = '';
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', stopResizing);
+      window.removeEventListener('blur', stopResizing);
+      if (stripResizeCleanupRef.current === stopResizing) {
+        stripResizeCleanupRef.current = null;
+      }
+    }
+
     function onMouseMove(ev: MouseEvent) {
+      if ((ev.buttons & 1) === 0) {
+        stopResizing();
+        return;
+      }
+
       const body = bodyRef.current;
       if (!body) return;
       const rect = body.getBoundingClientRect();
-      setStripWidth(Math.max(72, Math.min(320, ev.clientX - rect.left)));
+      const maxWidth = Math.max(MIN_STRIP_WIDTH, Math.min(MAX_STRIP_WIDTH, rect.width - 524));
+      setStripWidth(Math.max(MIN_STRIP_WIDTH, Math.min(maxWidth, ev.clientX - rect.left)));
     }
 
-    function onMouseUp() {
-      document.body.style.cursor = '';
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    }
-
+    stripResizeCleanupRef.current = stopResizing;
     window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('mouseup', stopResizing);
+    window.addEventListener('blur', stopResizing);
   }
 
   const selectedFile = files.find((f) => f.id === selectedId) ?? files[0];

@@ -95,7 +95,7 @@ export const privacyPolicyContent: LegalDocumentContent = {
     {
       title: '부칙',
       paragraphs: [
-        `본 개인정보 처리방침은 ${privacyPolicyEffectiveDate}부터 적용됩니다.`,
+        `시행일: ${privacyPolicyEffectiveDate}`,
       ],
     },
   ],
@@ -178,7 +178,7 @@ export const termsContent: LegalDocumentContent = {
     {
       title: '부칙',
       paragraphs: [
-        `본 약관은 ${termsEffectiveDate}부터 적용됩니다.`,
+        `시행일: ${termsEffectiveDate}`,
       ],
     },
   ],

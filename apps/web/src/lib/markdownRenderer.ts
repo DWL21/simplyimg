@@ -252,7 +252,7 @@ function documentStyles(options: RenderOptions) {
       white-space: nowrap;
     }
     .doc-footer-pagenum {
-      font-weight: 700;
+      font-weight: 400;
       color: var(--text);
     }
     .doc-footer-sep {

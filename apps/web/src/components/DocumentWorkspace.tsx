@@ -6,6 +6,9 @@ interface DocumentWorkspaceProps {
   onBack: () => void;
 }
 
+const MIN_PAGE_STRIP_WIDTH = 112;
+const MAX_PAGE_STRIP_WIDTH = 280;
+
 export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
   const defaultStripWidth = 124;
   const files = useDocumentStore((state) => state.files);
@@ -24,6 +27,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
   const [activePage, setActivePage] = useState(0);
   const [pageThumbs, setPageThumbs] = useState<{ headHtml: string; pages: string[] }>({ headHtml: '', pages: [] });
   const [pageStripWidth, setPageStripWidth] = useState(defaultStripWidth);
+  const stripResizeCleanupRef = useRef<(() => void) | null>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -66,7 +70,10 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
     return () => window.removeEventListener('message', handleMessage);
   }, [handleMessage]);
 
-  useEffect(() => () => { document.body.style.cursor = ''; }, []);
+  useEffect(() => () => {
+    stripResizeCleanupRef.current?.();
+    document.body.style.cursor = '';
+  }, []);
 
   function scrollToPage(index: number) {
     iframeRef.current?.contentWindow?.postMessage({ type: 'doc-scroll-to-page', index }, '*');
@@ -74,10 +81,30 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
   }
 
   function handleStripDividerMouseDown(event: React.MouseEvent<HTMLDivElement>) {
+    if (event.button !== 0) {
+      return;
+    }
+
     event.preventDefault();
+    stripResizeCleanupRef.current?.();
     document.body.style.cursor = 'col-resize';
 
+    function stopResizing() {
+      document.body.style.cursor = '';
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', stopResizing);
+      window.removeEventListener('blur', stopResizing);
+      if (stripResizeCleanupRef.current === stopResizing) {
+        stripResizeCleanupRef.current = null;
+      }
+    }
+
     function handleMouseMove(nextEvent: MouseEvent) {
+      if ((nextEvent.buttons & 1) === 0) {
+        stopResizing();
+        return;
+      }
+
       const workspace = workspaceRef.current;
       if (!workspace) {
         return;
@@ -85,17 +112,17 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
 
       const rect = workspace.getBoundingClientRect();
       const nextWidth = nextEvent.clientX - rect.left;
-      setPageStripWidth(Math.max(112, Math.min(176, nextWidth)));
+      const maxWidth = Math.max(
+        MIN_PAGE_STRIP_WIDTH,
+        Math.min(MAX_PAGE_STRIP_WIDTH, rect.width - 624),
+      );
+      setPageStripWidth(Math.max(MIN_PAGE_STRIP_WIDTH, Math.min(maxWidth, nextWidth)));
     }
 
-    function handleMouseUp() {
-      document.body.style.cursor = '';
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    }
-
+    stripResizeCleanupRef.current = stopResizing;
     window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('mouseup', stopResizing);
+    window.addEventListener('blur', stopResizing);
   }
 
   async function handleFiles(incoming: File[]) {
@@ -153,7 +180,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
 
   const workspaceStyle = {
     '--doc-strip-width': `${pageStripWidth}px`,
-    '--doc-thumb-scale': `${Math.max(0.11, Math.min(0.22, (pageStripWidth - 4) / 793))}`,
+    '--doc-thumb-scale': `${Math.max(0.11, Math.min(0.35, (pageStripWidth - 4) / 793))}`,
   } as CSSProperties;
 
   return (
