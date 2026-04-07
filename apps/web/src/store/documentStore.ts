@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { getCurrentLocale } from '../i18n/messages';
-import { normalizeMarkdownFileName } from '../lib/markdownFiles';
+import { isMarkdownFile, normalizeMarkdownFileName } from '../lib/markdownFiles';
 import {
   createDocumentFileTooLargeError,
   createDocumentRenderingError,
@@ -16,13 +16,8 @@ function makeId() {
   return crypto.randomUUID();
 }
 
-function isDocumentFile(file: File) {
-  const lowered = file.name.toLowerCase();
-  return file.type.includes('markdown') || lowered.endsWith('.md') || lowered.endsWith('.markdown');
-}
-
 function validateDocumentFile(file: File) {
-  if (!isDocumentFile(file)) {
+  if (!isMarkdownFile(file)) {
     return createUnsupportedDocumentFileError(file);
   }
 

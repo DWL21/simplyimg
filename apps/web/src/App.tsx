@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import ModeSelect from './components/ModeSelect';
 import ToolFlow from './components/ToolFlow';
 import DocumentWorkspace from './components/DocumentWorkspace';
@@ -8,6 +8,10 @@ import { getPrivacyPolicyContent, getTermsContent } from './lib/legalContent';
 import { LegalDocumentPage } from './pages/LegalDocumentPage';
 import { useDocumentStore } from './store/documentStore';
 import type { ToolName } from './types/image';
+
+interface DocumentRouteState {
+  source?: 'markdown-editor';
+}
 
 function HomeRoute() {
   const navigate = useNavigate();
@@ -21,12 +25,19 @@ function HomeRoute() {
 }
 
 function DocumentRoute() {
+  const location = useLocation();
   const navigate = useNavigate();
+  const state = location.state as DocumentRouteState | null;
 
   return (
     <DocumentWorkspace
       onBack={() => {
         useDocumentStore.getState().reset();
+        if (state?.source === 'markdown-editor') {
+          navigate('/document/write');
+          return;
+        }
+
         navigate('/');
       }}
     />
@@ -41,7 +52,7 @@ function MarkdownEditorRoute() {
       onBack={() => navigate('/')}
       onOpenPdf={async (markdown, fileName) => {
         await useDocumentStore.getState().loadDraft(markdown, fileName);
-        navigate('/document/pdf');
+        navigate('/document/pdf', { state: { source: 'markdown-editor' } });
       }}
     />
   );

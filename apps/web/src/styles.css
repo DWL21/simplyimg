@@ -1893,6 +1893,25 @@ img {
   min-height: 0;
 }
 
+.markdown-editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.markdown-editor-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.markdown-editor-toolbar-btn {
+  min-width: 0;
+}
+
 .markdown-editor-field {
   display: flex;
   flex-direction: column;
@@ -1935,8 +1954,156 @@ img {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
 }
 
+.markdown-editor-view {
+  flex: 1;
+  min-height: 360px;
+  overflow: hidden;
+}
+
+.markdown-editor-viewer {
+  height: 100%;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 22px 24px;
+}
+
+.markdown-editor-viewer.is-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  text-align: center;
+}
+
+.markdown-editor-viewer.is-empty p {
+  margin: 0;
+  max-width: 32rem;
+}
+
+.markdown-viewer-body {
+  color: var(--text);
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+.markdown-viewer-body > :first-child {
+  margin-top: 0;
+}
+
+.markdown-viewer-body > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-viewer-body h1,
+.markdown-viewer-body h2,
+.markdown-viewer-body h3,
+.markdown-viewer-body h4,
+.markdown-viewer-body h5,
+.markdown-viewer-body h6 {
+  margin: 1.45em 0 0.55em;
+  line-height: 1.18;
+  letter-spacing: -0.03em;
+}
+
+.markdown-viewer-body h1 {
+  font-size: 2rem;
+}
+
+.markdown-viewer-body h2 {
+  font-size: 1.55rem;
+}
+
+.markdown-viewer-body h3 {
+  font-size: 1.28rem;
+}
+
+.markdown-viewer-body p,
+.markdown-viewer-body ul,
+.markdown-viewer-body ol,
+.markdown-viewer-body pre,
+.markdown-viewer-body blockquote,
+.markdown-viewer-body table {
+  margin: 0 0 1.05em;
+}
+
+.markdown-viewer-body ul,
+.markdown-viewer-body ol {
+  padding-left: 1.3em;
+}
+
+.markdown-viewer-body a {
+  color: inherit;
+  text-underline-offset: 0.18em;
+}
+
+.markdown-viewer-body hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 28px 0;
+}
+
+.markdown-viewer-body code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  background: #f5efe4;
+  border-radius: 7px;
+  padding: 0.12em 0.36em;
+  font-size: 0.92em;
+}
+
+.markdown-viewer-body pre {
+  overflow-x: auto;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f5efe4;
+  border: 1px solid var(--line);
+}
+
+.markdown-viewer-body pre code {
+  background: transparent;
+  padding: 0;
+  display: block;
+  white-space: pre-wrap;
+}
+
+.markdown-viewer-body blockquote {
+  margin-left: 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--accent);
+  background: rgba(31, 122, 95, 0.08);
+  color: #4f4a43;
+}
+
+.markdown-viewer-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.markdown-viewer-body th,
+.markdown-viewer-body td {
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.markdown-viewer-body th {
+  background: #f4efe7;
+}
+
+.markdown-viewer-body img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 16px 0;
+  border-radius: 12px;
+}
+
 .markdown-editor-input:focus,
-.markdown-editor-textarea:focus {
+.markdown-editor-textarea:focus,
+.markdown-editor-viewer:focus-within {
   outline: none;
   border-color: rgba(27, 24, 20, 0.35);
   box-shadow: 0 0 0 4px rgba(117, 91, 44, 0.12);
@@ -2629,20 +2796,47 @@ img {
   }
 
   .markdown-editor-shell {
-    padding: 12px;
+    padding: 8px 0 0;
+  }
+
+  .markdown-editor-page .edit-header {
+    padding-inline: 10px;
   }
 
   .markdown-editor-panel {
-    padding: 14px;
+    padding: 12px 10px 14px;
+    border-radius: 20px 20px 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    box-shadow: none;
   }
 
   .markdown-editor-textarea {
     min-height: 50svh;
+    padding: 14px 12px;
+  }
+
+  .markdown-editor-view {
+    min-height: 50svh;
+  }
+
+  .markdown-editor-viewer {
+    padding: 16px 14px;
+  }
+
+  .markdown-editor-toolbar,
+  .markdown-editor-toolbar-group {
+    width: 100%;
   }
 
   .markdown-editor-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .markdown-editor-toolbar-btn {
+    width: 100%;
   }
 
   .markdown-editor-actions .process-btn,

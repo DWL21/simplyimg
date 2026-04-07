@@ -200,11 +200,17 @@ type LocaleMessages = {
     title: string;
     fileNameLabel: string;
     sourceLabel: string;
+    openMarkdown: string;
+    preview: string;
+    edit: string;
     fileNamePlaceholder: string;
     sourcePlaceholder: string;
     saveMarkdown: string;
     savePdf: string;
     openingPdf: string;
+    previewLoading: string;
+    previewEmpty: string;
+    previewFailed: string;
     openPdfDescription: string;
   };
   imagePreview: {
@@ -251,7 +257,7 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       documentToolTitle: 'Markdown을 PDF로 변환',
       documentToolDescription: 'Markdown 파일을 PDF로 변환합니다.',
       documentEditorTitle: 'Markdown 작성하기',
-      documentEditorDescription: '본문을 직접 작성하고 저장합니다.',
+      documentEditorDescription: '본문을 직접 작성하거나 MD 파일을 불러와 편집합니다.',
       toolDescriptions: {
         compress: '파일 크기를 줄이고 품질을 최적화합니다',
         resize: '가로/세로 픽셀 크기를 바꿉니다',
@@ -433,11 +439,17 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       title: 'Markdown 작성하기',
       fileNameLabel: '파일명',
       sourceLabel: '본문',
+      openMarkdown: 'MD 파일 불러오기',
+      preview: '미리보기',
+      edit: '편집',
       fileNamePlaceholder: '새문서.md',
       sourcePlaceholder: '# 제목\n\n본문을 작성하세요.',
       saveMarkdown: 'MD 파일로 저장하기',
       savePdf: 'PDF로 저장하기',
       openingPdf: 'PDF 화면 여는 중…',
+      previewLoading: '미리보기를 불러오는 중…',
+      previewEmpty: '표시할 Markdown 내용이 없습니다.',
+      previewFailed: 'Markdown 미리보기를 불러오지 못했습니다.',
       openPdfDescription: '현재 작성한 본문을 기존 Markdown → PDF 화면으로 넘깁니다.',
     },
     imagePreview: {
@@ -482,7 +494,7 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       documentToolTitle: 'Convert Markdown to PDF',
       documentToolDescription: 'Turn Markdown files into PDFs.',
       documentEditorTitle: 'Write Markdown',
-      documentEditorDescription: 'Write and save raw Markdown source.',
+      documentEditorDescription: 'Write raw Markdown or open an MD file to edit it.',
       toolDescriptions: {
         compress: 'Reduce file size and optimize quality',
         resize: 'Change the image width and height in pixels',
@@ -664,11 +676,17 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       title: 'Write Markdown',
       fileNameLabel: 'File name',
       sourceLabel: 'Markdown source',
+      openMarkdown: 'Open MD file',
+      preview: 'Preview',
+      edit: 'Edit',
       fileNamePlaceholder: 'untitled.md',
       sourcePlaceholder: '# Title\n\nWrite your Markdown source here.',
       saveMarkdown: 'Save as MD',
       savePdf: 'Save as PDF',
       openingPdf: 'Opening PDF view…',
+      previewLoading: 'Loading preview…',
+      previewEmpty: 'There is no Markdown content to preview.',
+      previewFailed: 'Failed to load the Markdown preview.',
       openPdfDescription: 'Send the current Markdown source to the existing Markdown → PDF screen.',
     },
     imagePreview: {

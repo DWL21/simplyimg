@@ -507,9 +507,13 @@ export async function renderMarkdownPreviewDocument(file: File, options: RenderO
   return renderMarkdownPreviewSource(await file.text(), file.name, options);
 }
 
-export async function renderMarkdownPreviewSource(markdown: string, fileName: string, options: RenderOptions) {
+export async function renderMarkdownMarkup(markdown: string) {
   await ensureRenderer();
-  const renderedBody = renderMarkdown(markdown);
+  return renderMarkdown(markdown);
+}
+
+export async function renderMarkdownPreviewSource(markdown: string, fileName: string, options: RenderOptions) {
+  const renderedBody = await renderMarkdownMarkup(markdown);
   return {
     previewHtml: buildDocumentHtml(fileName, renderedBody, 'preview', options),
     printHtml: buildDocumentHtml(fileName, renderedBody, 'print', options),
