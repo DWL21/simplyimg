@@ -35,7 +35,8 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
 
   if (tool === 'compress') {
     const s = state.compress;
-    const formats: { label: string; value: OutputFormat }[] = [
+    const formats: { label: string; value: OutputFormat | undefined }[] = [
+      { label: '원본 유지', value: undefined },
       { label: 'JPEG', value: 'jpeg' },
       { label: 'JPG', value: 'jpg' },
       { label: 'PNG', value: 'png' },
@@ -63,7 +64,7 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
           <div className="chip-row">
             {formats.map((f) => (
               <button
-                key={f.value}
+                key={f.label}
                 className={`chip ${s.format === f.value ? 'is-active' : ''}`}
                 onClick={() => patch('compress', { ...s, format: f.value })}
               >

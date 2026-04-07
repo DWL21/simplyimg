@@ -5,7 +5,7 @@ import { ToolWorkspace } from './ToolWorkspace';
 
 export function Compress() {
   const [quality, setQuality] = useState(80);
-  const [format, setFormat] = useState<'jpeg' | 'png' | 'webp'>('jpeg');
+  const [format, setFormat] = useState<'jpeg' | 'png' | 'webp' | undefined>(undefined);
 
   return (
     <ToolWorkspace

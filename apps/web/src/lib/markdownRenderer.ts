@@ -119,8 +119,7 @@ function documentStyles(options: RenderOptions) {
       visibility: hidden;
       min-height: 18px;
     }
-    .doc-header-label,
-    .doc-footer-label {
+    .doc-header-label {
       font-size: 12px;
       color: var(--muted);
       letter-spacing: -0.01em;
@@ -218,10 +217,47 @@ function documentStyles(options: RenderOptions) {
     }
     .doc-footer {
       display: flex;
-      justify-content: flex-end;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 14px;
       margin-top: 18px;
       padding-top: 12px;
       border-top: 1px solid var(--line);
+    }
+    .doc-footer-side {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: -0.01em;
+      min-width: 0;
+    }
+    .doc-footer-side-left {
+      flex: 1 1 auto;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .doc-footer-side-right {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .doc-footer-title {
+      display: inline-block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .doc-footer-pagenum {
+      font-weight: 700;
+      color: var(--text);
+    }
+    .doc-footer-sep {
+      padding: 0 8px;
+      color: rgba(111, 103, 93, 0.72);
     }
     .doc-measure {
       position: absolute;
@@ -270,7 +306,9 @@ function documentStyles(options: RenderOptions) {
 
 function todayString() {
   const d = new Date();
-  return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.`;
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}.${month}.${day}`;
 }
 
 function buildHeader(fileName: string, options: RenderOptions) {
@@ -281,20 +319,20 @@ function buildHeader(fileName: string, options: RenderOptions) {
 }
 
 function buildFooter(fileName: string, options: RenderOptions) {
-  const parts: string[] = [];
+  const leftParts: string[] = [];
+  const rightParts: string[] = [];
   if (options.titlePosition === 'footer') {
-    parts.push(`<span class="doc-footer-title">${escapeHtml(fileName.replace(/\.[^.]+$/, ''))}</span>`);
-  }
-  if (options.pageNumberFormat !== 'none') {
-    parts.push(`<span class="doc-footer-pagenum">1</span>`);
+    leftParts.push(`<span class="doc-footer-title">${escapeHtml(fileName.replace(/\.[^.]+$/, ''))}</span>`);
   }
   if (options.showDateInFooter) {
-    parts.push(`<span class="doc-footer-date">${todayString()}</span>`);
+    rightParts.push(`<span class="doc-footer-date">${todayString()}</span>`);
   }
-  const hasContent = parts.length > 0;
-  const label = hasContent ? parts.join('<span class="doc-footer-sep"> · </span>') : '&nbsp;';
+  if (options.pageNumberFormat !== 'none') {
+    rightParts.push(`<span class="doc-footer-pagenum">1</span>`);
+  }
+  const hasContent = leftParts.length > 0 || rightParts.length > 0;
   const className = hasContent ? 'doc-footer' : 'doc-footer is-empty';
-  return `<footer class="${className}"><span class="doc-footer-label">${label}</span></footer>`;
+  return `<footer class="${className}"><span class="doc-footer-side doc-footer-side-left">${leftParts.length > 0 ? leftParts.join('') : '&nbsp;'}</span><span class="doc-footer-side doc-footer-side-right">${rightParts.length > 0 ? rightParts.join('<span class="doc-footer-sep">·</span>') : '&nbsp;'}</span></footer>`;
 }
 
 function paginationScript(options: RenderOptions) {
@@ -360,7 +398,7 @@ function paginationScript(options: RenderOptions) {
 
       function formatPageNum(index, total) {
         if (pageNumberFormat === 'page-n') return '페이지 ' + (index + 1);
-        if (pageNumberFormat === 'n-of-total') return (index + 1) + '/' + total;
+        if (pageNumberFormat === 'n-of-total') return (index + 1) + ' / ' + total;
         if (pageNumberFormat === 'n') return String(index + 1);
         return '';
       }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useDocumentStore } from '../store/documentStore';
 import { bytesToHuman } from '../lib/formatUtils';
 
@@ -7,6 +7,7 @@ interface DocumentWorkspaceProps {
 }
 
 export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
+  const defaultStripWidth = 124;
   const files = useDocumentStore((state) => state.files);
   const previewHtml = useDocumentStore((state) => state.previewHtml);
   const options = useDocumentStore((state) => state.options);
@@ -22,6 +23,8 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
   const [pageCount, setPageCount] = useState(0);
   const [activePage, setActivePage] = useState(0);
   const [pageThumbs, setPageThumbs] = useState<{ headHtml: string; pages: string[] }>({ headHtml: '', pages: [] });
+  const [pageStripWidth, setPageStripWidth] = useState(defaultStripWidth);
+  const workspaceRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -63,9 +66,36 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
     return () => window.removeEventListener('message', handleMessage);
   }, [handleMessage]);
 
+  useEffect(() => () => { document.body.style.cursor = ''; }, []);
+
   function scrollToPage(index: number) {
     iframeRef.current?.contentWindow?.postMessage({ type: 'doc-scroll-to-page', index }, '*');
     setActivePage(index);
+  }
+
+  function handleStripDividerMouseDown(event: React.MouseEvent<HTMLDivElement>) {
+    event.preventDefault();
+    document.body.style.cursor = 'col-resize';
+
+    function handleMouseMove(nextEvent: MouseEvent) {
+      const workspace = workspaceRef.current;
+      if (!workspace) {
+        return;
+      }
+
+      const rect = workspace.getBoundingClientRect();
+      const nextWidth = nextEvent.clientX - rect.left;
+      setPageStripWidth(Math.max(112, Math.min(176, nextWidth)));
+    }
+
+    function handleMouseUp() {
+      document.body.style.cursor = '';
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    }
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
   }
 
   async function handleFiles(incoming: File[]) {
@@ -120,6 +150,11 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
     );
   }
 
+  const workspaceStyle = {
+    '--doc-strip-width': `${pageStripWidth}px`,
+    '--doc-thumb-scale': `${Math.max(0.11, Math.min(0.22, (pageStripWidth - 4) / 793))}`,
+  } as CSSProperties;
+
   return (
     <div className="document-page" onDrop={handleDrop} onDragOver={(event) => event.preventDefault()}>
       <input
@@ -140,7 +175,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
         </button>
       </header>
 
-      <div className="document-workspace">
+      <div className="document-workspace" ref={workspaceRef} style={workspaceStyle}>
         {/* Left: page strip */}
         <aside className="doc-page-strip">
           {pageCount > 0
@@ -167,6 +202,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
               ))
             : null}
         </aside>
+        <div className="doc-strip-divider" onMouseDown={handleStripDividerMouseDown} />
 
         {/* Center: preview */}
         <section className="document-preview panel-surface">
@@ -207,7 +243,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
             <h3 className="panel-title">PDF export</h3>
             <div className="document-option-card"><strong>파일명</strong><p>{selectedFile.file.name}</p></div>
             <div className="document-option-card">
-              <strong>파일명</strong>
+              <strong>제목 위치</strong>
               <label className="document-select-field">
                 <select
                   className="document-select"
@@ -236,7 +272,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
               </label>
             </div>
             <div className="document-option-card">
-              <strong>날짜</strong>
+              <strong>날짜 표기</strong>
               <label className="document-select-field">
                 <select
                   className="document-select"
