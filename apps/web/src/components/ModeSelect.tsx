@@ -1,4 +1,5 @@
 import type { ToolName } from '../types/image';
+import { Footer } from './layout/Footer';
 import { TOOL_LABELS, ALL_TOOLS } from '../lib/toolConstants';
 
 const TOOL_DESCS: Record<ToolName, string> = {
@@ -70,6 +71,8 @@ export default function ModeSelect({ onSelectImage, onSelectDocument }: Props) {
           </button>
         </div>
       </section>
+
+      <Footer />
     </div>
   );
 }

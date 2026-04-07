@@ -2,6 +2,8 @@ import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-do
 import ModeSelect from './components/ModeSelect';
 import ToolFlow from './components/ToolFlow';
 import DocumentWorkspace from './components/DocumentWorkspace';
+import { privacyPolicyContent, termsContent } from './lib/legalContent';
+import { LegalDocumentPage } from './pages/LegalDocumentPage';
 import { useDocumentStore } from './store/documentStore';
 import type { ToolName } from './types/image';
 
@@ -28,6 +30,14 @@ function DocumentRoute() {
   );
 }
 
+function PrivacyRoute() {
+  return <LegalDocumentPage document={privacyPolicyContent} />;
+}
+
+function TermsRoute() {
+  return <LegalDocumentPage document={termsContent} />;
+}
+
 function LegacyToolRoute() {
   const { tool } = useParams<{ tool: string }>();
   return <Navigate to={`/image/${tool}`} replace />;
@@ -40,6 +50,8 @@ export default function App() {
         <Route path="/" element={<HomeRoute />} />
         <Route path="/image/:tool" element={<ToolFlow />} />
         <Route path="/document/pdf" element={<DocumentRoute />} />
+        <Route path="/privacy" element={<PrivacyRoute />} />
+        <Route path="/terms" element={<TermsRoute />} />
         <Route path="/:tool" element={<LegacyToolRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
