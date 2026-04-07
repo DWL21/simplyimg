@@ -111,6 +111,10 @@ export function inferMimeType(file: File): string {
   }
 }
 
+export function isSvgFile(file: File): boolean {
+  return inferMimeType(file) === 'image/svg+xml';
+}
+
 export function isSupportedImageFile(file: File): boolean {
   if (file.type.startsWith('image/')) {
     return true;

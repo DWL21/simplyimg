@@ -1,4 +1,6 @@
 import type { ImageInfo, ProcessedImage, ToolName, ToolOptions } from '../types/image';
+import { isSvgFile } from './formatUtils';
+import { getSvgInfo, processSvgLocally } from './localSvgProcessor';
 import { postToWorker } from './workerClient';
 
 export interface WasmClient {
@@ -60,6 +62,18 @@ export function createWasmClient(): WasmClient {
       typeof OffscreenCanvas !== 'undefined' &&
       typeof createImageBitmap !== 'undefined',
     async getInfo(file) {
+      if (isSvgFile(file)) {
+        try {
+          return await getSvgInfo(file);
+        } catch {
+          return {
+            ...noopInfo,
+            format: file.type || 'image/svg+xml',
+            size: file.size,
+          };
+        }
+      }
+
       try {
         return await postToBrowserWorker<ImageInfo>({ type: 'info', file });
       } catch {
@@ -71,6 +85,10 @@ export function createWasmClient(): WasmClient {
       }
     },
     async process(tool, file, options) {
+      if (isSvgFile(file)) {
+        return processSvgLocally(tool, file, options);
+      }
+
       if (this.isReady) {
         try {
           return await postToBrowserWorker<ProcessedImage>({ type: 'process', tool, file, options });
