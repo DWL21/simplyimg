@@ -22,49 +22,51 @@ export default function ModeSelect({ onSelectImage, onSelectDocument }: Props) {
 
   return (
     <div className="select-page">
-      <div className="select-hero">
-        <h1 className="select-title">{messages.modeSelect.title}</h1>
-      </div>
-
-      <section className="mode-section">
-        <div className="mode-section-head">
-          <div>
-            <span className="mode-section-label">{messages.modeSelect.imageSectionLabel}</span>
-            <h2>{messages.modeSelect.imageSectionTitle}</h2>
-          </div>
+      <div className="select-main">
+        <div className="select-hero">
+          <h1 className="select-title">{messages.modeSelect.title}</h1>
         </div>
-        <div className="mode-grid">
-          {ALL_TOOLS.map((id) => (
-            <button key={id} className="mode-card" onClick={() => onSelectImage(id)}>
-              <span className="mode-icon">{TOOL_ICONS[id]}</span>
+
+        <section className="mode-section">
+          <div className="mode-section-head">
+            <div>
+              <span className="mode-section-label">{messages.modeSelect.imageSectionLabel}</span>
+              <h2>{messages.modeSelect.imageSectionTitle}</h2>
+            </div>
+          </div>
+          <div className="mode-grid">
+            {ALL_TOOLS.map((id) => (
+              <button key={id} className="mode-card" onClick={() => onSelectImage(id)}>
+                <span className="mode-icon">{TOOL_ICONS[id]}</span>
+                <div className="mode-copy">
+                  <strong>{getToolDisplayLabel(id, locale)}</strong>
+                  <p>{messages.modeSelect.toolDescriptions[id]}</p>
+                </div>
+                <span className="mode-arrow">→</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="mode-section">
+          <div className="mode-section-head">
+            <div>
+              <span className="mode-section-label">{messages.modeSelect.documentSectionLabel}</span>
+              <h2>{messages.modeSelect.documentSectionTitle}</h2>
+            </div>
+          </div>
+          <div className="mode-grid mode-grid-single">
+            <button className="mode-card mode-card-document" onClick={onSelectDocument}>
+              <span className="mode-icon">PDF</span>
               <div className="mode-copy">
-                <strong>{getToolDisplayLabel(id, locale)}</strong>
-                <p>{messages.modeSelect.toolDescriptions[id]}</p>
+                <strong>{messages.modeSelect.documentToolTitle}</strong>
+                <p>{messages.modeSelect.documentToolDescription}</p>
               </div>
               <span className="mode-arrow">→</span>
             </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="mode-section">
-        <div className="mode-section-head">
-          <div>
-            <span className="mode-section-label">{messages.modeSelect.documentSectionLabel}</span>
-            <h2>{messages.modeSelect.documentSectionTitle}</h2>
           </div>
-        </div>
-        <div className="mode-grid mode-grid-single">
-          <button className="mode-card mode-card-document" onClick={onSelectDocument}>
-            <span className="mode-icon">PDF</span>
-            <div className="mode-copy">
-              <strong>{messages.modeSelect.documentToolTitle}</strong>
-              <p>{messages.modeSelect.documentToolDescription}</p>
-            </div>
-            <span className="mode-arrow">→</span>
-          </button>
-        </div>
-      </section>
+        </section>
+      </div>
 
       <Footer />
     </div>
