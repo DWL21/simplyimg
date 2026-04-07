@@ -504,12 +504,15 @@ function buildDocumentHtml(fileName: string, renderedBody: string, mode: 'previe
 
 export async function renderMarkdownPreviewDocument(file: File, options: RenderOptions) {
   await ensureRenderer();
-  const markdown = await file.text();
-  const renderedBody = renderMarkdown(markdown);
+  return renderMarkdownPreviewSource(await file.text(), file.name, options);
+}
 
+export async function renderMarkdownPreviewSource(markdown: string, fileName: string, options: RenderOptions) {
+  await ensureRenderer();
+  const renderedBody = renderMarkdown(markdown);
   return {
-    previewHtml: buildDocumentHtml(file.name, renderedBody, 'preview', options),
-    printHtml: buildDocumentHtml(file.name, renderedBody, 'print', options),
+    previewHtml: buildDocumentHtml(fileName, renderedBody, 'preview', options),
+    printHtml: buildDocumentHtml(fileName, renderedBody, 'print', options),
   };
 }
 

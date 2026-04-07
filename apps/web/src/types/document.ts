@@ -21,6 +21,7 @@ export interface DocumentStoreState {
   progress: number;
   error: UiError | null;
   addFiles: (files: File[]) => Promise<void>;
+  loadDraft: (markdown: string, fileName?: string) => Promise<void>;
   updateOptions: (options: Partial<DocumentRenderOptions>) => Promise<void>;
   removeFile: (id: string) => void;
   printDocument: () => Promise<void>;

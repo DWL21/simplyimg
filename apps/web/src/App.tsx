@@ -2,6 +2,7 @@ import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-do
 import ModeSelect from './components/ModeSelect';
 import ToolFlow from './components/ToolFlow';
 import DocumentWorkspace from './components/DocumentWorkspace';
+import MarkdownEditorWorkspace from './components/MarkdownEditorWorkspace';
 import { useAppLocale } from './i18n/messages';
 import { getPrivacyPolicyContent, getTermsContent } from './lib/legalContent';
 import { LegalDocumentPage } from './pages/LegalDocumentPage';
@@ -14,6 +15,7 @@ function HomeRoute() {
     <ModeSelect
       onSelectImage={(t: ToolName) => navigate(`/image/${t}`)}
       onSelectDocument={() => navigate('/document/pdf')}
+      onSelectDocumentEditor={() => navigate('/document/write')}
     />
   );
 }
@@ -26,6 +28,20 @@ function DocumentRoute() {
       onBack={() => {
         useDocumentStore.getState().reset();
         navigate('/');
+      }}
+    />
+  );
+}
+
+function MarkdownEditorRoute() {
+  const navigate = useNavigate();
+
+  return (
+    <MarkdownEditorWorkspace
+      onBack={() => navigate('/')}
+      onOpenPdf={async (markdown, fileName) => {
+        await useDocumentStore.getState().loadDraft(markdown, fileName);
+        navigate('/document/pdf');
       }}
     />
   );
@@ -55,6 +71,7 @@ export default function App() {
         <Route path="/" element={<HomeRoute />} />
         <Route path="/image/:tool" element={<ToolFlow />} />
         <Route path="/document/pdf" element={<DocumentRoute />} />
+        <Route path="/document/write" element={<MarkdownEditorRoute />} />
         <Route path="/privacy" element={<PrivacyRoute />} />
         <Route path="/terms" element={<TermsRoute />} />
         <Route path="/:tool" element={<LegacyToolRoute />} />

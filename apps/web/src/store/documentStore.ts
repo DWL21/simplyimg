@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { getCurrentLocale } from '../i18n/messages';
+import { normalizeMarkdownFileName } from '../lib/markdownFiles';
 import {
   createDocumentFileTooLargeError,
   createDocumentRenderingError,
@@ -8,7 +9,7 @@ import {
   normalizeUiError,
 } from '../lib/uiErrors';
 import { getDocumentUploadLimitBytes } from '../lib/uploadLimits';
-import { downloadAsPdf, renderMarkdownPreviewDocument } from '../lib/markdownRenderer';
+import { downloadAsPdf, renderMarkdownPreviewDocument, renderMarkdownPreviewSource } from '../lib/markdownRenderer';
 import type { DocumentRenderOptions, DocumentStoreState } from '../types/document';
 
 function makeId() {
@@ -96,6 +97,48 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       });
     } catch (error) {
       const uiError = normalizeUiError(error, createDocumentRenderingError(nextFile));
+      set({
+        previewHtml: null,
+        printHtml: null,
+        isProcessing: false,
+        progress: 0,
+        error: uiError,
+      });
+    }
+  },
+  async loadDraft(markdown, fileName) {
+    const normalizedFileName = normalizeMarkdownFileName(fileName ?? '');
+    const draftFile = new File([markdown], normalizedFileName, { type: 'text/markdown' });
+
+    set({
+      files: [{ id: makeId(), file: draftFile }],
+      previewHtml: null,
+      printHtml: null,
+      options: defaultOptions,
+      isProcessing: true,
+      progress: 0,
+      error: null,
+    });
+
+    try {
+      const rendered = await renderMarkdownPreviewSource(markdown, normalizedFileName, defaultOptions);
+      set({
+        previewHtml: rendered.previewHtml,
+        printHtml: rendered.printHtml,
+        options: defaultOptions,
+        isProcessing: false,
+        progress: 100,
+      });
+    } catch (error) {
+      const uiError = normalizeUiError(
+        error,
+        createDocumentRenderingError(
+          draftFile,
+          getCurrentLocale() === 'ko'
+            ? 'Markdown 초안을 불러오지 못했습니다.'
+            : 'Failed to load the Markdown draft.',
+        ),
+      );
       set({
         previewHtml: null,
         printHtml: null,

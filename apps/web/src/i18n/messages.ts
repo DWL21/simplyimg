@@ -52,6 +52,8 @@ type LocaleMessages = {
     documentSectionTitle: string;
     documentToolTitle: string;
     documentToolDescription: string;
+    documentEditorTitle: string;
+    documentEditorDescription: string;
     toolDescriptions: Record<ToolId, string>;
   };
   toolCard: {
@@ -193,6 +195,18 @@ type LocaleMessages = {
     save: string;
     removeFile: string;
   };
+  markdownEditor: {
+    backHome: string;
+    title: string;
+    fileNameLabel: string;
+    sourceLabel: string;
+    fileNamePlaceholder: string;
+    sourcePlaceholder: string;
+    saveMarkdown: string;
+    savePdf: string;
+    openingPdf: string;
+    openPdfDescription: string;
+  };
   imagePreview: {
     empty: string;
   };
@@ -236,6 +250,8 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       documentSectionTitle: '문서 작업',
       documentToolTitle: 'Markdown을 PDF로 변환',
       documentToolDescription: 'Markdown 파일을 PDF로 변환합니다.',
+      documentEditorTitle: 'Markdown 작성하기',
+      documentEditorDescription: 'Markdown 원본을 직접 작성하고 저장합니다.',
       toolDescriptions: {
         compress: '파일 크기를 줄이고 품질을 최적화합니다',
         resize: '가로/세로 픽셀 크기를 바꿉니다',
@@ -412,6 +428,18 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       save: '저장하기',
       removeFile: '파일 제거',
     },
+    markdownEditor: {
+      backHome: '← 처음으로',
+      title: 'Markdown 작성하기',
+      fileNameLabel: '파일명',
+      sourceLabel: 'Markdown 원본',
+      fileNamePlaceholder: '새 문서.md',
+      sourcePlaceholder: '# 제목\n\nMarkdown 원본을 작성하세요.',
+      saveMarkdown: 'MD 파일로 저장하기',
+      savePdf: 'PDF로 저장하기',
+      openingPdf: 'PDF 화면 여는 중…',
+      openPdfDescription: '현재 작성한 Markdown 원본을 기존 Markdown → PDF 화면으로 넘깁니다.',
+    },
     imagePreview: {
       empty: '표시할 이미지가 없습니다.',
     },
@@ -453,6 +481,8 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       documentSectionTitle: 'Document tools',
       documentToolTitle: 'Convert Markdown to PDF',
       documentToolDescription: 'Turn Markdown files into PDFs.',
+      documentEditorTitle: 'Write Markdown',
+      documentEditorDescription: 'Write and save raw Markdown source.',
       toolDescriptions: {
         compress: 'Reduce file size and optimize quality',
         resize: 'Change the image width and height in pixels',
@@ -628,6 +658,18 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       savePreparing: 'Preparing file…',
       save: 'Save PDF',
       removeFile: 'Remove file',
+    },
+    markdownEditor: {
+      backHome: '← Home',
+      title: 'Write Markdown',
+      fileNameLabel: 'File name',
+      sourceLabel: 'Markdown source',
+      fileNamePlaceholder: 'untitled.md',
+      sourcePlaceholder: '# Title\n\nWrite your Markdown source here.',
+      saveMarkdown: 'Save as MD',
+      savePdf: 'Save as PDF',
+      openingPdf: 'Opening PDF view…',
+      openPdfDescription: 'Send the current Markdown source to the existing Markdown → PDF screen.',
     },
     imagePreview: {
       empty: 'No image to display.',

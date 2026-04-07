@@ -15,9 +15,10 @@ const TOOL_ICONS: Record<ToolName, string> = {
 interface Props {
   onSelectImage: (tool: ToolName) => void;
   onSelectDocument: () => void;
+  onSelectDocumentEditor: () => void;
 }
 
-export default function ModeSelect({ onSelectImage, onSelectDocument }: Props) {
+export default function ModeSelect({ onSelectImage, onSelectDocument, onSelectDocumentEditor }: Props) {
   const { locale, messages } = useI18n();
 
   return (
@@ -64,12 +65,20 @@ export default function ModeSelect({ onSelectImage, onSelectDocument }: Props) {
               <h2>{messages.modeSelect.documentSectionTitle}</h2>
             </div>
           </div>
-          <div className="mode-grid mode-grid-single">
+          <div className="mode-grid">
             <button className="mode-card mode-card-document" onClick={onSelectDocument}>
               <span className="mode-icon">PDF</span>
               <div className="mode-copy">
                 <strong>{messages.modeSelect.documentToolTitle}</strong>
                 <p>{messages.modeSelect.documentToolDescription}</p>
+              </div>
+              <span className="mode-arrow">→</span>
+            </button>
+            <button className="mode-card mode-card-document" onClick={onSelectDocumentEditor}>
+              <span className="mode-icon">MD</span>
+              <div className="mode-copy">
+                <strong>{messages.modeSelect.documentEditorTitle}</strong>
+                <p>{messages.modeSelect.documentEditorDescription}</p>
               </div>
               <span className="mode-arrow">→</span>
             </button>

@@ -1848,6 +1848,91 @@ img {
   flex-direction: column;
 }
 
+.markdown-editor-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.markdown-editor-shell {
+  flex: 1;
+  min-height: 0;
+  padding: 16px;
+}
+
+.markdown-editor-panel {
+  max-width: 980px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.markdown-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.markdown-editor-field-grow {
+  flex: 1;
+  min-height: 0;
+}
+
+.markdown-editor-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.markdown-editor-input,
+.markdown-editor-textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--text);
+  font: inherit;
+}
+
+.markdown-editor-input {
+  padding: 12px 14px;
+}
+
+.markdown-editor-textarea {
+  flex: 1;
+  min-height: 360px;
+  resize: none;
+  padding: 16px 18px;
+  line-height: 1.6;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+.markdown-editor-input:focus,
+.markdown-editor-textarea:focus {
+  outline: none;
+  border-color: rgba(27, 24, 20, 0.35);
+  box-shadow: 0 0 0 4px rgba(117, 91, 44, 0.12);
+}
+
+.markdown-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.markdown-editor-actions .process-btn,
+.markdown-editor-actions .re-edit-btn {
+  width: auto;
+  min-width: 180px;
+}
+
 .document-upload-title {
   font-size: 1rem;
   font-weight: 700;
@@ -2256,6 +2341,29 @@ img {
 
   .document-workspace {
     padding: 12px;
+  }
+
+  .markdown-editor-shell {
+    padding: 12px;
+  }
+
+  .markdown-editor-panel {
+    padding: 14px;
+  }
+
+  .markdown-editor-textarea {
+    min-height: 300px;
+  }
+
+  .markdown-editor-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .markdown-editor-actions .process-btn,
+  .markdown-editor-actions .re-edit-btn {
+    width: 100%;
+    min-width: 0;
   }
 
   .document-workspace.is-short-viewport {
