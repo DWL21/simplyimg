@@ -262,8 +262,8 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       documentToolDescription: '완성된 Markdown 파일을 불러와 PDF로 저장합니다.',
       documentEditorTitle: '새 Markdown 작성하기',
       documentEditorDescription: '비어 있는 새 MD 파일을 처음부터 작성합니다.',
-      documentOpenTitle: '기존 MD 파일 열기',
-      documentOpenDescription: '기존 MD 파일을 불러와 내용을 이어서 수정합니다.',
+      documentOpenTitle: 'MD 파일 편집',
+      documentOpenDescription: '편집 화면에서 기존 MD 파일을 불러와 이어서 수정합니다.',
       toolDescriptions: {
         compress: '파일 크기를 줄이고 품질을 최적화합니다',
         resize: '가로/세로 픽셀 크기를 바꿉니다',
@@ -502,8 +502,8 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       documentToolDescription: 'Load a finished Markdown file and save it as a PDF.',
       documentEditorTitle: 'Write New Markdown',
       documentEditorDescription: 'Start a blank MD file and write it from scratch.',
-      documentOpenTitle: 'Open Existing MD',
-      documentOpenDescription: 'Open an existing MD file and continue editing it.',
+      documentOpenTitle: 'Edit MD File',
+      documentOpenDescription: 'Open an existing MD file in the editor and continue working on it.',
       toolDescriptions: {
         compress: 'Reduce file size and optimize quality',
         resize: 'Change the image width and height in pixels',

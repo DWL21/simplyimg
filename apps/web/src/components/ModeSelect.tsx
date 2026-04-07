@@ -1,4 +1,3 @@
-import { useRef, type ChangeEvent } from 'react';
 import { useI18n } from '../i18n/messages';
 import { ALL_TOOLS, getToolDisplayLabel } from '../lib/toolConstants';
 import type { ToolName } from '../types/image';
@@ -17,28 +16,16 @@ interface Props {
   onSelectImage: (tool: ToolName) => void;
   onSelectDocument: () => void;
   onSelectDocumentEditor: () => void;
-  onOpenDocumentEditorFile: (file: File) => Promise<void>;
+  onSelectDocumentFileEdit: () => void;
 }
 
 export default function ModeSelect({
   onSelectImage,
   onSelectDocument,
   onSelectDocumentEditor,
-  onOpenDocumentEditorFile,
+  onSelectDocumentFileEdit,
 }: Props) {
   const { locale, messages } = useI18n();
-  const markdownFileInputRef = useRef<HTMLInputElement | null>(null);
-
-  async function handleMarkdownFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-
-    if (!file) {
-      return;
-    }
-
-    await onOpenDocumentEditorFile(file);
-  }
 
   return (
     <div className="select-page">
@@ -85,13 +72,6 @@ export default function ModeSelect({
               <p>{messages.modeSelect.documentSectionDescription}</p>
             </div>
           </div>
-          <input
-            ref={markdownFileInputRef}
-            type="file"
-            accept=".md,.markdown,text/markdown"
-            hidden
-            onChange={(event) => void handleMarkdownFileChange(event)}
-          />
           <div className="mode-grid">
             <button className="mode-card mode-card-document" onClick={onSelectDocumentEditor}>
               <span className="mode-icon">NEW</span>
@@ -103,7 +83,7 @@ export default function ModeSelect({
             </button>
             <button
               className="mode-card mode-card-document"
-              onClick={() => markdownFileInputRef.current?.click()}
+              onClick={onSelectDocumentFileEdit}
             >
               <span className="mode-icon">EDIT</span>
               <div className="mode-copy">

@@ -1924,6 +1924,23 @@ img {
   min-width: 0;
 }
 
+.markdown-editor-mode-toggle {
+  min-width: 132px;
+  border: 1px solid rgba(27, 24, 20, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 241, 233, 0.98));
+  box-shadow: 0 8px 20px rgba(40, 28, 10, 0.08);
+  color: var(--text);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.markdown-editor-mode-toggle:hover {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(242, 236, 226, 1));
+  box-shadow: 0 10px 24px rgba(40, 28, 10, 0.12);
+}
+
 .markdown-editor-field {
   display: flex;
   flex-direction: column;
@@ -1986,6 +2003,14 @@ img {
   .markdown-editor-textarea,
   .markdown-editor-view {
     min-height: clamp(480px, 68dvh, 860px);
+  }
+
+  .markdown-editor-mode-toggle {
+    min-width: 164px;
+    min-height: 48px;
+    padding: 0.85rem 1.2rem;
+    font-size: 0.98rem;
+    box-shadow: 0 14px 30px rgba(40, 28, 10, 0.12);
   }
 }
 

@@ -12,6 +12,11 @@ import type { ToolName } from './types/image';
 
 interface DocumentRouteState {
   source?: 'markdown-editor';
+  editorMode?: 'new' | 'edit';
+}
+
+interface MarkdownEditorRouteState {
+  mode?: 'new' | 'edit';
 }
 
 function HomeRoute() {
@@ -20,10 +25,13 @@ function HomeRoute() {
     <ModeSelect
       onSelectImage={(t: ToolName) => navigate(`/image/${t}`)}
       onSelectDocument={() => navigate('/document/pdf')}
-      onSelectDocumentEditor={() => navigate('/document/write')}
-      onOpenDocumentEditorFile={async (file) => {
-        await useMarkdownEditorStore.getState().loadFile(file);
-        navigate('/document/write');
+      onSelectDocumentEditor={() => {
+        useMarkdownEditorStore.getState().reset();
+        navigate('/document/write', { state: { mode: 'new' } });
+      }}
+      onSelectDocumentFileEdit={() => {
+        useMarkdownEditorStore.getState().reset();
+        navigate('/document/write', { state: { mode: 'edit' } });
       }}
     />
   );
@@ -40,7 +48,7 @@ function DocumentRoute() {
       onBack={() => {
         useDocumentStore.getState().reset();
         if (state?.source === 'markdown-editor') {
-          navigate('/document/write');
+          navigate('/document/write', { state: { mode: state.editorMode ?? 'new' } });
           return;
         }
 
@@ -51,14 +59,22 @@ function DocumentRoute() {
 }
 
 function MarkdownEditorRoute() {
+  const location = useLocation();
   const navigate = useNavigate();
+  const state = location.state as MarkdownEditorRouteState | null;
 
   return (
     <MarkdownEditorWorkspace
+      entryMode={state?.mode === 'edit' ? 'edit' : 'new'}
       onBack={() => navigate('/')}
       onOpenPdf={async (markdown, fileName) => {
         await useDocumentStore.getState().loadDraft(markdown, fileName);
-        navigate('/document/pdf', { state: { source: 'markdown-editor' } });
+        navigate('/document/pdf', {
+          state: {
+            source: 'markdown-editor',
+            editorMode: state?.mode === 'edit' ? 'edit' : 'new',
+          },
+        });
       }}
     />
   );
