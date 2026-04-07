@@ -1,7 +1,7 @@
 import { getCurrentLocale } from '../i18n/messages';
 
 function fallbackMarkdownName() {
-  return getCurrentLocale() === 'ko' ? '새 문서' : 'untitled';
+  return getCurrentLocale() === 'ko' ? '새문서' : 'untitled';
 }
 
 export function normalizeMarkdownFileName(value: string) {
