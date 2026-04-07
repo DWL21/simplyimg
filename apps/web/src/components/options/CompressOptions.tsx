@@ -2,16 +2,12 @@ import { appMessages } from '../../i18n/messages';
 
 interface CompressOptionsProps {
   quality: number;
-  format?: 'jpeg' | 'png' | 'webp';
   onQualityChange: (quality: number) => void;
-  onFormatChange: (format: 'jpeg' | 'png' | 'webp' | undefined) => void;
 }
 
 export function CompressOptions({
   quality,
-  format,
   onQualityChange,
-  onFormatChange,
 }: CompressOptionsProps) {
   return (
     <div className="option-stack">
@@ -39,25 +35,6 @@ export function CompressOptions({
             <span>{appMessages.options.compress.balanced}</span>
             <span>{appMessages.options.compress.highQuality}</span>
           </div>
-        </div>
-      </div>
-
-      <div className="option-group">
-        <div className="option-copy">
-          <strong>{appMessages.options.compress.outputFormatTitle}</strong>
-          <p>{appMessages.options.compress.outputFormatDescription}</p>
-        </div>
-        <div className="segmented-control">
-          {([undefined, 'jpeg', 'png', 'webp'] as const).map((value) => (
-            <button
-              key={value ?? 'original'}
-              className={value === format ? 'segmented-option is-active' : 'segmented-option'}
-              type="button"
-              onClick={() => onFormatChange(value)}
-            >
-              {value ? value.toUpperCase() : '원본 유지'}
-            </button>
-          ))}
         </div>
       </div>
     </div>

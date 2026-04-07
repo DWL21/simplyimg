@@ -8,7 +8,7 @@ import { TOOL_LABELS, ALL_TOOLS } from '../lib/toolConstants';
 import type { ToolName, ToolOptions } from '../types/image';
 
 const DEFAULT_OPTIONS: OptionsPanelState = {
-  compress: { quality: 80, format: undefined },
+  compress: { quality: 80 },
   resize: { width: 1920, height: 1080 },
   convert: { to: 'webp', quality: 85 },
   rotate: { degrees: 0 },

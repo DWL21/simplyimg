@@ -5,21 +5,18 @@ import { ToolWorkspace } from './ToolWorkspace';
 
 export function Compress() {
   const [quality, setQuality] = useState(80);
-  const [format, setFormat] = useState<'jpeg' | 'png' | 'webp' | undefined>(undefined);
 
   return (
     <ToolWorkspace
       title={appMessages.tools.compress.workspaceTitle}
       description={appMessages.tools.compress.workspaceDescription}
       tool="compress"
-      options={{ quality, format }}
+      options={{ quality }}
       processLabel={appMessages.tools.compress.processLabel}
       optionsPanel={
         <CompressOptions
           quality={quality}
-          format={format}
           onQualityChange={setQuality}
-          onFormatChange={setFormat}
         />
       }
     />

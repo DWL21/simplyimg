@@ -1,7 +1,7 @@
 import type { ToolName, OutputFormat, CropOptions } from '../types/image';
 
 export interface OptionsPanelState {
-  compress: { quality: number; format: OutputFormat | undefined };
+  compress: { quality: number };
   resize: { width: number; height: number; crop?: CropOptions };
   convert: { to: OutputFormat; quality: number };
   rotate: { degrees: number };
@@ -35,14 +35,6 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
 
   if (tool === 'compress') {
     const s = state.compress;
-    const formats: { label: string; value: OutputFormat | undefined }[] = [
-      { label: '원본 유지', value: undefined },
-      { label: 'JPEG', value: 'jpeg' },
-      { label: 'JPG', value: 'jpg' },
-      { label: 'PNG', value: 'png' },
-      { label: 'WebP', value: 'webp' },
-      { label: 'SVG', value: 'svg' },
-    ];
     return (
       <div className="opt-stack">
         <div className="opt-group">
@@ -58,20 +50,6 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
             onChange={(e) => patch('compress', { ...s, quality: +e.target.value })}
             className="slider"
           />
-        </div>
-        <div className="opt-group">
-          <span className="opt-label">출력 형식</span>
-          <div className="chip-row">
-            {formats.map((f) => (
-              <button
-                key={f.label}
-                className={`chip ${s.format === f.value ? 'is-active' : ''}`}
-                onClick={() => patch('compress', { ...s, format: f.value })}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
     );
