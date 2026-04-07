@@ -11,6 +11,7 @@ import type {
   ToolOptions,
 } from '../types/image';
 import { inferMimeType, mimeFromFormat, preferredRasterMimeType } from './formatUtils';
+import { optimizeSvgFile } from './svgOptimizer';
 
 interface CanvasContextLike {
   drawImage: (...args: unknown[]) => void;
@@ -89,24 +90,6 @@ async function loadSvgImage(file: File) {
   }
 }
 
-async function wrapBlobAsSvg(blob: Blob, width: number, height: number): Promise<ProcessedImage> {
-  const buffer = await blob.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-
-  for (let index = 0; index < bytes.length; index += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
-  }
-
-  const base64 = btoa(binary);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><image href="data:${blob.type};base64,${base64}" width="${width}" height="${height}" preserveAspectRatio="none"/></svg>`;
-
-  return {
-    blob: new Blob([svg], { type: 'image/svg+xml' }),
-    mimeType: 'image/svg+xml',
-  };
-}
-
 function renderBaseCanvas(image: ImageLike) {
   const width = image.naturalWidth || image.width;
   const height = image.naturalHeight || image.height;
@@ -154,21 +137,15 @@ export async function processSvgLocally(
   file: File,
   options: ToolOptions,
 ): Promise<ProcessedImage> {
-  const image = await loadSvgImage(file);
-  const base = renderBaseCanvas(image);
-
   switch (tool) {
     case 'compress': {
       const compressOptions = options as CompressOptions;
-      if (compressOptions.format === 'svg') {
-        const rasterBlob = await canvasToBlob(
-          base.canvas,
-          preferredRasterMimeType(file),
-          normalizeQuality(compressOptions.quality),
-        );
-        return wrapBlobAsSvg(rasterBlob, base.width, base.height);
+      if (!compressOptions.format || compressOptions.format === 'svg') {
+        return optimizeSvgFile(file, compressOptions.quality);
       }
 
+      const image = await loadSvgImage(file);
+      const base = renderBaseCanvas(image);
       const mimeType = compressOptions.format
         ? mimeFromFormat(compressOptions.format)
         : preferredRasterMimeType(file);
@@ -178,14 +155,11 @@ export async function processSvgLocally(
     case 'convert': {
       const convertOptions = options as ConvertOptions;
       if (convertOptions.to === 'svg') {
-        const rasterBlob = await canvasToBlob(
-          base.canvas,
-          preferredRasterMimeType(file),
-          normalizeQuality(convertOptions.quality),
-        );
-        return wrapBlobAsSvg(rasterBlob, base.width, base.height);
+        return optimizeSvgFile(file, convertOptions.quality);
       }
 
+      const image = await loadSvgImage(file);
+      const base = renderBaseCanvas(image);
       return exportRasterCanvas(
         base.canvas,
         mimeFromFormat(convertOptions.to),
@@ -195,6 +169,8 @@ export async function processSvgLocally(
 
     case 'resize': {
       const resizeOptions = options as ResizeOptions;
+      const image = await loadSvgImage(file);
+      const base = renderBaseCanvas(image);
       const { canvas, ctx } = createCanvas(resizeOptions.width, resizeOptions.height);
       const crop = resizeOptions.crop;
 
@@ -223,6 +199,8 @@ export async function processSvgLocally(
 
     case 'rotate': {
       const rotateOptions = options as RotateOptions;
+      const image = await loadSvgImage(file);
+      const base = renderBaseCanvas(image);
       const radians = (rotateOptions.degrees * Math.PI) / 180;
       const width = Math.abs(base.width * Math.cos(radians)) + Math.abs(base.height * Math.sin(radians));
       const height = Math.abs(base.width * Math.sin(radians)) + Math.abs(base.height * Math.cos(radians));
@@ -235,6 +213,8 @@ export async function processSvgLocally(
 
     case 'flip': {
       const flipOptions = options as FlipOptions;
+      const image = await loadSvgImage(file);
+      const base = renderBaseCanvas(image);
       const { canvas, ctx } = createCanvas(base.width, base.height);
       ctx.translate(flipOptions.horizontal ? base.width : 0, flipOptions.vertical ? base.height : 0);
       ctx.scale(flipOptions.horizontal ? -1 : 1, flipOptions.vertical ? -1 : 1);
@@ -244,6 +224,8 @@ export async function processSvgLocally(
 
     case 'crop': {
       const cropOptions = options as CropOptions;
+      const image = await loadSvgImage(file);
+      const base = renderBaseCanvas(image);
       if (cropOptions.x >= base.width || cropOptions.y >= base.height) {
         throw new Error('Crop origin is outside the image bounds');
       }
