@@ -17,7 +17,7 @@ const MIN_PAGE_STRIP_WIDTH = 112;
 const MAX_PAGE_STRIP_WIDTH = 280;
 
 export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
-  const defaultStripWidth = 124;
+  const defaultStripWidth = 144;
   const { locale, messages } = useI18n();
   const files = useDocumentStore((state) => state.files);
   const previewHtml = useDocumentStore((state) => state.previewHtml);

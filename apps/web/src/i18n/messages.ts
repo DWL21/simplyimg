@@ -161,6 +161,7 @@ type LocaleMessages = {
     zoomIn: string;
     zoomOut: string;
     zoomFit: string;
+    zoomPresetFit: string;
     optionsSuffix: string;
     emptyStatePrefix: string;
     emptyStateSuffix: string;
@@ -379,6 +380,7 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       zoomIn: '확대',
       zoomOut: '축소',
       zoomFit: '맞춤 (더블클릭)',
+      zoomPresetFit: '맞춤',
       optionsSuffix: '옵션',
       emptyStatePrefix: '이미지를 추가하면',
       emptyStateSuffix: '기능을 사용할 수 있습니다',
@@ -595,6 +597,7 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       zoomIn: 'Zoom in',
       zoomOut: 'Zoom out',
       zoomFit: 'Fit (double-click)',
+      zoomPresetFit: 'Fit',
       optionsSuffix: 'options',
       emptyStatePrefix: 'Add images to use',
       emptyStateSuffix: '',

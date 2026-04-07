@@ -17,6 +17,7 @@ import type { ToolName, ToolOptions } from '../types/image';
 
 const MIN_STRIP_WIDTH = 72;
 const MAX_STRIP_WIDTH = 440;
+const ZOOM_PRESET_LEVELS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4, 6, 8] as const;
 
 const DEFAULT_OPTIONS: OptionsPanelState = {
   compress: { quality: 80 },
@@ -69,6 +70,10 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const [frameDims, setFrameDims] = useState({ w: 0, h: 0 });
   const [previewNaturalSize, setPreviewNaturalSize] = useState(emptyPreviewSize);
 
+  function clampZoom(value: number) {
+    return Math.min(8, Math.max(0.25, value));
+  }
+
   useEffect(() => {
     return () => {
       stripResizeCleanupRef.current?.();
@@ -103,11 +108,19 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   function handleWheelZoom(e: React.WheelEvent) {
     e.preventDefault();
     const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-    setZoom((z) => Math.min(8, Math.max(0.25, z * factor)));
+    setZoom((z) => clampZoom(z * factor));
   }
 
   function handleZoomPointerDown(e: React.PointerEvent) {
-    if (zoom <= 1 && pan.x === 0 && pan.y === 0) return;
+    if (!previewUrl || (zoom <= 1 && pan.x === 0 && pan.y === 0)) {
+      return;
+    }
+
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('.zoom-controls, .toggle-btn')) {
+      return;
+    }
+
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     panStartRef.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
     setIsPanning(true);
@@ -129,6 +142,10 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   function resetZoom() {
     setZoom(1);
     setPan({ x: 0, y: 0 });
+  }
+
+  function setZoomPreset(nextZoom: number) {
+    setZoom(clampZoom(nextZoom));
   }
 
   function handleCropChange(crop: import('../types/image').CropOptions) {
@@ -382,6 +399,9 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
         || currentCrop !== null),
   );
   const toolLabel = getToolDisplayLabel(tool, locale);
+  const zoomPresetValue = ZOOM_PRESET_LEVELS.some((level) => Math.abs(level - zoom) < 0.001)
+    ? String(zoom)
+    : 'custom';
 
   useEffect(() => {
     if (!selectedFile) return;
@@ -509,20 +529,20 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
           ) : (
             <div
               ref={previewFrameRef}
-              className="preview-frame"
+              className={`preview-frame ${previewUrl && zoom > 1 ? 'is-pannable' : ''} ${isPanning ? 'is-panning' : ''}`}
               onWheel={handleWheelZoom}
               onDoubleClick={resetZoom}
+              onPointerDown={handleZoomPointerDown}
+              onPointerMove={handleZoomPointerMove}
+              onPointerUp={handleZoomPointerUp}
+              onPointerCancel={handleZoomPointerUp}
             >
               {previewUrl ? (
                 <div
                   className="zoom-container"
                   style={{
                     transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                    cursor: zoom > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default',
                   }}
-                  onPointerDown={handleZoomPointerDown}
-                  onPointerMove={handleZoomPointerMove}
-                  onPointerUp={handleZoomPointerUp}
                 >
                   {rotatedPreviewFrameStyle ? (
                     <div style={rotatedPreviewFrameStyle}>
@@ -552,18 +572,46 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               <div className="zoom-controls">
                 <button
                   className="zoom-btn"
-                  onClick={() => setZoom((z) => Math.min(8, z * 1.25))}
+                  onClick={() => setZoom((z) => clampZoom(z * 1.25))}
                   title={messages.editor.zoomIn}
+                  type="button"
                 >
                   +
                 </button>
-                <button className="zoom-level" onClick={resetZoom} title={messages.editor.zoomFit}>
-                  {Math.round(zoom * 100)}%
-                </button>
+                <select
+                  className="zoom-select"
+                  value={zoomPresetValue}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    if (nextValue === 'fit') {
+                      resetZoom();
+                      return;
+                    }
+
+                    if (nextValue === 'custom') {
+                      return;
+                    }
+
+                    setZoomPreset(Number(nextValue));
+                  }}
+                  title={messages.editor.zoomFit}
+                  aria-label={messages.editor.zoomFit}
+                >
+                  <option value="fit">{messages.editor.zoomPresetFit}</option>
+                  {ZOOM_PRESET_LEVELS.map((level) => (
+                    <option key={level} value={level}>
+                      {Math.round(level * 100)}%
+                    </option>
+                  ))}
+                  {zoomPresetValue === 'custom' ? (
+                    <option value="custom">{Math.round(zoom * 100)}%</option>
+                  ) : null}
+                </select>
                 <button
                   className="zoom-btn"
-                  onClick={() => setZoom((z) => Math.max(0.25, z / 1.25))}
+                  onClick={() => setZoom((z) => clampZoom(z / 1.25))}
                   title={messages.editor.zoomOut}
+                  type="button"
                 >
                   −
                 </button>
