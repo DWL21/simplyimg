@@ -4,7 +4,7 @@ import type { CropOptions } from '../types/image';
 interface Props {
   imageUrl: string;
   value: CropOptions | null;
-  onChange: (crop: CropOptions) => void;
+  onChange: (crop: CropOptions | null) => void;
 }
 
 type HitZone = 'tl' | 'tr' | 'bl' | 'br' | 'inside' | 'outside';
@@ -16,11 +16,14 @@ interface DragState {
   fixedImgY: number;
   offsetX: number;
   offsetY: number;
+  startClientX: number;
+  startClientY: number;
   startCrop: CropOptions;
 }
 
 const HIT_RADIUS = 10;
 const DEFAULT_PAD = 0.1;
+const CLICK_DRAG_THRESHOLD = 4;
 
 const CURSOR: Record<HitZone, string> = {
   tl: 'nwse-resize',
@@ -141,7 +144,23 @@ export default function CropEditor({ imageUrl, value, onChange }: Props) {
       onChangeRef.current(newCrop);
     }
 
-    function onMouseUp() {
+    function onMouseUp(e: MouseEvent) {
+      const drag = dragRef.current;
+      if (drag?.mode === 'new') {
+        const movedX = Math.abs(e.clientX - drag.startClientX);
+        const movedY = Math.abs(e.clientY - drag.startClientY);
+        const currentCrop = valueRef.current;
+        const shouldClearSelection = movedX < CLICK_DRAG_THRESHOLD
+          && movedY < CLICK_DRAG_THRESHOLD;
+        const createdTinyCrop = currentCrop !== null
+          && currentCrop.width <= 1
+          && currentCrop.height <= 1;
+
+        if (shouldClearSelection || createdTinyCrop) {
+          onChangeRef.current(null);
+        }
+      }
+
       dragRef.current = null;
       cachedRectRef.current = null;
       document.body.style.cursor = '';
@@ -177,6 +196,8 @@ export default function CropEditor({ imageUrl, value, onChange }: Props) {
         fixedImgX: 0, fixedImgY: 0,
         offsetX: ip.x - v.x,
         offsetY: ip.y - v.y,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
         startCrop: v,
       };
     } else if ((hit === 'tl' || hit === 'tr' || hit === 'bl' || hit === 'br') && v) {
@@ -186,6 +207,8 @@ export default function CropEditor({ imageUrl, value, onChange }: Props) {
         mode: 'resize',
         fixedImgX: fx, fixedImgY: fy,
         offsetX: 0, offsetY: 0,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
         startCrop: v,
       };
     } else {
@@ -193,6 +216,8 @@ export default function CropEditor({ imageUrl, value, onChange }: Props) {
         mode: 'new',
         fixedImgX: ip.x, fixedImgY: ip.y,
         offsetX: 0, offsetY: 0,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
         startCrop: v ?? { x: 0, y: 0, width: 1, height: 1 },
       };
     }

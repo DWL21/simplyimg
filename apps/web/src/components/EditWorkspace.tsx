@@ -17,7 +17,7 @@ import type { ToolName, ToolOptions } from '../types/image';
 
 const MIN_STRIP_WIDTH = 72;
 const MAX_STRIP_WIDTH = 440;
-const ZOOM_PRESET_LEVELS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4, 6, 8] as const;
+const ZOOM_PRESET_LEVELS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 
 const DEFAULT_OPTIONS: OptionsPanelState = {
   compress: { quality: 80 },
@@ -74,6 +74,27 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     return Math.min(8, Math.max(0.25, value));
   }
 
+  function clampPan(nextPan: { x: number; y: number }, nextZoom: number = zoom) {
+    const maxOffsetX = Math.max(0, (frameDims.w * Math.abs(nextZoom - 1)) / 2);
+    const maxOffsetY = Math.max(0, (frameDims.h * Math.abs(nextZoom - 1)) / 2);
+
+    return {
+      x: Math.max(-maxOffsetX, Math.min(maxOffsetX, nextPan.x)),
+      y: Math.max(-maxOffsetY, Math.min(maxOffsetY, nextPan.y)),
+    };
+  }
+
+  function updateZoom(updater: (currentZoom: number) => number) {
+    setZoom((currentZoom) => {
+      const nextZoom = clampZoom(updater(currentZoom));
+      setPan((currentPan) => {
+        const nextPan = clampPan(currentPan, nextZoom);
+        return nextPan.x === currentPan.x && nextPan.y === currentPan.y ? currentPan : nextPan;
+      });
+      return nextZoom;
+    });
+  }
+
   useEffect(() => {
     return () => {
       stripResizeCleanupRef.current?.();
@@ -104,15 +125,26 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     setPan({ x: 0, y: 0 });
   }, [selectedId, showResult]);
 
+  useEffect(() => {
+    setPan((currentPan) => {
+      const nextPan = clampPan(currentPan);
+      return nextPan.x === currentPan.x && nextPan.y === currentPan.y ? currentPan : nextPan;
+    });
+  }, [frameDims.h, frameDims.w, zoom]);
+
 
   function handleWheelZoom(e: React.WheelEvent) {
     e.preventDefault();
     const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-    setZoom((z) => clampZoom(z * factor));
+    updateZoom((currentZoom) => currentZoom * factor);
   }
 
   function handleZoomPointerDown(e: React.PointerEvent) {
-    if (!previewUrl || (zoom <= 1 && pan.x === 0 && pan.y === 0)) {
+    if (!previewUrl) {
+      return;
+    }
+
+    if (e.pointerType !== 'touch' && e.button !== 0) {
       return;
     }
 
@@ -128,13 +160,16 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
 
   function handleZoomPointerMove(e: React.PointerEvent) {
     if (!panStartRef.current) return;
-    setPan({
+    setPan(clampPan({
       x: panStartRef.current.panX + (e.clientX - panStartRef.current.x),
       y: panStartRef.current.panY + (e.clientY - panStartRef.current.y),
-    });
+    }));
   }
 
-  function handleZoomPointerUp() {
+  function handleZoomPointerUp(e?: React.PointerEvent) {
+    if (e && (e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    }
     panStartRef.current = null;
     setIsPanning(false);
   }
@@ -145,10 +180,10 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   }
 
   function setZoomPreset(nextZoom: number) {
-    setZoom(clampZoom(nextZoom));
+    updateZoom(() => nextZoom);
   }
 
-  function handleCropChange(crop: import('../types/image').CropOptions) {
+  function handleCropChange(crop: import('../types/image').CropOptions | null) {
     if (!selectedFile) return;
     setCropMap((m) => ({ ...m, [selectedFile.id]: crop }));
   }
@@ -529,7 +564,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
           ) : (
             <div
               ref={previewFrameRef}
-              className={`preview-frame ${previewUrl && zoom > 1 ? 'is-pannable' : ''} ${isPanning ? 'is-panning' : ''}`}
+              className={`preview-frame ${previewUrl ? 'is-pannable' : ''} ${isPanning ? 'is-panning' : ''}`}
               onWheel={handleWheelZoom}
               onDoubleClick={resetZoom}
               onPointerDown={handleZoomPointerDown}
@@ -572,7 +607,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               <div className="zoom-controls">
                 <button
                   className="zoom-btn"
-                  onClick={() => setZoom((z) => clampZoom(z * 1.25))}
+                  onClick={() => updateZoom((currentZoom) => currentZoom * 1.25)}
                   title={messages.editor.zoomIn}
                   type="button"
                 >
@@ -609,7 +644,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                 </select>
                 <button
                   className="zoom-btn"
-                  onClick={() => setZoom((z) => clampZoom(z / 1.25))}
+                  onClick={() => updateZoom((currentZoom) => currentZoom / 1.25)}
                   title={messages.editor.zoomOut}
                   type="button"
                 >

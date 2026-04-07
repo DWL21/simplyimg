@@ -24,6 +24,19 @@ export default function ModeSelect({ onSelectImage, onSelectDocument }: Props) {
     <div className="select-page">
       <div className="select-main">
         <div className="select-hero">
+          <div className="select-signature" aria-label={messages.brand.name}>
+            <img
+              className="select-signature-mark"
+              src="/favicon.svg"
+              alt={messages.brand.name}
+              width="64"
+              height="64"
+            />
+            <div className="select-signature-copy">
+              <strong>{messages.brand.name}</strong>
+              <span>{messages.brand.tagline}</span>
+            </div>
+          </div>
           <h1 className="select-title">{messages.modeSelect.title}</h1>
         </div>
 
