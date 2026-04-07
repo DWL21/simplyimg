@@ -35,6 +35,10 @@ interface Props {
   onBack: () => void;
 }
 
+interface GestureEventLike extends Event {
+  scale: number;
+}
+
 export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const emptyPreviewSize = { width: 0, height: 0 };
   const { locale, messages } = useI18n();
@@ -66,6 +70,9 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const activePanPointerIdRef = useRef<number | null>(null);
+  const gestureStartZoomRef = useRef<number | null>(null);
+  const zoomRef = useRef(1);
   const stripResizeCleanupRef = useRef<(() => void) | null>(null);
 
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -73,6 +80,17 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const previewFrameRef = useRef<HTMLDivElement>(null);
   const [frameDims, setFrameDims] = useState({ w: 0, h: 0 });
   const [previewNaturalSize, setPreviewNaturalSize] = useState(emptyPreviewSize);
+  const selectedFile = files.find((f) => f.id === selectedId) ?? files[0];
+  const selectedResultIndex = results.findIndex((r) => r.sourceFileId === selectedFile?.id);
+  const selectedResult = selectedResultIndex >= 0 ? results[selectedResultIndex] : undefined;
+  const hasFiles = files.length > 0;
+  const processingErrors = Object.values(fileErrors);
+  const visibleProcessingErrors = processingErrors.filter((fileError) => fileError.message !== error?.message);
+  const currentCrop = cropMap[selectedFile?.id ?? ''] ?? null;
+  const basePreviewUrl = selectedFile?.previewUrl;
+  const previewUrl = showResult && selectedResult ? selectedResult.url : basePreviewUrl;
+  const isCropMode = tool === 'crop' && !showResult && !!selectedFile;
+  const isResizeMode = tool === 'resize' && !!selectedFile;
 
   function clampZoom(value: number) {
     return Math.min(8, Math.max(0.25, value));
@@ -99,8 +117,31 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     });
   }
 
+  function setAbsoluteZoom(nextZoom: number) {
+    setZoom((currentZoom) => {
+      const clampedZoom = clampZoom(nextZoom);
+      setPan((currentPan) => {
+        const nextPan = clampPan(currentPan, clampedZoom);
+        return nextPan.x === currentPan.x && nextPan.y === currentPan.y ? currentPan : nextPan;
+      });
+      return clampedZoom === currentZoom ? currentZoom : clampedZoom;
+    });
+  }
+
+  function releasePanPointerCapture(pointerId: number | null = activePanPointerIdRef.current) {
+    if (pointerId === null) {
+      return;
+    }
+
+    const previewFrame = previewFrameRef.current;
+    if (previewFrame?.hasPointerCapture(pointerId)) {
+      previewFrame.releasePointerCapture(pointerId);
+    }
+  }
+
   useEffect(() => {
     return () => {
+      releasePanPointerCapture();
       stripResizeCleanupRef.current?.();
       document.body.style.cursor = '';
     };
@@ -141,10 +182,124 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     });
   }, [frameDims.h, frameDims.w, zoom]);
 
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+
+  useEffect(() => {
+    if (!isPanning) {
+      return;
+    }
+
+    function stopPan(pointerId?: number) {
+      if (pointerId !== undefined && activePanPointerIdRef.current !== pointerId) {
+        return;
+      }
+
+      releasePanPointerCapture();
+      activePanPointerIdRef.current = null;
+      panStartRef.current = null;
+      setIsPanning(false);
+      document.body.style.cursor = '';
+    }
+
+    function handleWindowPointerMove(event: PointerEvent) {
+      if (!panStartRef.current || activePanPointerIdRef.current !== event.pointerId) {
+        return;
+      }
+
+      setPan(clampPan({
+        x: panStartRef.current.panX + (event.clientX - panStartRef.current.x),
+        y: panStartRef.current.panY + (event.clientY - panStartRef.current.y),
+      }));
+    }
+
+    function handleWindowPointerUp(event: PointerEvent) {
+      stopPan(event.pointerId);
+    }
+
+    function handleWindowPointerCancel(event: PointerEvent) {
+      stopPan(event.pointerId);
+    }
+
+    function handleWindowBlur() {
+      stopPan();
+    }
+
+    window.addEventListener('pointermove', handleWindowPointerMove);
+    window.addEventListener('pointerup', handleWindowPointerUp);
+    window.addEventListener('pointercancel', handleWindowPointerCancel);
+    window.addEventListener('blur', handleWindowBlur);
+
+    return () => {
+      window.removeEventListener('pointermove', handleWindowPointerMove);
+      window.removeEventListener('pointerup', handleWindowPointerUp);
+      window.removeEventListener('pointercancel', handleWindowPointerCancel);
+      window.removeEventListener('blur', handleWindowBlur);
+    };
+  }, [isPanning, zoom, frameDims.h, frameDims.w]);
+
+  useEffect(() => {
+    const previewFrame = previewFrameRef.current;
+    if (!previewFrame) {
+      return;
+    }
+
+    function handleNativeWheel(event: WheelEvent) {
+      if (!previewUrl) {
+        return;
+      }
+
+      event.preventDefault();
+    }
+
+    function handleGestureStart(event: Event) {
+      if (!previewUrl) {
+        return;
+      }
+
+      event.preventDefault();
+      gestureStartZoomRef.current = zoomRef.current;
+    }
+
+    function handleGestureChange(event: Event) {
+      if (!previewUrl) {
+        return;
+      }
+
+      event.preventDefault();
+      const gestureEvent = event as GestureEventLike;
+      const baseZoom = gestureStartZoomRef.current ?? zoomRef.current;
+      setAbsoluteZoom(baseZoom * gestureEvent.scale);
+    }
+
+    function handleGestureEnd(event: Event) {
+      if (!previewUrl) {
+        return;
+      }
+
+      event.preventDefault();
+      gestureStartZoomRef.current = null;
+    }
+
+    previewFrame.addEventListener('wheel', handleNativeWheel, { passive: false });
+    previewFrame.addEventListener('gesturestart', handleGestureStart as EventListener);
+    previewFrame.addEventListener('gesturechange', handleGestureChange as EventListener);
+    previewFrame.addEventListener('gestureend', handleGestureEnd as EventListener);
+
+    return () => {
+      previewFrame.removeEventListener('wheel', handleNativeWheel);
+      previewFrame.removeEventListener('gesturestart', handleGestureStart as EventListener);
+      previewFrame.removeEventListener('gesturechange', handleGestureChange as EventListener);
+      previewFrame.removeEventListener('gestureend', handleGestureEnd as EventListener);
+    };
+  }, [previewUrl, tool]);
+
 
   function handleWheelZoom(e: React.WheelEvent) {
     e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+    const speed = e.ctrlKey ? 0.0035 : 0.0015;
+    const factor = Math.exp(-e.deltaY * speed);
     updateZoom((currentZoom) => currentZoom * factor);
   }
 
@@ -162,30 +317,22 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
       return;
     }
 
+    if (activePanPointerIdRef.current !== null) {
+      return;
+    }
+
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    activePanPointerIdRef.current = e.pointerId;
     panStartRef.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
     setIsPanning(true);
-  }
-
-  function handleZoomPointerMove(e: React.PointerEvent) {
-    if (!panStartRef.current) return;
-    setPan(clampPan({
-      x: panStartRef.current.panX + (e.clientX - panStartRef.current.x),
-      y: panStartRef.current.panY + (e.clientY - panStartRef.current.y),
-    }));
-  }
-
-  function handleZoomPointerUp(e?: React.PointerEvent) {
-    if (e && (e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
-      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-    }
-    panStartRef.current = null;
-    setIsPanning(false);
+    document.body.style.cursor = 'grabbing';
+    e.preventDefault();
   }
 
   function resetZoom() {
     setZoom(1);
     setPan({ x: 0, y: 0 });
+    gestureStartZoomRef.current = null;
   }
 
   function setZoomPreset(nextZoom: number) {
@@ -260,16 +407,6 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     window.addEventListener('mouseup', stopResizing);
     window.addEventListener('blur', stopResizing);
   }
-
-  const selectedFile = files.find((f) => f.id === selectedId) ?? files[0];
-  const selectedResultIndex = results.findIndex((r) => r.sourceFileId === selectedFile?.id);
-  const selectedResult = selectedResultIndex >= 0 ? results[selectedResultIndex] : undefined;
-  const hasFiles = files.length > 0;
-  const processingErrors = Object.values(fileErrors);
-  const visibleProcessingErrors = processingErrors.filter((fileError) => fileError.message !== error?.message);
-
-  // Derived directly from cropMap — no async effect lag
-  const currentCrop = cropMap[selectedFile?.id ?? ''] ?? null;
 
   function getToolOptions(): ToolOptions {
     switch (tool) {
@@ -376,11 +513,6 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     onChangeTool(t);
     setShowResult(false);
   }
-
-  const basePreviewUrl = selectedFile?.previewUrl;
-  const previewUrl = showResult && selectedResult ? selectedResult.url : basePreviewUrl;
-  const isCropMode = tool === 'crop' && !showResult && !!selectedFile;
-  const isResizeMode = tool === 'resize' && !!selectedFile;
 
   useEffect(() => {
     setZoom(1);
@@ -584,9 +716,6 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               onWheel={handleWheelZoom}
               onDoubleClick={resetZoom}
               onPointerDown={handleZoomPointerDown}
-              onPointerMove={handleZoomPointerMove}
-              onPointerUp={handleZoomPointerUp}
-              onPointerCancel={handleZoomPointerUp}
             >
               {previewUrl ? (
                 <div
