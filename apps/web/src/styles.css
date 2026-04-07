@@ -147,26 +147,15 @@ img {
 }
 
 .select-signature {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
 }
 
 .select-signature-mark {
-  width: 64px;
-  height: 64px;
+  width: clamp(96px, 12vw, 112px);
+  height: clamp(96px, 12vw, 112px);
   display: block;
-}
-
-.select-signature-copy {
-  display: flex;
-  align-items: center;
-}
-
-.select-signature-copy strong {
-  font-size: 1.02rem;
-  font-weight: 800;
-  letter-spacing: -0.04em;
 }
 
 .select-eyebrow {
