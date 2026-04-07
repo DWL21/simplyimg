@@ -180,25 +180,31 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
         <aside className="doc-page-strip">
           {pageCount > 0
             ? Array.from({ length: pageCount }, (_, i) => (
-                <button
+                <div
                   key={i}
-                  className={`doc-page-item ${activePage === i ? 'is-active' : ''}`}
-                  onClick={() => scrollToPage(i)}
-                  title={`${i + 1}페이지`}
+                  className={`doc-page-entry ${activePage === i ? 'is-active' : ''}`}
                 >
-                  {pageThumbs.pages[i] ? (
-                    <div className="doc-page-thumb">
-                      <iframe
-                        className="doc-page-thumb-frame"
-                        srcDoc={`<!doctype html><html><head>${pageThumbs.headHtml}<style>html,body{margin:0;padding:0;overflow:hidden;background:white;}</style></head><body>${pageThumbs.pages[i]}</body></html>`}
-                        sandbox="allow-same-origin"
-                        title={`${i + 1}페이지 미리보기`}
-                      />
-                    </div>
-                  ) : (
-                    <span className="doc-page-item-num">{i + 1}</span>
-                  )}
-                </button>
+                  <button
+                    className={`doc-page-item ${activePage === i ? 'is-active' : ''}`}
+                    onClick={() => scrollToPage(i)}
+                    title={`${i + 1}페이지`}
+                    type="button"
+                  >
+                    {pageThumbs.pages[i] ? (
+                      <div className="doc-page-thumb">
+                        <iframe
+                          className="doc-page-thumb-frame"
+                          srcDoc={`<!doctype html><html><head>${pageThumbs.headHtml}<style>html,body{margin:0;padding:0;overflow:hidden;background:white;}</style></head><body>${pageThumbs.pages[i]}</body></html>`}
+                          sandbox="allow-same-origin"
+                          title={`${i + 1}페이지 미리보기`}
+                        />
+                      </div>
+                    ) : (
+                      <span className="doc-page-thumb-empty" />
+                    )}
+                  </button>
+                  <span className="doc-page-item-num">{i + 1}</span>
+                </div>
               ))
             : null}
         </aside>
@@ -285,7 +291,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
               </label>
             </div>
             <div className="document-option-card">
-              <strong>표시 크기</strong>
+              <strong>본문 크기</strong>
               <div className="doc-scale-row">
                 <input
                   type="range"

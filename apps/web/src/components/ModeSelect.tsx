@@ -4,7 +4,7 @@ import { TOOL_LABELS, ALL_TOOLS } from '../lib/toolConstants';
 const TOOL_DESCS: Record<ToolName, string> = {
   compress: '파일 크기를 줄이고 품질을 최적화합니다',
   resize: '가로/세로 픽셀 크기를 바꿉니다',
-  convert: 'JPG · PNG · WebP · SVG로 변환합니다',
+  convert: 'JPEG · JPG · PNG · WebP · SVG를 지원합니다',
   crop: '드래그로 원하는 영역을 선택합니다',
   rotate: '90° · 180° · 270° 방향을 바꿉니다',
   flip: '좌우 또는 상하로 뒤집습니다',

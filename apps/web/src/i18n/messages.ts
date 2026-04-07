@@ -170,7 +170,7 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       convert: {
         name: '이미지 형식 변환',
         label: 'CONVERT',
-        description: 'JPG, PNG, WebP, SVG로 필요한 형식으로 바꿉니다.',
+        description: 'JPEG, JPG, PNG, WebP, SVG 형식을 지원합니다.',
         details: '다양한 입력 호환, 출력 포맷 선택, 일괄 다운로드',
         workspaceTitle: '이미지 형식 변환',
         workspaceDescription: '다양한 형식의 이미지를 JPG, PNG, WebP, SVG 중 원하는 형식으로 변환합니다.',
