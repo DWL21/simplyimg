@@ -1,4 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Footer } from './layout/Footer';
+import {
+  formatPageCount,
+  formatPageLabel,
+  formatPagePreviewLabel,
+  useI18n,
+} from '../i18n/messages';
 import { useDocumentStore } from '../store/documentStore';
 import { bytesToHuman } from '../lib/formatUtils';
 
@@ -11,6 +18,7 @@ const MAX_PAGE_STRIP_WIDTH = 280;
 
 export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
   const defaultStripWidth = 124;
+  const { locale, messages } = useI18n();
   const files = useDocumentStore((state) => state.files);
   const previewHtml = useDocumentStore((state) => state.previewHtml);
   const options = useDocumentStore((state) => state.options);
@@ -69,6 +77,14 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [handleMessage]);
+
+  useEffect(() => {
+    if (!selectedFile) {
+      return;
+    }
+
+    void updateOptions({});
+  }, [locale, selectedFile?.id, updateOptions]);
 
   useEffect(() => () => {
     stripResizeCleanupRef.current?.();
@@ -152,8 +168,8 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
         />
 
         <header className="upload-header">
-          <button className="back-btn" onClick={onBack}>← 뒤로</button>
-          <div className="document-upload-title">Markdown → PDF</div>
+          <button className="back-btn" onClick={onBack}>{messages.document.back}</button>
+          <div className="document-upload-title">{messages.document.title}</div>
           <span className="tool-badge">MD</span>
         </header>
 
@@ -168,8 +184,8 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
             </div>
-            <strong className="upload-heading">Markdown 파일을 끌어다 놓거나</strong>
-            <span className="upload-sub">클릭해서 파일을 선택하세요</span>
+            <strong className="upload-heading">{messages.document.dropTitle}</strong>
+            <span className="upload-sub">{messages.document.dropDescription}</span>
             <span className="upload-hint">MD</span>
           </div>
         </label>
@@ -194,12 +210,12 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
       />
 
       <header className="edit-header">
-        <button className="back-btn" onClick={onBack}>← 처음으로</button>
+        <button className="back-btn" onClick={onBack}>{messages.document.backHome}</button>
         <div className="document-header-copy">
-          <strong>Markdown → PDF</strong>
+          <strong>{messages.document.title}</strong>
         </div>
         <button className="add-more-btn" onClick={() => inputRef.current?.click()}>
-          파일 바꾸기
+          {messages.document.replaceFile}
         </button>
       </header>
 
@@ -215,7 +231,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
                   <button
                     className={`doc-page-item ${activePage === i ? 'is-active' : ''}`}
                     onClick={() => scrollToPage(i)}
-                    title={`${i + 1}페이지`}
+                    title={formatPageLabel(locale, i)}
                     type="button"
                   >
                     {pageThumbs.pages[i] ? (
@@ -224,7 +240,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
                           className="doc-page-thumb-frame"
                           srcDoc={`<!doctype html><html><head>${pageThumbs.headHtml}<style>html,body{margin:0;padding:0;overflow:hidden;background:white;}</style></head><body>${pageThumbs.pages[i]}</body></html>`}
                           sandbox="allow-same-origin"
-                          title={`${i + 1}페이지 미리보기`}
+                          title={formatPagePreviewLabel(locale, i)}
                         />
                       </div>
                     ) : (
@@ -243,7 +259,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
           {previewHtml ? (
             <iframe
               ref={iframeRef}
-              title="A4 preview"
+              title={messages.document.previewFrameTitle}
               srcDoc={previewHtml}
               sandbox="allow-scripts"
               className="document-preview-frame"
@@ -251,14 +267,14 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
           ) : (
             <div className="document-preview-empty">
               <strong>{selectedFile.file.name}</strong>
-              <span>{isProcessing ? '미리보기를 준비하는 중입니다.' : '미리보기를 불러오지 못했습니다.'}</span>
+              <span>{isProcessing ? messages.document.previewLoading : messages.document.previewFailed}</span>
             </div>
           )}
           <div className="document-preview-meta">
             <span>{selectedFile.file.name}</span>
             <span>{bytesToHuman(selectedFile.file.size)}</span>
             <span>MD</span>
-            {pageCount > 0 && <span>{pageCount}페이지</span>}
+            {pageCount > 0 && <span>{formatPageCount(locale, pageCount)}</span>}
           </div>
           {error ? <p className="error-msg">{error.message}</p> : null}
           {isProcessing ? (
@@ -274,52 +290,52 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
         {/* Right: options */}
         <aside className="options-panel">
           <div className="options-scroll">
-            <h3 className="panel-title">PDF export</h3>
-            <div className="document-option-card"><strong>파일명</strong><p>{selectedFile.file.name}</p></div>
+            <h3 className="panel-title">{messages.document.exportTitle}</h3>
+            <div className="document-option-card"><strong>{messages.document.fileName}</strong><p>{selectedFile.file.name}</p></div>
             <div className="document-option-card">
-              <strong>제목 위치</strong>
+              <strong>{messages.document.titlePosition}</strong>
               <label className="document-select-field">
                 <select
                   className="document-select"
                   value={options.titlePosition}
                   onChange={(event) => void updateOptions({ titlePosition: event.target.value as 'header' | 'footer' | 'none' })}
                 >
-                  <option value="none">표시 안함</option>
-                  <option value="header">머리말</option>
-                  <option value="footer">꼬리말</option>
+                  <option value="none">{messages.document.hidden}</option>
+                  <option value="header">{messages.document.header}</option>
+                  <option value="footer">{messages.document.footer}</option>
                 </select>
               </label>
             </div>
             <div className="document-option-card">
-              <strong>페이지 번호</strong>
+              <strong>{messages.document.pageNumbers}</strong>
               <label className="document-select-field">
                 <select
                   className="document-select"
                   value={options.pageNumberFormat}
                   onChange={(event) => void updateOptions({ pageNumberFormat: event.target.value as 'none' | 'page-n' | 'n-of-total' | 'n' })}
                 >
-                  <option value="none">표시 안함</option>
-                  <option value="page-n">페이지 1, 페이지 2…</option>
+                  <option value="none">{messages.document.hidden}</option>
+                  <option value="page-n">{messages.document.pageNumberExample}</option>
                   <option value="n-of-total">1/5, 2/5…</option>
                   <option value="n">1, 2, 3…</option>
                 </select>
               </label>
             </div>
             <div className="document-option-card">
-              <strong>날짜 표기</strong>
+              <strong>{messages.document.dateLabel}</strong>
               <label className="document-select-field">
                 <select
                   className="document-select"
                   value={options.showDateInFooter ? 'show' : 'none'}
                   onChange={(event) => void updateOptions({ showDateInFooter: event.target.value === 'show' })}
                 >
-                  <option value="none">표시 안함</option>
-                  <option value="show">표시</option>
+                  <option value="none">{messages.document.hidden}</option>
+                  <option value="show">{messages.document.show}</option>
                 </select>
               </label>
             </div>
             <div className="document-option-card">
-              <strong>본문 크기</strong>
+              <strong>{messages.document.bodyScale}</strong>
               <div className="doc-scale-row">
                 <input
                   type="range"
@@ -336,14 +352,16 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
           </div>
           <div className="panel-actions">
             <button className="process-btn" onClick={() => printDocument()} disabled={isProcessing || !previewHtml}>
-              {isProcessing ? '저장 준비 중…' : '저장하기'}
+              {isProcessing ? messages.document.savePreparing : messages.document.save}
             </button>
             <button className="re-edit-btn" onClick={() => removeFile(selectedFile.id)}>
-              파일 제거
+              {messages.document.removeFile}
             </button>
           </div>
         </aside>
       </div>
+
+      <Footer />
     </div>
   );
 }

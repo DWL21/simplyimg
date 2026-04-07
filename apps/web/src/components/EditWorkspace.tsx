@@ -1,10 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
+import {
+  formatApplyToolLabel,
+  formatDownloadAllLabel,
+  formatFileCount,
+  formatToolReadyMessage,
+  useI18n,
+} from '../i18n/messages';
 import { useImageStore } from '../store/imageStore';
 import CropEditor from './CropEditor';
+import { Footer } from './layout/Footer';
 import OptionsPanel, { type OptionsPanelState } from './OptionsPanel';
 import ResizeEditor from './ResizeEditor';
 import { acceptedImageInput, bytesToHuman } from '../lib/formatUtils';
-import { TOOL_LABELS, ALL_TOOLS } from '../lib/toolConstants';
+import { ALL_TOOLS, getToolDisplayLabel } from '../lib/toolConstants';
 import type { ToolName, ToolOptions } from '../types/image';
 
 const MIN_STRIP_WIDTH = 72;
@@ -27,6 +35,7 @@ interface Props {
 
 export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const emptyPreviewSize = { width: 0, height: 0 };
+  const { locale, messages } = useI18n();
   const files = useImageStore((s) => s.files);
   const results = useImageStore((s) => s.results);
   const isProcessing = useImageStore((s) => s.isProcessing);
@@ -372,6 +381,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
         || options.flip.vertical !== selectedFile.committedFlipVertical
         || currentCrop !== null),
   );
+  const toolLabel = getToolDisplayLabel(tool, locale);
 
   useEffect(() => {
     if (!selectedFile) return;
@@ -408,7 +418,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
       />
 
       <header className="edit-header">
-        <button className="back-btn" onClick={onBack}>← 처음으로</button>
+        <button className="back-btn" onClick={onBack}>{messages.editor.backHome}</button>
         <nav className="tool-tabs">
           {ALL_TOOLS.map((t) => (
             <button
@@ -416,12 +426,12 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               className={`tool-tab ${tool === t ? 'is-active' : ''}`}
               onClick={() => switchTool(t)}
             >
-              {TOOL_LABELS[t]}
+              {getToolDisplayLabel(t, locale)}
             </button>
           ))}
         </nav>
         <button className="add-more-btn" onClick={() => fileInputRef.current?.click()}>
-          + 파일 추가
+          {messages.editor.addFiles}
         </button>
       </header>
 
@@ -448,7 +458,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                 {res && <span className="strip-done">✓</span>}
                 <button
                   className="strip-remove"
-                  title="삭제"
+                  title={messages.editor.remove}
                   onClick={(e) => {
                     e.stopPropagation();
                     removeFile(f.id);
@@ -457,7 +467,11 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               </div>
             );
           })}
-          <button className="strip-add-btn" onClick={() => fileInputRef.current?.click()} title="파일 추가">
+          <button
+            className="strip-add-btn"
+            onClick={() => fileInputRef.current?.click()}
+            title={messages.editor.addFiles}
+          >
             +
           </button>
         </aside>
@@ -474,7 +488,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                 <polyline points="17 8 12 3 7 8" />
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
-              <strong>이미지를 끌어다 놓거나 클릭하여 추가</strong>
+              <strong>{messages.editor.emptyDropTitle}</strong>
               <span>JPG · PNG · WebP · GIF</span>
             </div>
           ) : isCropMode ? (
@@ -533,16 +547,30 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                   )}
                 </div>
               ) : (
-                <div className="preview-empty">이미지를 선택하세요</div>
+                <div className="preview-empty">{messages.editor.emptyPreview}</div>
               )}
               <div className="zoom-controls">
-                <button className="zoom-btn" onClick={() => setZoom((z) => Math.min(8, z * 1.25))} title="확대">+</button>
-                <button className="zoom-level" onClick={resetZoom} title="맞춤 (더블클릭)">{Math.round(zoom * 100)}%</button>
-                <button className="zoom-btn" onClick={() => setZoom((z) => Math.max(0.25, z / 1.25))} title="축소">−</button>
+                <button
+                  className="zoom-btn"
+                  onClick={() => setZoom((z) => Math.min(8, z * 1.25))}
+                  title={messages.editor.zoomIn}
+                >
+                  +
+                </button>
+                <button className="zoom-level" onClick={resetZoom} title={messages.editor.zoomFit}>
+                  {Math.round(zoom * 100)}%
+                </button>
+                <button
+                  className="zoom-btn"
+                  onClick={() => setZoom((z) => Math.max(0.25, z / 1.25))}
+                  title={messages.editor.zoomOut}
+                >
+                  −
+                </button>
               </div>
               {selectedResult && (
                 <button className="toggle-btn" onClick={() => setShowResult((v) => !v)}>
-                  {showResult ? '원본' : '결과'}
+                  {showResult ? messages.workspace.original : messages.workspace.processed}
                 </button>
               )}
             </div>
@@ -573,13 +601,13 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
             <div className="options-scroll">
               {hasFiles ? (
                 <>
-                  <h3 className="panel-title">{TOOL_LABELS[tool]} 옵션</h3>
+                  <h3 className="panel-title">{`${toolLabel} ${messages.editor.optionsSuffix}`}</h3>
                   <OptionsPanel tool={tool} state={{ ...options, crop: currentCrop }} onChange={handleOptionsChange} />
                 </>
               ) : (
                 <div className="crop-guide">
                   <div className="crop-guide-icon">＋</div>
-                  <p>이미지를 추가하면<br />{TOOL_LABELS[tool]} 기능을 사용할 수 있습니다</p>
+                  <p>{formatToolReadyMessage(locale, toolLabel)}</p>
                 </div>
               )}
               {results.length > 0 ? (
@@ -587,8 +615,8 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                   <div className="done-header">
                     <span className="done-check">✓</span>
                     <div>
-                      <strong className="done-title">처리 완료</strong>
-                      <span className="done-sub">{results.length}개 파일</span>
+                      <strong className="done-title">{messages.editor.doneTitle}</strong>
+                      <span className="done-sub">{formatFileCount(locale, results.length)}</span>
                     </div>
                   </div>
                   <div className="done-list">
@@ -653,23 +681,25 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                   }}
                   disabled={!canResetSelected || isProcessing}
                 >
-                  현재 이미지 변경사항 초기화
+                  {messages.editor.resetCurrentImage}
                 </button>
                 <button className="process-btn" onClick={handleProcess} disabled={!canProcess}>
-                  {isProcessing ? '처리 중…' : `${TOOL_LABELS[tool]} 적용`}
+                  {isProcessing ? messages.editor.processing : formatApplyToolLabel(locale, toolLabel)}
                 </button>
                 <button
                   className="re-edit-btn"
                   onClick={() => downloadAll()}
                   disabled={results.length === 0}
                 >
-                  전체 다운로드 ({results.length}개)
+                  {formatDownloadAllLabel(locale, results.length)}
                 </button>
               </div>
             ) : null}
           </>
         </aside>
       </div>
+
+      <Footer />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import { create } from 'zustand';
+import { getCurrentLocale } from '../i18n/messages';
 import { createImageUrl, revokeImageUrl } from '../lib/canvasUtils';
 import {
   bytesToHuman,
@@ -167,7 +168,9 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
       set({
         error: {
           code: 'INVALID_REQUEST',
-          message: '이미지를 먼저 추가해 주세요.',
+          message: getCurrentLocale() === 'ko'
+            ? '이미지를 먼저 추가해 주세요.'
+            : 'Add images first.',
           retryable: false,
           scope: 'upload',
         },
@@ -283,7 +286,9 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
       set({
         error: {
           code: 'INVALID_REQUEST',
-          message: '선택한 파일을 찾을 수 없습니다.',
+          message: getCurrentLocale() === 'ko'
+            ? '선택한 파일을 찾을 수 없습니다.'
+            : 'The selected file could not be found.',
           retryable: false,
           scope: 'process',
           fileId: id,

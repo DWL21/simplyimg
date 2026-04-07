@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/messages';
 import type { ToolName, OutputFormat, CropOptions } from '../types/image';
 
 export interface OptionsPanelState {
@@ -16,6 +17,8 @@ interface Props {
 }
 
 export default function OptionsPanel({ tool, state, onChange }: Props) {
+  const { locale, messages } = useI18n();
+
   function patch<K extends keyof OptionsPanelState>(key: K, val: OptionsPanelState[K]) {
     onChange({ ...state, [key]: val });
   }
@@ -39,7 +42,7 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
       <div className="opt-stack">
         <div className="opt-group">
           <div className="opt-row">
-            <span>품질</span>
+            <span>{messages.options.compress.quality}</span>
             <strong>{s.quality}%</strong>
           </div>
           <input
@@ -61,13 +64,19 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
       <div className="opt-stack">
         <div className="crop-guide">
           <div className="crop-guide-icon">↔</div>
-          <p>이미지 위에서 프레임을 드래그해 위치를 옮기고<br />핸들을 끌어 크기를 조절하세요</p>
+          <p>
+            {locale === 'ko'
+              ? '이미지 위에서 프레임을 드래그해 위치를 옮기고 핸들을 끌어 크기를 조절하세요'
+              : 'Drag the frame on the image to reposition it, then drag the handles to resize it'}
+          </p>
         </div>
         <div className="opt-group">
-          <span className="opt-label">크기 (px)</span>
+          <span className="opt-label">
+            {locale === 'ko' ? '크기 (px)' : 'Size (px)'}
+          </span>
           <div className="size-row">
             <div className="field">
-              <span>너비</span>
+              <span>{messages.options.resize.width}</span>
               <input
                 type="number"
                 value={s.width || ''}
@@ -76,7 +85,7 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
               />
             </div>
             <div className="field">
-              <span>높이</span>
+              <span>{messages.options.resize.height}</span>
               <input
                 type="number"
                 value={s.height || ''}
@@ -102,7 +111,7 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
     return (
       <div className="opt-stack">
         <div className="opt-group">
-          <span className="opt-label">변환 형식</span>
+          <span className="opt-label">{messages.options.convert.outputTitle}</span>
           <div className="chip-row">
             {formats.map((f) => (
               <button
@@ -117,7 +126,7 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
         </div>
         <div className="opt-group">
           <div className="opt-row">
-            <span>품질</span>
+            <span>{messages.options.convert.quality}</span>
             <strong>{s.quality}%</strong>
           </div>
           <input
@@ -139,7 +148,7 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
       <div className="opt-stack">
         <div className="opt-group">
           <div className="opt-row">
-            <span>회전 각도</span>
+            <span>{locale === 'ko' ? '회전 각도' : 'Rotation angle'}</span>
             <label className="angle-input">
               <input
                 type="number"
@@ -168,25 +177,25 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
           </div>
         </div>
         <div className="opt-group">
-          <span className="opt-label">90도 단위 회전</span>
+          <span className="opt-label">{locale === 'ko' ? '90도 단위 회전' : 'Rotate by 90°'}</span>
           <div className="chip-row">
             <button
               className="chip rotate-quick-btn"
               onClick={() => patch('rotate', { degrees: rotateQuarter(s.degrees, -90) })}
-              aria-label="왼쪽으로 90도 회전"
-              title="왼쪽으로 90도 회전"
+              aria-label={locale === 'ko' ? '왼쪽으로 90도 회전' : 'Rotate 90° left'}
+              title={locale === 'ko' ? '왼쪽으로 90도 회전' : 'Rotate 90° left'}
             >
               <span className="rotate-quick-icon">⟲</span>
-              <span className="rotate-quick-label">왼쪽</span>
+              <span className="rotate-quick-label">{locale === 'ko' ? '왼쪽' : 'Left'}</span>
             </button>
             <button
               className="chip rotate-quick-btn"
               onClick={() => patch('rotate', { degrees: rotateQuarter(s.degrees, 90) })}
-              aria-label="오른쪽으로 90도 회전"
-              title="오른쪽으로 90도 회전"
+              aria-label={locale === 'ko' ? '오른쪽으로 90도 회전' : 'Rotate 90° right'}
+              title={locale === 'ko' ? '오른쪽으로 90도 회전' : 'Rotate 90° right'}
             >
               <span className="rotate-quick-icon">⟳</span>
-              <span className="rotate-quick-label">오른쪽</span>
+              <span className="rotate-quick-label">{locale === 'ko' ? '오른쪽' : 'Right'}</span>
             </button>
           </div>
           <div className="chip-row">
@@ -209,21 +218,21 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
     const s = state.flip;
     return (
       <div className="opt-group">
-        <span className="opt-label">방향</span>
+        <span className="opt-label">{locale === 'ko' ? '방향' : 'Direction'}</span>
         <div className="chip-row">
           <button
             className={`chip ${s.horizontal ? 'is-active' : ''}`}
             onClick={() => patch('flip', { ...s, horizontal: !s.horizontal })}
-            aria-label="좌우 반전"
-            title="좌우 반전"
+            aria-label={locale === 'ko' ? '좌우 반전' : 'Flip horizontally'}
+            title={locale === 'ko' ? '좌우 반전' : 'Flip horizontally'}
           >
             ↔
           </button>
           <button
             className={`chip ${s.vertical ? 'is-active' : ''}`}
             onClick={() => patch('flip', { ...s, vertical: !s.vertical })}
-            aria-label="상하 반전"
-            title="상하 반전"
+            aria-label={locale === 'ko' ? '상하 반전' : 'Flip vertically'}
+            title={locale === 'ko' ? '상하 반전' : 'Flip vertically'}
           >
             ↕
           </button>
@@ -238,14 +247,18 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
       return (
         <div className="crop-guide">
           <div className="crop-guide-icon">✂</div>
-          <p>이미지 위에서 드래그하여<br />자를 영역을 선택하세요</p>
+          <p>
+            {locale === 'ko'
+              ? '이미지 위에서 드래그하여 자를 영역을 선택하세요'
+              : 'Drag on the image to choose the area to crop'}
+          </p>
         </div>
       );
     }
     return (
       <div className="opt-stack">
         <div className="opt-group">
-          <span className="opt-label">위치</span>
+          <span className="opt-label">{locale === 'ko' ? '위치' : 'Position'}</span>
           <div className="size-row">
             <div className="field">
               <span>X</span>
@@ -268,10 +281,10 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
           </div>
         </div>
         <div className="opt-group">
-          <span className="opt-label">크기</span>
+          <span className="opt-label">{locale === 'ko' ? '크기' : 'Size'}</span>
           <div className="size-row">
             <div className="field">
-              <span>너비</span>
+              <span>{messages.options.resize.width}</span>
               <input
                 type="number"
                 min={1}
@@ -280,7 +293,7 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
               />
             </div>
             <div className="field">
-              <span>높이</span>
+              <span>{messages.options.resize.height}</span>
               <input
                 type="number"
                 min={1}

@@ -2,7 +2,8 @@ import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-do
 import ModeSelect from './components/ModeSelect';
 import ToolFlow from './components/ToolFlow';
 import DocumentWorkspace from './components/DocumentWorkspace';
-import { privacyPolicyContent, termsContent } from './lib/legalContent';
+import { useAppLocale } from './i18n/messages';
+import { getPrivacyPolicyContent, getTermsContent } from './lib/legalContent';
 import { LegalDocumentPage } from './pages/LegalDocumentPage';
 import { useDocumentStore } from './store/documentStore';
 import type { ToolName } from './types/image';
@@ -31,11 +32,13 @@ function DocumentRoute() {
 }
 
 function PrivacyRoute() {
-  return <LegalDocumentPage document={privacyPolicyContent} />;
+  const locale = useAppLocale();
+  return <LegalDocumentPage document={getPrivacyPolicyContent(locale)} />;
 }
 
 function TermsRoute() {
-  return <LegalDocumentPage document={termsContent} />;
+  const locale = useAppLocale();
+  return <LegalDocumentPage document={getTermsContent(locale)} />;
 }
 
 function LegacyToolRoute() {
@@ -44,6 +47,8 @@ function LegacyToolRoute() {
 }
 
 export default function App() {
+  useAppLocale();
+
   return (
     <div className="app">
       <Routes>

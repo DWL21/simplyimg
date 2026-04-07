@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { getCurrentLocale } from '../i18n/messages';
 import {
   createDocumentFileTooLargeError,
   createDocumentRenderingError,
@@ -65,7 +66,9 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
         options: defaultOptions,
         error: firstError ?? {
           code: 'UNSUPPORTED_FILE',
-          message: 'Markdown 파일만 추가할 수 있습니다.',
+          message: getCurrentLocale() === 'ko'
+            ? 'Markdown 파일만 추가할 수 있습니다.'
+            : 'Only Markdown files can be added.',
           retryable: false,
           scope: 'upload',
         },
@@ -146,7 +149,9 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       set({
         error: {
           code: 'INVALID_REQUEST',
-          message: '저장할 문서를 먼저 불러오세요.',
+          message: getCurrentLocale() === 'ko'
+            ? '저장할 문서를 먼저 불러오세요.'
+            : 'Load a document before saving.',
           retryable: false,
           scope: 'render',
         },
@@ -159,7 +164,13 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       await downloadAsPdf(html, file.name);
     } catch (error) {
       set({
-        error: normalizeUiError(error, createDocumentRenderingError(file, 'PDF 저장에 실패했습니다.')),
+        error: normalizeUiError(
+          error,
+          createDocumentRenderingError(
+            file,
+            getCurrentLocale() === 'ko' ? 'PDF 저장에 실패했습니다.' : 'Failed to save the PDF.',
+          ),
+        ),
       });
     } finally {
       set({ isProcessing: false });

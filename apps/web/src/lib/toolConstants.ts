@@ -1,12 +1,19 @@
 import type { ToolName } from '../types/image';
-
-export const TOOL_LABELS: Record<ToolName, string> = {
-  compress: '압축',
-  resize: '크기 조절',
-  convert: '형식 변환',
-  crop: '자르기',
-  rotate: '회전',
-  flip: '반전',
-};
+import { getToolLabel } from '../i18n/messages';
 
 export const ALL_TOOLS: ToolName[] = ['compress', 'resize', 'convert', 'crop', 'rotate', 'flip'];
+
+export function getToolLabels(locale?: string): Record<ToolName, string> {
+  return {
+    compress: getToolLabel('compress', locale),
+    resize: getToolLabel('resize', locale),
+    convert: getToolLabel('convert', locale),
+    crop: getToolLabel('crop', locale),
+    rotate: getToolLabel('rotate', locale),
+    flip: getToolLabel('flip', locale),
+  };
+}
+
+export function getToolDisplayLabel(tool: ToolName, locale?: string) {
+  return getToolLabel(tool, locale);
+}

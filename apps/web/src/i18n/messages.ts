@@ -1,4 +1,20 @@
-import type { ToolName } from '../types/image';
+import { useSyncExternalStore } from 'react';
+
+const localeStorageKey = 'simplyimg.locale';
+const allToolIds = ['compress', 'resize', 'convert', 'crop', 'rotate', 'flip'] as const;
+const cardToolIds = ['compress', 'resize', 'convert'] as const;
+
+type ToolId = (typeof allToolIds)[number];
+type CardToolId = (typeof cardToolIds)[number];
+type StorageLike = {
+  getItem: (key: string) => string | null;
+  setItem: (key: string, value: string) => void;
+};
+type DocumentLike = {
+  documentElement: {
+    lang: string;
+  };
+};
 
 type ToolCardCopy = {
   name: string;
@@ -12,6 +28,18 @@ type LocaleMessages = {
     name: string;
     tagline: string;
   };
+  language: {
+    label: string;
+    english: string;
+    korean: string;
+  };
+  footer: {
+    privacyPolicy: string;
+    termsOfService: string;
+  };
+  legal: {
+    backHome: string;
+  };
   home: {
     eyebrow: string;
     title: string;
@@ -19,6 +47,19 @@ type LocaleMessages = {
     currentFeaturesTitle: string;
     currentFeaturesValue: string;
     currentFeaturesDescription: string;
+  };
+  modeSelect: {
+    title: string;
+    imageSectionLabel: string;
+    imageSectionTitle: string;
+    documentSectionLabel: string;
+    documentSectionTitle: string;
+    documentToolTitle: string;
+    documentToolDescription: string;
+    toolDescriptions: Record<ToolId, string>;
+  };
+  toolCard: {
+    start: string;
   };
   workspace: {
     titlePrefix: string;
@@ -47,8 +88,9 @@ type LocaleMessages = {
     downloadAll: string;
     processing: string;
   };
+  toolLabels: Record<ToolId, string>;
   tools: Record<
-    'compress' | 'resize' | 'convert',
+    CardToolId,
     ToolCardCopy & {
       workspaceTitle: string;
       workspaceDescription: string;
@@ -60,6 +102,16 @@ type LocaleMessages = {
     title: string;
     description: string;
     button: string;
+  };
+  imageUpload: {
+    back: string;
+    dropTitle: string;
+    dropDescription: string;
+    hint: string;
+    remove: string;
+    addFiles: string;
+    chooseFiles: string;
+    confirm: string;
   };
   fileList: {
     empty: string;
@@ -99,6 +151,54 @@ type LocaleMessages = {
       quality: string;
     };
   };
+  editor: {
+    backHome: string;
+    addFiles: string;
+    remove: string;
+    emptyDropTitle: string;
+    emptyPreview: string;
+    zoomIn: string;
+    zoomOut: string;
+    zoomFit: string;
+    optionsSuffix: string;
+    emptyStatePrefix: string;
+    emptyStateSuffix: string;
+    doneTitle: string;
+    resetCurrentImage: string;
+    processing: string;
+    applyPrefix: string;
+    downloadAll: string;
+  };
+  document: {
+    back: string;
+    backHome: string;
+    title: string;
+    dropTitle: string;
+    dropDescription: string;
+    replaceFile: string;
+    previewLoading: string;
+    previewFailed: string;
+    exportTitle: string;
+    fileName: string;
+    titlePosition: string;
+    pageNumbers: string;
+    dateLabel: string;
+    bodyScale: string;
+    hidden: string;
+    header: string;
+    footer: string;
+    show: string;
+    pageNumberPrefix: string;
+    pageNumberExample: string;
+    pageCountLabel: string;
+    previewFrameTitle: string;
+    savePreparing: string;
+    save: string;
+    removeFile: string;
+  };
+  imagePreview: {
+    empty: string;
+  };
   common: {
     none: string;
   };
@@ -110,6 +210,18 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       name: 'SimplyImg',
       tagline: 'simple image toolkit',
     },
+    language: {
+      label: '언어',
+      english: 'English',
+      korean: '한국어',
+    },
+    footer: {
+      privacyPolicy: '개인정보 처리방침',
+      termsOfService: '이용약관',
+    },
+    legal: {
+      backHome: '← 홈으로',
+    },
     home: {
       eyebrow: 'SIMPLYIMG',
       title: '모드만 고르고 바로 이미지 작업을 시작하세요.',
@@ -118,6 +230,26 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       currentFeaturesTitle: '현재 제공 기능',
       currentFeaturesValue: '이미지 압축, 이미지 크기 조절, 이미지 형식 변환',
       currentFeaturesDescription: '복잡한 설정 없이 바로 쓸 수 있는 흐름만 남겼습니다.',
+    },
+    modeSelect: {
+      title: '지금 필요한 작업을 바로 시작하세요',
+      imageSectionLabel: 'IMAGE',
+      imageSectionTitle: '이미지 작업',
+      documentSectionLabel: 'DOCUMENT',
+      documentSectionTitle: '문서 작업',
+      documentToolTitle: 'Markdown을 PDF로 변환',
+      documentToolDescription: 'Markdown 파일을 PDF로 변환합니다.',
+      toolDescriptions: {
+        compress: '파일 크기를 줄이고 품질을 최적화합니다',
+        resize: '가로/세로 픽셀 크기를 바꿉니다',
+        convert: 'JPEG · JPG · PNG · WebP · SVG를 지원합니다',
+        crop: '드래그로 원하는 영역을 선택합니다',
+        rotate: '90° · 180° · 270° 방향을 바꿉니다',
+        flip: '좌우 또는 상하로 뒤집습니다',
+      },
+    },
+    toolCard: {
+      start: '시작하기',
     },
     workspace: {
       titlePrefix: 'SIMPLYIMG',
@@ -145,6 +277,14 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       optionsDescription: '오른쪽 패널에서 세부 설정을 고른 뒤 바로 실행합니다.',
       downloadAll: '전체 다운로드',
       processing: '처리 중...',
+    },
+    toolLabels: {
+      compress: '압축',
+      resize: '크기 조절',
+      convert: '형식 변환',
+      crop: '자르기',
+      rotate: '회전',
+      flip: '반전',
     },
     tools: {
       compress: {
@@ -180,6 +320,16 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       title: '이미지 선택하기',
       description: '여러 파일을 한 번에 추가할 수 있습니다. 드래그 앤 드롭도 지원합니다.',
       button: '파일 고르기',
+    },
+    imageUpload: {
+      back: '← 뒤로',
+      dropTitle: '이미지를 끌어다 놓거나',
+      dropDescription: '클릭해서 파일을 선택하세요',
+      hint: 'JPG · PNG · WebP · SVG · HEIC/HEIF · 여러 파일 동시 가능',
+      remove: '삭제',
+      addFiles: '+ 파일 추가',
+      chooseFiles: '파일 선택',
+      confirm: '확인 →',
     },
     fileList: {
       empty: '아직 업로드된 파일이 없습니다.',
@@ -219,6 +369,54 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
         quality: '품질',
       },
     },
+    editor: {
+      backHome: '← 처음으로',
+      addFiles: '+ 파일 추가',
+      remove: '삭제',
+      emptyDropTitle: '이미지를 끌어다 놓거나 클릭하여 추가',
+      emptyPreview: '이미지를 선택하세요',
+      zoomIn: '확대',
+      zoomOut: '축소',
+      zoomFit: '맞춤 (더블클릭)',
+      optionsSuffix: '옵션',
+      emptyStatePrefix: '이미지를 추가하면',
+      emptyStateSuffix: '기능을 사용할 수 있습니다',
+      doneTitle: '처리 완료',
+      resetCurrentImage: '현재 이미지 변경사항 초기화',
+      processing: '처리 중…',
+      applyPrefix: '',
+      downloadAll: '전체 다운로드',
+    },
+    document: {
+      back: '← 뒤로',
+      backHome: '← 처음으로',
+      title: 'Markdown → PDF',
+      dropTitle: 'Markdown 파일을 끌어다 놓거나',
+      dropDescription: '클릭해서 파일을 선택하세요',
+      replaceFile: '파일 바꾸기',
+      previewLoading: '미리보기를 준비하는 중입니다.',
+      previewFailed: '미리보기를 불러오지 못했습니다.',
+      exportTitle: 'PDF 내보내기',
+      fileName: '파일명',
+      titlePosition: '제목 위치',
+      pageNumbers: '페이지 번호',
+      dateLabel: '날짜 표기',
+      bodyScale: '본문 크기',
+      hidden: '표시 안함',
+      header: '머리말',
+      footer: '꼬리말',
+      show: '표시',
+      pageNumberPrefix: '페이지 ',
+      pageNumberExample: '페이지 1, 페이지 2…',
+      pageCountLabel: '페이지',
+      previewFrameTitle: 'A4 미리보기',
+      savePreparing: '저장 준비 중…',
+      save: '저장하기',
+      removeFile: '파일 제거',
+    },
+    imagePreview: {
+      empty: '표시할 이미지가 없습니다.',
+    },
     common: {
       none: '-',
     },
@@ -228,14 +426,46 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       name: 'SimplyImg',
       tagline: 'simple image toolkit',
     },
+    language: {
+      label: 'Language',
+      english: 'English',
+      korean: '한국어',
+    },
+    footer: {
+      privacyPolicy: 'Privacy Policy',
+      termsOfService: 'Terms of Service',
+    },
+    legal: {
+      backHome: '← Back home',
+    },
     home: {
       eyebrow: 'SIMPLYIMG',
-      title: 'Pick a mode and start working on images right away.',
+      title: 'Pick a mode and start working right away.',
       description:
-        'The entry screen only asks for the task. After entering a tool, you can upload multiple images, tune options in the right panel, and run the job immediately.',
+        'The first screen only asks what you need to do. Once inside, you can upload multiple images, adjust options in the right panel, and process them immediately.',
       currentFeaturesTitle: 'Available now',
-      currentFeaturesValue: 'Compress, Resize, Convert image formats',
-      currentFeaturesDescription: 'Only the essential workflow stays visible.',
+      currentFeaturesValue: 'Image compression, image resize, image format conversion',
+      currentFeaturesDescription: 'Only the workflow you actually need stays on screen.',
+    },
+    modeSelect: {
+      title: 'Start the task you need right now',
+      imageSectionLabel: 'IMAGE',
+      imageSectionTitle: 'Image tools',
+      documentSectionLabel: 'DOCUMENT',
+      documentSectionTitle: 'Document tools',
+      documentToolTitle: 'Convert Markdown to PDF',
+      documentToolDescription: 'Turn Markdown files into PDFs.',
+      toolDescriptions: {
+        compress: 'Reduce file size and optimize quality',
+        resize: 'Change the image width and height in pixels',
+        convert: 'Supports JPEG · JPG · PNG · WebP · SVG',
+        crop: 'Select the area you want by dragging',
+        rotate: 'Rotate to 90° · 180° · 270° orientations',
+        flip: 'Flip horizontally or vertically',
+      },
+    },
+    toolCard: {
+      start: 'Start',
     },
     workspace: {
       titlePrefix: 'SIMPLYIMG',
@@ -263,6 +493,14 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       optionsDescription: 'Choose the settings in the right panel, then run the job.',
       downloadAll: 'Download all',
       processing: 'Processing...',
+    },
+    toolLabels: {
+      compress: 'Compress',
+      resize: 'Resize',
+      convert: 'Convert',
+      crop: 'Crop',
+      rotate: 'Rotate',
+      flip: 'Flip',
     },
     tools: {
       compress: {
@@ -298,6 +536,16 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       title: 'Select images',
       description: 'You can add multiple files at once. Drag and drop is supported too.',
       button: 'Choose files',
+    },
+    imageUpload: {
+      back: '← Back',
+      dropTitle: 'Drag and drop images',
+      dropDescription: 'or click to choose files',
+      hint: 'JPG · PNG · WebP · SVG · HEIC/HEIF · multiple files supported',
+      remove: 'Remove',
+      addFiles: '+ Add files',
+      chooseFiles: 'Choose files',
+      confirm: 'Continue →',
     },
     fileList: {
       empty: 'No files uploaded yet.',
@@ -337,6 +585,54 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
         quality: 'Quality',
       },
     },
+    editor: {
+      backHome: '← Home',
+      addFiles: '+ Add files',
+      remove: 'Remove',
+      emptyDropTitle: 'Drag images here or click to add',
+      emptyPreview: 'Select an image',
+      zoomIn: 'Zoom in',
+      zoomOut: 'Zoom out',
+      zoomFit: 'Fit (double-click)',
+      optionsSuffix: 'options',
+      emptyStatePrefix: 'Add images to use',
+      emptyStateSuffix: '',
+      doneTitle: 'Processing complete',
+      resetCurrentImage: 'Reset changes for the current image',
+      processing: 'Processing…',
+      applyPrefix: 'Apply',
+      downloadAll: 'Download all',
+    },
+    document: {
+      back: '← Back',
+      backHome: '← Home',
+      title: 'Markdown → PDF',
+      dropTitle: 'Drag and drop a Markdown file',
+      dropDescription: 'or click to choose a file',
+      replaceFile: 'Replace file',
+      previewLoading: 'Preparing the preview.',
+      previewFailed: 'Could not load the preview.',
+      exportTitle: 'PDF export',
+      fileName: 'File name',
+      titlePosition: 'Title position',
+      pageNumbers: 'Page numbers',
+      dateLabel: 'Date',
+      bodyScale: 'Body scale',
+      hidden: 'Hidden',
+      header: 'Header',
+      footer: 'Footer',
+      show: 'Show',
+      pageNumberPrefix: 'Page ',
+      pageNumberExample: 'Page 1, Page 2...',
+      pageCountLabel: 'pages',
+      previewFrameTitle: 'A4 preview',
+      savePreparing: 'Preparing file…',
+      save: 'Save PDF',
+      removeFile: 'Remove file',
+    },
+    imagePreview: {
+      empty: 'No image to display.',
+    },
     common: {
       none: '-',
     },
@@ -345,23 +641,207 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
 
 export type AppLocale = keyof typeof localeMessages;
 
-export function resolveLocale(locale?: string): AppLocale {
-  return locale === 'en' ? 'en' : 'ko';
+function readStoredLocale(): AppLocale | null {
+  const localStorageRef = typeof globalThis !== 'undefined' && 'localStorage' in globalThis
+    ? (globalThis as { localStorage?: StorageLike }).localStorage ?? null
+    : null;
+
+  if (!localStorageRef) {
+    return null;
+  }
+
+  const storedLocale = localStorageRef.getItem(localeStorageKey);
+  if (storedLocale === 'ko' || storedLocale === 'en') {
+    return storedLocale;
+  }
+
+  return null;
 }
 
-export function getMessages(locale: string = 'ko') {
+function detectNavigatorLocale(): AppLocale {
+  if (typeof navigator === 'undefined') {
+    return 'en';
+  }
+
+  const candidates = Array.isArray(navigator.languages) && navigator.languages.length > 0
+    ? navigator.languages
+    : [navigator.language];
+  const hasKorean = candidates.some((locale) => locale.toLowerCase().startsWith('ko'));
+  return hasKorean ? 'ko' : 'en';
+}
+
+function applyDocumentLocale(locale: AppLocale) {
+  const documentRef = typeof globalThis !== 'undefined' && 'document' in globalThis
+    ? (globalThis as { document?: DocumentLike }).document ?? null
+    : null;
+
+  if (documentRef) {
+    documentRef.documentElement.lang = locale;
+  }
+}
+
+export function resolveLocale(locale?: string): AppLocale {
+  if (!locale) {
+    return 'en';
+  }
+
+  return locale.toLowerCase().startsWith('ko') ? 'ko' : 'en';
+}
+
+let currentLocale: AppLocale = readStoredLocale() ?? detectNavigatorLocale();
+
+applyDocumentLocale(currentLocale);
+
+const listeners = new Set<() => void>();
+
+function subscribeLocale(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+export function getCurrentLocale() {
+  return currentLocale;
+}
+
+export function setAppLocale(locale: AppLocale) {
+  const nextLocale = resolveLocale(locale);
+  if (nextLocale === currentLocale) {
+    return;
+  }
+
+  currentLocale = nextLocale;
+  applyDocumentLocale(nextLocale);
+
+  const localStorageRef = typeof globalThis !== 'undefined' && 'localStorage' in globalThis
+    ? (globalThis as { localStorage?: StorageLike }).localStorage ?? null
+    : null;
+
+  if (localStorageRef) {
+    localStorageRef.setItem(localeStorageKey, nextLocale);
+  }
+
+  listeners.forEach((listener) => listener());
+}
+
+export function useAppLocale() {
+  return useSyncExternalStore(subscribeLocale, getCurrentLocale, getCurrentLocale);
+}
+
+export function getMessages(locale: string = getCurrentLocale()) {
   return localeMessages[resolveLocale(locale)];
 }
 
-export function getToolCardEntries(locale: string = 'ko') {
+export function useLocaleMessages() {
+  const locale = useAppLocale();
+  return getMessages(locale);
+}
+
+export function useI18n() {
+  const locale = useAppLocale();
+  return {
+    locale,
+    messages: getMessages(locale),
+    setLocale: setAppLocale,
+  };
+}
+
+export function getToolCardEntries(locale: string = getCurrentLocale()) {
   const messages = getMessages(locale);
 
-  return (['compress', 'resize', 'convert'] as const).map((tool) => ({
-    tool: tool as ToolName,
+  return cardToolIds.map((tool) => ({
+    tool,
     path: `/${tool}`,
     ...messages.tools[tool],
   }));
 }
 
-export const appLocale = resolveLocale(import.meta.env.VITE_APP_LOCALE);
+export function getLanguageLabel(locale: AppLocale) {
+  const messages = getMessages(locale);
+  return locale === 'ko' ? messages.language.korean : messages.language.english;
+}
+
+export function getToolLabel(tool: ToolId, locale: string = getCurrentLocale()) {
+  return getMessages(locale).toolLabels[tool];
+}
+
+export function formatFileCount(locale: string, count: number) {
+  return resolveLocale(locale) === 'ko'
+    ? `${count}개 파일`
+    : `${count} file${count === 1 ? '' : 's'}`;
+}
+
+export function formatSelectedCount(locale: string, count: number) {
+  return resolveLocale(locale) === 'ko'
+    ? `${count}개 선택됨`
+    : `${count} selected`;
+}
+
+export function formatPageCount(locale: string, count: number) {
+  return resolveLocale(locale) === 'ko'
+    ? `${count}페이지`
+    : `${count} page${count === 1 ? '' : 's'}`;
+}
+
+export function formatPageLabel(locale: string, pageIndex: number) {
+  return resolveLocale(locale) === 'ko'
+    ? `${pageIndex + 1}페이지`
+    : `Page ${pageIndex + 1}`;
+}
+
+export function formatPagePreviewLabel(locale: string, pageIndex: number) {
+  return resolveLocale(locale) === 'ko'
+    ? `${pageIndex + 1}페이지 미리보기`
+    : `Page ${pageIndex + 1} preview`;
+}
+
+export function formatOriginalAlt(locale: string, fileName?: string) {
+  return fileName
+    ? resolveLocale(locale) === 'ko'
+      ? `${fileName} 원본`
+      : `${fileName} original`
+    : resolveLocale(locale) === 'ko'
+      ? '원본 미리보기'
+      : 'Original preview';
+}
+
+export function formatProcessedAlt(locale: string, fileName?: string) {
+  return fileName
+    ? resolveLocale(locale) === 'ko'
+      ? `${fileName} 결과`
+      : `${fileName} result`
+    : resolveLocale(locale) === 'ko'
+      ? '결과 미리보기'
+      : 'Result preview';
+}
+
+export function formatLocaleDate(locale: string, date: Date) {
+  const resolvedLocale = resolveLocale(locale);
+  return new Intl.DateTimeFormat(resolvedLocale === 'ko' ? 'ko-KR' : 'en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(date);
+}
+
+export function formatToolReadyMessage(locale: string, toolLabel: string) {
+  return resolveLocale(locale) === 'ko'
+    ? `이미지를 추가하면 ${toolLabel} 기능을 사용할 수 있습니다`
+    : `Add images to use ${toolLabel}.`;
+}
+
+export function formatApplyToolLabel(locale: string, toolLabel: string) {
+  return resolveLocale(locale) === 'ko'
+    ? `${toolLabel} 적용`
+    : `Apply ${toolLabel}`;
+}
+
+export function formatDownloadAllLabel(locale: string, count: number) {
+  return resolveLocale(locale) === 'ko'
+    ? `전체 다운로드 (${count}개)`
+    : `Download all (${count})`;
+}
+
+export const appLocale = getCurrentLocale();
 export const appMessages = getMessages(appLocale);

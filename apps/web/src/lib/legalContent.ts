@@ -1,3 +1,6 @@
+import type { AppLocale } from '../i18n/messages';
+import { formatLocaleDate, resolveLocale } from '../i18n/messages';
+
 export interface LegalSection {
   title: string;
   paragraphs?: string[];
@@ -9,177 +12,344 @@ export interface LegalDocumentContent {
   sections: LegalSection[];
 }
 
-const privacyPolicyEffectiveDate = '2026년 4월 7일';
-const termsEffectiveDate = '2026년 4월 7일';
+const effectiveDate = new Date('2026-04-07T00:00:00+09:00');
 const contactChannel = 'simplyimg.com@gmail.com';
 
-export const privacyPolicyContent: LegalDocumentContent = {
-  title: '개인정보 처리방침',
-  sections: [
-    {
-      title: '1. 총칙',
-      paragraphs: [
-        '본 방침은 대한민국 개인정보 보호 관련 법령을 참고하여 작성되었으며, 서비스 기능 변경이나 법령 개정에 따라 수정될 수 있습니다.',
-      ],
-    },
-    {
-      title: '2. 처리하는 개인정보 항목',
-      bullets: [
-        '이용자가 서비스 이용 과정에서 직접 입력하거나 업로드하는 정보',
-        '서비스 이용 과정에서 생성되는 접속 일시, 브라우저 종류, 운영체제, 기기 정보, IP 주소, 이용 기록 등 기술적 로그',
-        '서비스 개선과 품질 분석을 위해 생성될 수 있는 쿠키 또는 유사 식별 정보',
-      ],
-    },
-    {
-      title: '3. 개인정보 처리 목적',
-      bullets: [
-        '이미지 압축, 크기 조절, 형식 변환, 회전, 뒤집기, 자르기 및 Markdown PDF 변환 기능 제공',
-        '서비스 안정성 확보, 오류 분석, 악용 방지 및 품질 개선',
-        '서비스 사용성 분석 및 인터페이스 개선',
-      ],
-    },
-    {
-      title: '4. 보유 및 이용 기간',
-      bullets: [
-        '개인정보는 처리 목적 달성 시 지체 없이 삭제하는 것을 원칙으로 합니다.',
-        '다만 관계 법령에 따라 보존이 필요한 경우에는 해당 법령이 정한 기간 동안만 보관합니다.',
-        '서비스 운영상 필요한 로그 및 분석 정보는 필요한 최소 기간 동안만 보관합니다.',
-      ],
-    },
-    {
-      title: '5. 제3자 제공 및 처리위탁',
-      paragraphs: [
-        '서비스 제공과 운영을 위해 외부 전문업체 또는 인프라 서비스를 이용할 수 있습니다.',
-        '개인정보 처리의 위탁 또는 제3자 제공이 필요한 경우 관련 법령에 따라 필요한 사항을 고지하거나 공개합니다.',
-      ],
-    },
-    {
-      title: '6. 국외 이전 가능성',
-      bullets: [
-        '서비스 운영에 사용되는 일부 시스템 또는 도구의 특성상 개인정보가 대한민국 외 지역에서 처리될 가능성이 있습니다.',
-        '이 경우 관련 법령이 요구하는 고지, 보호조치 및 필요한 절차를 따릅니다.',
-      ],
-    },
-    {
-      title: '7. 이용자의 권리',
-      bullets: [
-        '이용자는 자신의 개인정보 처리에 관한 설명을 요구할 수 있습니다.',
-        '이용자는 브라우저 설정 또는 서비스 이용 종료를 통해 자신이 생성한 일부 데이터를 직접 관리할 수 있습니다.',
-        '개인정보 관련 문의나 요청은 공개된 문의 채널을 통해 접수할 수 있습니다.',
-      ],
-      paragraphs: [
-        `문의 채널: ${contactChannel}`,
-      ],
-    },
-    {
-      title: '8. 쿠키 및 분석 도구',
-      paragraphs: [
-        'SimplyImg는 서비스 품질 개선을 위해 쿠키 또는 유사 식별 기술을 사용할 수 있습니다.',
-        '이용자는 브라우저 설정을 통해 쿠키 저장을 제한하거나 삭제할 수 있습니다.',
-      ],
-    },
-    {
-      title: '9. 안전성 확보 조치',
-      bullets: [
-        '접근 통제, 네트워크 보안, 오류 모니터링 등 일반적인 기술적 보호 조치를 적용합니다.',
-        '서비스 운영에 필요한 범위에서 관리적·기술적 보호 조치를 지속적으로 점검합니다.',
-      ],
-    },
-    {
-      title: '10. 방침 변경 및 문의',
-      paragraphs: [
-        '본 방침의 내용이 변경되는 경우 서비스 내 공지 또는 본 페이지를 통해 고지합니다.',
-        `문의 채널: ${contactChannel}`,
-      ],
-    },
-    {
-      title: '부칙',
-      paragraphs: [
-        `시행일: ${privacyPolicyEffectiveDate}`,
-      ],
-    },
-  ],
-};
+function getEffectiveDateLabel(locale: AppLocale) {
+  const dateLabel = formatLocaleDate(locale, effectiveDate);
+  return locale === 'ko' ? `시행일: ${dateLabel}` : `Effective date: ${dateLabel}`;
+}
 
-export const termsContent: LegalDocumentContent = {
-  title: '이용약관',
-  sections: [
-    {
-      title: '1. 서비스 내용',
-      bullets: [
-        '이미지 압축, 크기 조절, 형식 변환, 회전, 뒤집기, 자르기 기능',
-        'Markdown 문서의 미리보기 및 PDF 변환 기능',
-        '기타 운영자가 제공하는 부가 기능 및 관련 지원',
+export function getPrivacyPolicyContent(locale: AppLocale): LegalDocumentContent {
+  if (resolveLocale(locale) === 'ko') {
+    return {
+      title: '개인정보 처리방침',
+      sections: [
+        {
+          title: '1. 총칙',
+          paragraphs: [
+            '본 방침은 대한민국 개인정보 보호 관련 법령을 참고하여 작성되었으며, 서비스 기능 변경이나 법령 개정에 따라 수정될 수 있습니다.',
+          ],
+        },
+        {
+          title: '2. 처리하는 개인정보 항목',
+          bullets: [
+            '이용자가 서비스 이용 과정에서 직접 입력하거나 업로드하는 정보',
+            '서비스 이용 과정에서 생성되는 접속 일시, 브라우저 종류, 운영체제, 기기 정보, IP 주소, 이용 기록 등 기술적 로그',
+            '서비스 개선과 품질 분석을 위해 생성될 수 있는 쿠키 또는 유사 식별 정보',
+          ],
+        },
+        {
+          title: '3. 개인정보 처리 목적',
+          bullets: [
+            '이미지 압축, 크기 조절, 형식 변환, 회전, 뒤집기, 자르기 및 Markdown PDF 변환 기능 제공',
+            '서비스 안정성 확보, 오류 분석, 악용 방지 및 품질 개선',
+            '서비스 사용성 분석 및 인터페이스 개선',
+          ],
+        },
+        {
+          title: '4. 보유 및 이용 기간',
+          bullets: [
+            '개인정보는 처리 목적 달성 시 지체 없이 삭제하는 것을 원칙으로 합니다.',
+            '다만 관계 법령에 따라 보존이 필요한 경우에는 해당 법령이 정한 기간 동안만 보관합니다.',
+            '서비스 운영상 필요한 로그 및 분석 정보는 필요한 최소 기간 동안만 보관합니다.',
+          ],
+        },
+        {
+          title: '5. 제3자 제공 및 처리위탁',
+          paragraphs: [
+            '서비스 제공과 운영을 위해 외부 전문업체 또는 인프라 서비스를 이용할 수 있습니다.',
+            '개인정보 처리의 위탁 또는 제3자 제공이 필요한 경우 관련 법령에 따라 필요한 사항을 고지하거나 공개합니다.',
+          ],
+        },
+        {
+          title: '6. 국외 이전 가능성',
+          bullets: [
+            '서비스 운영에 사용되는 일부 시스템 또는 도구의 특성상 개인정보가 대한민국 외 지역에서 처리될 가능성이 있습니다.',
+            '이 경우 관련 법령이 요구하는 고지, 보호조치 및 필요한 절차를 따릅니다.',
+          ],
+        },
+        {
+          title: '7. 이용자의 권리',
+          bullets: [
+            '이용자는 자신의 개인정보 처리에 관한 설명을 요구할 수 있습니다.',
+            '이용자는 브라우저 설정 또는 서비스 이용 종료를 통해 자신이 생성한 일부 데이터를 직접 관리할 수 있습니다.',
+            '개인정보 관련 문의나 요청은 공개된 문의 채널을 통해 접수할 수 있습니다.',
+          ],
+          paragraphs: [`문의 채널: ${contactChannel}`],
+        },
+        {
+          title: '8. 쿠키 및 분석 도구',
+          paragraphs: [
+            'SimplyImg는 서비스 품질 개선을 위해 쿠키 또는 유사 식별 기술을 사용할 수 있습니다.',
+            '이용자는 브라우저 설정을 통해 쿠키 저장을 제한하거나 삭제할 수 있습니다.',
+          ],
+        },
+        {
+          title: '9. 안전성 확보 조치',
+          bullets: [
+            '접근 통제, 네트워크 보안, 오류 모니터링 등 일반적인 기술적 보호 조치를 적용합니다.',
+            '서비스 운영에 필요한 범위에서 관리적·기술적 보호 조치를 지속적으로 점검합니다.',
+          ],
+        },
+        {
+          title: '10. 방침 변경 및 문의',
+          paragraphs: [
+            '본 방침의 내용이 변경되는 경우 서비스 내 공지 또는 본 페이지를 통해 고지합니다.',
+            `문의 채널: ${contactChannel}`,
+          ],
+        },
+        {
+          title: '부칙',
+          paragraphs: [getEffectiveDateLabel(locale)],
+        },
       ],
-    },
-    {
-      title: '2. 약관의 효력 및 변경',
-      paragraphs: [
-        '운영자는 관련 법령, 서비스 정책 또는 기능 변경에 따라 약관을 수정할 수 있으며, 중요한 변경은 서비스 내 고지합니다.',
+    };
+  }
+
+  return {
+    title: 'Privacy Policy',
+    sections: [
+      {
+        title: '1. Overview',
+        paragraphs: [
+          'This policy was prepared with reference to privacy laws and regulations in the Republic of Korea and may be updated when service features or applicable laws change.',
+        ],
+      },
+      {
+        title: '2. Personal Information We Process',
+        bullets: [
+          'Information that users directly enter or upload while using the service',
+          'Technical logs created during service use, such as access time, browser type, operating system, device information, IP address, and usage history',
+          'Cookies or similar identifiers that may be created for service improvement and quality analysis',
+        ],
+      },
+      {
+        title: '3. Purpose of Processing',
+        bullets: [
+          'Providing image compression, resize, format conversion, rotation, flip, crop, and Markdown-to-PDF conversion features',
+          'Maintaining service stability, analyzing errors, preventing abuse, and improving quality',
+          'Analyzing usability and improving the interface',
+        ],
+      },
+      {
+        title: '4. Retention and Use Period',
+        bullets: [
+          'As a rule, personal information is deleted without delay once the processing purpose has been fulfilled.',
+          'If retention is required by applicable law, the information is kept only for the period required by that law.',
+          'Operational logs and analytics data are retained only for the minimum period necessary for service operation.',
+        ],
+      },
+      {
+        title: '5. Third-Party Sharing and Outsourcing',
+        paragraphs: [
+          'External vendors or infrastructure services may be used to provide and operate the service.',
+          'If outsourcing or third-party sharing of personal information is required, the relevant information will be disclosed in accordance with applicable law.',
+        ],
+      },
+      {
+        title: '6. Possible Overseas Processing',
+        bullets: [
+          'Because of the nature of some systems or tools used to operate the service, personal information may be processed outside the Republic of Korea.',
+          'In those cases, the required notices, safeguards, and procedures under applicable law will be followed.',
+        ],
+      },
+      {
+        title: '7. User Rights',
+        bullets: [
+          'Users may request an explanation of how their personal information is processed.',
+          'Users may directly manage some data they create through browser settings or by discontinuing use of the service.',
+          'Privacy-related inquiries or requests may be submitted through the public contact channel.',
+        ],
+        paragraphs: [`Contact: ${contactChannel}`],
+      },
+      {
+        title: '8. Cookies and Analytics Tools',
+        paragraphs: [
+          'SimplyImg may use cookies or similar identifier technologies to improve service quality.',
+          'Users may restrict or delete cookies through their browser settings.',
+        ],
+      },
+      {
+        title: '9. Security Measures',
+        bullets: [
+          'General technical safeguards such as access control, network security, and error monitoring are applied.',
+          'Administrative and technical safeguards required for service operation are reviewed on an ongoing basis.',
+        ],
+      },
+      {
+        title: '10. Policy Changes and Contact',
+        paragraphs: [
+          'If this policy changes, notice will be provided in the service or on this page.',
+          `Contact: ${contactChannel}`,
+        ],
+      },
+      {
+        title: 'Supplementary Provision',
+        paragraphs: [getEffectiveDateLabel(locale)],
+      },
+    ],
+  };
+}
+
+export function getTermsContent(locale: AppLocale): LegalDocumentContent {
+  if (resolveLocale(locale) === 'ko') {
+    return {
+      title: '이용약관',
+      sections: [
+        {
+          title: '1. 서비스 내용',
+          bullets: [
+            '이미지 압축, 크기 조절, 형식 변환, 회전, 뒤집기, 자르기 기능',
+            'Markdown 문서의 미리보기 및 PDF 변환 기능',
+            '기타 운영자가 제공하는 부가 기능 및 관련 지원',
+          ],
+        },
+        {
+          title: '2. 약관의 효력 및 변경',
+          paragraphs: [
+            '운영자는 관련 법령, 서비스 정책 또는 기능 변경에 따라 약관을 수정할 수 있으며, 중요한 변경은 서비스 내 고지합니다.',
+          ],
+        },
+        {
+          title: '3. 서비스 이용',
+          bullets: [
+            '서비스는 현재 별도 유료 결제 고지 없이 제공됩니다. 향후 유료 기능이 추가될 경우 별도 안내합니다.',
+            '서비스 제공 시간은 연중무휴를 원칙으로 하나, 점검·장애·외부 인프라 이슈로 중단될 수 있습니다.',
+          ],
+        },
+        {
+          title: '4. 이용자의 의무',
+          bullets: [
+            '이용자는 법령, 본 약관 및 서비스 안내를 준수해야 합니다.',
+            '이용자는 자신이 업로드하거나 처리하는 파일에 대한 적법한 권리를 보유해야 합니다.',
+            '불법 정보, 악성 코드, 타인의 권리를 침해하는 자료, 서비스 안정성을 저해하는 행위를 해서는 안 됩니다.',
+          ],
+        },
+        {
+          title: '5. 파일 및 결과물에 대한 책임',
+          paragraphs: [
+            '이용자가 업로드한 파일과 그 처리 결과에 대한 책임은 이용자에게 있습니다.',
+            '운영자는 이용자가 요청한 형식 변환이나 문서 출력 결과가 특정 목적에 완전히 부합함을 보증하지 않으며, 이용자는 중요한 결과물에 대해 별도 검수 책임을 집니다.',
+          ],
+        },
+        {
+          title: '6. 지식재산권',
+          bullets: [
+            'SimplyImg 서비스, 소스코드, 디자인, 문서 및 관련 자산의 권리는 운영자 또는 정당한 권리자에게 귀속됩니다.',
+            '서비스에서 생성된 결과물에 대한 권리는 원본 파일에 대한 권리 관계 및 적용 법령에 따릅니다.',
+            '이용자는 운영자의 사전 서면 허락 없이 서비스 자체를 복제, 재배포, 판매하거나 역이용할 수 없습니다.',
+          ],
+        },
+        {
+          title: '7. 서비스 변경 및 중단',
+          paragraphs: [
+            '운영자는 유지보수, 보안, 성능 개선, 법적 요구, 외부 서비스 변경 등의 사유로 서비스의 전부 또는 일부를 수정하거나 중단할 수 있습니다.',
+            '불가항력, 인프라 장애, 통신 문제 등 운영자가 합리적으로 통제하기 어려운 사유로 서비스 제공이 제한될 수 있습니다.',
+          ],
+        },
+        {
+          title: '8. 책임의 제한',
+          bullets: [
+            '운영자는 무료로 제공되는 서비스 범위에서, 고의 또는 중대한 과실이 없는 한 간접손해나 특별손해에 대해 책임을 지지 않습니다.',
+            '이용자의 귀책사유, 제3자 행위, 외부 플랫폼 장애, 브라우저 환경 차이로 발생한 문제에 대해 운영자의 책임은 제한될 수 있습니다.',
+          ],
+        },
+        {
+          title: '9. 준거법 및 분쟁 해결',
+          paragraphs: [
+            '본 약관은 대한민국 법령을 준거법으로 합니다.',
+            '본 서비스와 관련한 분쟁은 관계 법령 및 민사소송법상 관할 법원에 따릅니다.',
+          ],
+        },
+        {
+          title: '10. 문의',
+          paragraphs: [`문의 채널: ${contactChannel}`],
+        },
+        {
+          title: '부칙',
+          paragraphs: [getEffectiveDateLabel(locale)],
+        },
       ],
-    },
-    {
-      title: '3. 서비스 이용',
-      bullets: [
-        '서비스는 현재 별도 유료 결제 고지 없이 제공됩니다. 향후 유료 기능이 추가될 경우 별도 안내합니다.',
-        '서비스 제공 시간은 연중무휴를 원칙으로 하나, 점검·장애·외부 인프라 이슈로 중단될 수 있습니다.',
-      ],
-    },
-    {
-      title: '4. 이용자의 의무',
-      bullets: [
-        '이용자는 법령, 본 약관 및 서비스 안내를 준수해야 합니다.',
-        '이용자는 자신이 업로드하거나 처리하는 파일에 대한 적법한 권리를 보유해야 합니다.',
-        '불법 정보, 악성 코드, 타인의 권리를 침해하는 자료, 서비스 안정성을 저해하는 행위를 해서는 안 됩니다.',
-      ],
-    },
-    {
-      title: '5. 파일 및 결과물에 대한 책임',
-      paragraphs: [
-        '이용자가 업로드한 파일과 그 처리 결과에 대한 책임은 이용자에게 있습니다.',
-        '운영자는 이용자가 요청한 형식 변환이나 문서 출력 결과가 특정 목적에 완전히 부합함을 보증하지 않으며, 이용자는 중요한 결과물에 대해 별도 검수 책임을 집니다.',
-      ],
-    },
-    {
-      title: '6. 지식재산권',
-      bullets: [
-        'SimplyImg 서비스, 소스코드, 디자인, 문서 및 관련 자산의 권리는 운영자 또는 정당한 권리자에게 귀속됩니다.',
-        '서비스에서 생성된 결과물에 대한 권리는 원본 파일에 대한 권리 관계 및 적용 법령에 따릅니다.',
-        '이용자는 운영자의 사전 서면 허락 없이 서비스 자체를 복제, 재배포, 판매하거나 역이용할 수 없습니다.',
-      ],
-    },
-    {
-      title: '7. 서비스 변경 및 중단',
-      paragraphs: [
-        '운영자는 유지보수, 보안, 성능 개선, 법적 요구, 외부 서비스 변경 등의 사유로 서비스의 전부 또는 일부를 수정하거나 중단할 수 있습니다.',
-        '불가항력, 인프라 장애, 통신 문제 등 운영자가 합리적으로 통제하기 어려운 사유로 서비스 제공이 제한될 수 있습니다.',
-      ],
-    },
-    {
-      title: '8. 책임의 제한',
-      bullets: [
-        '운영자는 무료로 제공되는 서비스 범위에서, 고의 또는 중대한 과실이 없는 한 간접손해나 특별손해에 대해 책임을 지지 않습니다.',
-        '이용자의 귀책사유, 제3자 행위, 외부 플랫폼 장애, 브라우저 환경 차이로 발생한 문제에 대해 운영자의 책임은 제한될 수 있습니다.',
-      ],
-    },
-    {
-      title: '9. 준거법 및 분쟁 해결',
-      paragraphs: [
-        '본 약관은 대한민국 법령을 준거법으로 합니다.',
-        '본 서비스와 관련한 분쟁은 관계 법령 및 민사소송법상 관할 법원에 따릅니다.',
-      ],
-    },
-    {
-      title: '10. 문의',
-      paragraphs: [
-        `문의 채널: ${contactChannel}`,
-      ],
-    },
-    {
-      title: '부칙',
-      paragraphs: [
-        `시행일: ${termsEffectiveDate}`,
-      ],
-    },
-  ],
-};
+    };
+  }
+
+  return {
+    title: 'Terms of Service',
+    sections: [
+      {
+        title: '1. Service Description',
+        bullets: [
+          'Image compression, resize, format conversion, rotation, flip, and crop features',
+          'Preview and PDF conversion for Markdown documents',
+          'Other supplementary features and related support provided by the operator',
+        ],
+      },
+      {
+        title: '2. Effect and Changes to These Terms',
+        paragraphs: [
+          'The operator may revise these terms in response to applicable laws, service policies, or feature changes, and material changes will be announced within the service.',
+        ],
+      },
+      {
+        title: '3. Use of the Service',
+        bullets: [
+          'The service is currently provided without separate paid billing notices. If paid features are added later, separate notice will be provided.',
+          'The service is intended to be available at all times, but it may be interrupted due to maintenance, failures, or external infrastructure issues.',
+        ],
+      },
+      {
+        title: '4. User Obligations',
+        bullets: [
+          'Users must comply with applicable laws, these terms, and service guidance.',
+          'Users must hold the necessary legal rights to files they upload or process.',
+          'Users must not upload illegal content, malicious code, material that infringes the rights of others, or anything that harms service stability.',
+        ],
+      },
+      {
+        title: '5. Responsibility for Files and Outputs',
+        paragraphs: [
+          'Users are responsible for the files they upload and for the results produced from those files.',
+          'The operator does not guarantee that requested conversions or document outputs will fully satisfy any specific purpose, and users remain responsible for reviewing important outputs.',
+        ],
+      },
+      {
+        title: '6. Intellectual Property',
+        bullets: [
+          'Rights to the SimplyImg service, source code, design, documentation, and related assets belong to the operator or legitimate rights holders.',
+          'Rights in service-generated outputs follow the rights attached to the original files and any applicable law.',
+          'Users may not reproduce, redistribute, sell, or otherwise exploit the service itself without prior written permission from the operator.',
+        ],
+      },
+      {
+        title: '7. Service Changes and Suspension',
+        paragraphs: [
+          'The operator may modify or suspend all or part of the service for maintenance, security, performance improvements, legal requirements, or changes to external services.',
+          'Service availability may be limited for reasons outside the operator’s reasonable control, including force majeure, infrastructure failures, or communication issues.',
+        ],
+      },
+      {
+        title: '8. Limitation of Liability',
+        bullets: [
+          'Within the scope of the free service, the operator is not liable for indirect or special damages unless caused by intent or gross negligence.',
+          'The operator’s liability may be limited for issues caused by user fault, third-party actions, external platform failures, or browser-environment differences.',
+        ],
+      },
+      {
+        title: '9. Governing Law and Dispute Resolution',
+        paragraphs: [
+          'These terms are governed by the laws of the Republic of Korea.',
+          'Disputes related to the service will be handled in accordance with applicable law and the courts with jurisdiction under Korean civil procedure rules.',
+        ],
+      },
+      {
+        title: '10. Contact',
+        paragraphs: [`Contact: ${contactChannel}`],
+      },
+      {
+        title: 'Supplementary Provision',
+        paragraphs: [getEffectiveDateLabel(locale)],
+      },
+    ],
+  };
+}

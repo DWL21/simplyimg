@@ -6,7 +6,7 @@ import { ProgressBar } from '../components/editor/ProgressBar';
 import ResizeEditor from '../components/ResizeEditor';
 import { DropZone } from '../components/upload/DropZone';
 import { FileList } from '../components/upload/FileList';
-import { appMessages } from '../i18n/messages';
+import { appMessages, formatOriginalAlt, formatProcessedAlt, useAppLocale } from '../i18n/messages';
 import { bytesToHuman, formatLabel } from '../lib/formatUtils';
 import { wasmClient } from '../lib/wasmClient';
 import { useImageStore } from '../store/imageStore';
@@ -38,6 +38,7 @@ export function ToolWorkspace({
   optionsPanel,
   processLabel,
 }: ToolWorkspaceProps) {
+  const locale = useAppLocale();
   const files = useImageStore((state) => state.files);
   const results = useImageStore((state) => state.results);
   const progress = useImageStore((state) => state.progress);
@@ -231,14 +232,14 @@ export function ToolWorkspace({
                   ) : (
                     <ImagePreview
                       src={selectedFile?.previewUrl}
-                      alt={selectedFile ? `${selectedFile.file.name} 원본` : '원본 미리보기'}
+                      alt={formatOriginalAlt(locale, selectedFile?.file.name)}
                       caption={appMessages.workspace.original}
                       emptyLabel={appMessages.workspace.originalEmpty}
                     />
                   )}
                   <ImagePreview
                     src={processedPreviewSrc ?? undefined}
-                    alt={selectedResult ? `${selectedResult.name} 결과` : '결과 미리보기'}
+                    alt={formatProcessedAlt(locale, selectedResult?.name)}
                     caption={appMessages.workspace.processed}
                     emptyLabel={appMessages.workspace.processedEmpty}
                   />

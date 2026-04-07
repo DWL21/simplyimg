@@ -2,6 +2,7 @@ import koreanRegularWoff2Url from '@fontsource/noto-sans-kr/files/noto-sans-kr-k
 import koreanBoldWoff2Url from '@fontsource/noto-sans-kr/files/noto-sans-kr-korean-700-normal.woff2?url';
 import latinRegularWoff2Url from '@fontsource/noto-sans-kr/files/noto-sans-kr-latin-400-normal.woff2?url';
 import latinBoldWoff2Url from '@fontsource/noto-sans-kr/files/noto-sans-kr-latin-700-normal.woff2?url';
+import { formatLocaleDate, getCurrentLocale, resolveLocale } from '../i18n/messages';
 import initMarkdownRenderer, {
   render_markdown as renderMarkdown,
 } from '../../../../packages/md-renderer/pkg/md_renderer.js';
@@ -304,11 +305,8 @@ function documentStyles(options: RenderOptions) {
   `;
 }
 
-function todayString() {
-  const d = new Date();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}.${month}.${day}`;
+function todayString(locale: string) {
+  return formatLocaleDate(locale, new Date());
 }
 
 function buildHeader(fileName: string, options: RenderOptions) {
@@ -319,13 +317,14 @@ function buildHeader(fileName: string, options: RenderOptions) {
 }
 
 function buildFooter(fileName: string, options: RenderOptions) {
+  const locale = getCurrentLocale();
   const leftParts: string[] = [];
   const rightParts: string[] = [];
   if (options.titlePosition === 'footer') {
     leftParts.push(`<span class="doc-footer-title">${escapeHtml(fileName.replace(/\.[^.]+$/, ''))}</span>`);
   }
   if (options.showDateInFooter) {
-    rightParts.push(`<span class="doc-footer-date">${todayString()}</span>`);
+    rightParts.push(`<span class="doc-footer-date">${todayString(locale)}</span>`);
   }
   if (options.pageNumberFormat !== 'none') {
     rightParts.push(`<span class="doc-footer-pagenum">1</span>`);
@@ -336,6 +335,9 @@ function buildFooter(fileName: string, options: RenderOptions) {
 }
 
 function paginationScript(options: RenderOptions) {
+  const locale = getCurrentLocale();
+  const pageNumberPrefix = resolveLocale(locale) === 'ko' ? '페이지 ' : 'Page ';
+
   return `
     <script>
       const pageStack = document.getElementById('page-stack');
@@ -343,6 +345,7 @@ function paginationScript(options: RenderOptions) {
       const source = document.getElementById('doc-source');
       const measureRoot = document.getElementById('doc-measure');
       const pageNumberFormat = ${JSON.stringify(options.pageNumberFormat)};
+      const pageNumberPrefix = ${JSON.stringify(pageNumberPrefix)};
 
       function createPage() {
         const fragment = template.content.cloneNode(true);
@@ -397,7 +400,7 @@ function paginationScript(options: RenderOptions) {
       }
 
       function formatPageNum(index, total) {
-        if (pageNumberFormat === 'page-n') return '페이지 ' + (index + 1);
+        if (pageNumberFormat === 'page-n') return pageNumberPrefix + (index + 1);
         if (pageNumberFormat === 'n-of-total') return (index + 1) + ' / ' + total;
         if (pageNumberFormat === 'n') return String(index + 1);
         return '';
@@ -466,6 +469,7 @@ function paginationScript(options: RenderOptions) {
 }
 
 function buildDocumentHtml(fileName: string, renderedBody: string, mode: 'preview' | 'print', options: RenderOptions) {
+  const locale = getCurrentLocale();
   const headerHtml = buildHeader(fileName, options);
   const footerHtml = buildFooter(fileName, options);
   const pagedDocument = `
@@ -485,7 +489,7 @@ function buildDocumentHtml(fileName: string, renderedBody: string, mode: 'previe
   `;
 
   return `<!doctype html>
-<html lang="ko">
+<html lang="${resolveLocale(locale)}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -543,7 +547,13 @@ export async function downloadAsPdf(html: string, fileName: string) {
     await new Promise<void>((resolve) => window.setTimeout(resolve, 300));
 
     const pages = Array.from(iframeDoc.querySelectorAll<HTMLElement>('.page'));
-    if (pages.length === 0) throw new Error('렌더링된 페이지를 찾지 못했습니다.');
+    if (pages.length === 0) {
+      throw new Error(
+        getCurrentLocale() === 'ko'
+          ? '렌더링된 페이지를 찾지 못했습니다.'
+          : 'No rendered pages were found.',
+      );
+    }
 
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const A4_W = 210;

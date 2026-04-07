@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Footer } from '../components/layout/Footer';
+import { useLocaleMessages } from '../i18n/messages';
 import type { LegalDocumentContent } from '../lib/legalContent';
 
 interface LegalDocumentPageProps {
@@ -7,12 +8,14 @@ interface LegalDocumentPageProps {
 }
 
 export function LegalDocumentPage({ document }: LegalDocumentPageProps) {
+  const messages = useLocaleMessages();
+
   return (
     <div className="legal-page">
       <div className="legal-shell">
         <header className="legal-header">
           <Link className="legal-back" to="/">
-            ← 홈으로
+            {messages.legal.backHome}
           </Link>
           <div className="legal-header-copy">
             <h1>{document.title}</h1>

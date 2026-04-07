@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { ToolName } from '../../types/image';
-import { getToolCardEntries, appLocale } from '../../i18n/messages';
+import { getToolCardEntries, appLocale, useLocaleMessages } from '../../i18n/messages';
 
 export interface ToolCardData {
   name: string;
@@ -17,6 +17,8 @@ export interface ToolCardData {
 export const toolCards: ToolCardData[] = getToolCardEntries(appLocale);
 
 export function ToolCard({ name, label, path, description, details }: ToolCardData) {
+  const messages = useLocaleMessages();
+
   return (
     <Link className="tool-card" to={path}>
       <span className="tool-card-label">{label}</span>
@@ -26,7 +28,7 @@ export function ToolCard({ name, label, path, description, details }: ToolCardDa
       </div>
       <div className="tool-card-footer">
         <span>{details}</span>
-        <span className="tool-card-arrow">시작하기</span>
+        <span className="tool-card-arrow">{messages.toolCard.start}</span>
       </div>
     </Link>
   );

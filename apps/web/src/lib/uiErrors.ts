@@ -1,3 +1,4 @@
+import { getCurrentLocale } from '../i18n/messages';
 import { bytesToHuman } from './formatUtils';
 import { getDocumentUploadLimitBytes, getImageUploadLimitBytes } from './uploadLimits';
 
@@ -39,11 +40,18 @@ export function getErrorMessage(error: UiError | null) {
   return error?.message ?? null;
 }
 
+function isKoreanLocale() {
+  return getCurrentLocale() === 'ko';
+}
+
 export function createImageFileTooLargeError(file: File): UiError {
   const limitBytes = getImageUploadLimitBytes();
+  const message = isKoreanLocale()
+    ? `${file.name}: 이미지 업로드 제한은 ${bytesToHuman(limitBytes)}입니다. 선택한 파일은 ${bytesToHuman(file.size)}입니다.`
+    : `${file.name}: The image upload limit is ${bytesToHuman(limitBytes)}. The selected file is ${bytesToHuman(file.size)}.`;
   return createUiError({
     code: 'FILE_TOO_LARGE',
-    message: `${file.name}: 이미지 업로드 제한은 ${bytesToHuman(limitBytes)}입니다. 선택한 파일은 ${bytesToHuman(file.size)}입니다.`,
+    message,
     retryable: false,
     scope: 'upload',
     fileName: file.name,
@@ -54,9 +62,12 @@ export function createImageFileTooLargeError(file: File): UiError {
 
 export function createDocumentFileTooLargeError(file: File): UiError {
   const limitBytes = getDocumentUploadLimitBytes();
+  const message = isKoreanLocale()
+    ? `${file.name}: 문서 업로드 제한은 ${bytesToHuman(limitBytes)}입니다. 선택한 파일은 ${bytesToHuman(file.size)}입니다.`
+    : `${file.name}: The document upload limit is ${bytesToHuman(limitBytes)}. The selected file is ${bytesToHuman(file.size)}.`;
   return createUiError({
     code: 'FILE_TOO_LARGE',
-    message: `${file.name}: 문서 업로드 제한은 ${bytesToHuman(limitBytes)}입니다. 선택한 파일은 ${bytesToHuman(file.size)}입니다.`,
+    message,
     retryable: false,
     scope: 'upload',
     fileName: file.name,
@@ -68,7 +79,9 @@ export function createDocumentFileTooLargeError(file: File): UiError {
 export function createUnsupportedImageFileError(file: File): UiError {
   return createUiError({
     code: 'UNSUPPORTED_FILE',
-    message: `${file.name}: 지원하지 않는 이미지 형식입니다.`,
+    message: isKoreanLocale()
+      ? `${file.name}: 지원하지 않는 이미지 형식입니다.`
+      : `${file.name}: Unsupported image format.`,
     retryable: false,
     scope: 'upload',
     fileName: file.name,
@@ -78,7 +91,9 @@ export function createUnsupportedImageFileError(file: File): UiError {
 export function createUnsupportedDocumentFileError(file: File): UiError {
   return createUiError({
     code: 'UNSUPPORTED_FILE',
-    message: `${file.name}: Markdown 파일만 추가할 수 있습니다.`,
+    message: isKoreanLocale()
+      ? `${file.name}: Markdown 파일만 추가할 수 있습니다.`
+      : `${file.name}: Only Markdown files can be added.`,
     retryable: false,
     scope: 'upload',
     fileName: file.name,
@@ -88,7 +103,9 @@ export function createUnsupportedDocumentFileError(file: File): UiError {
 export function createEmptyFileError(file: File): UiError {
   return createUiError({
     code: 'EMPTY_FILE',
-    message: `${file.name}: 비어 있는 파일은 업로드할 수 없습니다.`,
+    message: isKoreanLocale()
+      ? `${file.name}: 비어 있는 파일은 업로드할 수 없습니다.`
+      : `${file.name}: Empty files cannot be uploaded.`,
     retryable: false,
     scope: 'upload',
     fileName: file.name,
@@ -100,9 +117,13 @@ export function createUploadRejectionSummary(errors: UiError[]): UiError {
   return createUiError({
     code: 'UPLOAD_REJECTED',
     message:
-      count === 1
-        ? '선택한 파일을 추가할 수 없습니다.'
-        : `${count}개 파일을 추가할 수 없습니다. 아래 사유를 확인하세요.`,
+      isKoreanLocale()
+        ? count === 1
+          ? '선택한 파일을 추가할 수 없습니다.'
+          : `${count}개 파일을 추가할 수 없습니다. 아래 사유를 확인하세요.`
+        : count === 1
+          ? 'The selected file cannot be added.'
+          : `${count} files cannot be added. Check the reasons below.`,
     retryable: true,
     scope: 'upload',
   });
@@ -111,7 +132,9 @@ export function createUploadRejectionSummary(errors: UiError[]): UiError {
 export function createImageProcessingError(file: File, fileId?: string, message?: string): UiError {
   return createUiError({
     code: 'PROCESSING_FAILED',
-    message: message ?? `${file.name}: 이미지 처리에 실패했습니다.`,
+    message: message ?? (isKoreanLocale()
+      ? `${file.name}: 이미지 처리에 실패했습니다.`
+      : `${file.name}: Image processing failed.`),
     retryable: true,
     scope: 'process',
     fileName: file.name,
@@ -122,7 +145,9 @@ export function createImageProcessingError(file: File, fileId?: string, message?
 export function createDocumentRenderingError(file: File, message?: string): UiError {
   return createUiError({
     code: 'RENDER_FAILED',
-    message: message ?? `${file.name}: 문서 렌더링에 실패했습니다.`,
+    message: message ?? (isKoreanLocale()
+      ? `${file.name}: 문서 렌더링에 실패했습니다.`
+      : `${file.name}: Document rendering failed.`),
     retryable: true,
     scope: 'render',
     fileName: file.name,
@@ -132,7 +157,9 @@ export function createDocumentRenderingError(file: File, message?: string): UiEr
 export function createNetworkError(): UiError {
   return createUiError({
     code: 'NETWORK_ERROR',
-    message: '네트워크 요청에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+    message: isKoreanLocale()
+      ? '네트워크 요청에 실패했습니다. 잠시 후 다시 시도해 주세요.'
+      : 'The network request failed. Please try again in a moment.',
     retryable: true,
     scope: 'process',
   });
@@ -147,9 +174,13 @@ export function createProcessFailureSummary(successCount: number, failedErrors: 
   return createUiError({
     code: 'PARTIAL_PROCESS_FAILED',
     message:
-      successCount === 0
-        ? `${failedCount}개 파일 처리에 실패했습니다. 아래 사유를 확인하세요.`
-        : `${successCount}개 파일은 처리했고 ${failedCount}개 파일은 처리하지 못했습니다.`,
+      isKoreanLocale()
+        ? successCount === 0
+          ? `${failedCount}개 파일 처리에 실패했습니다. 아래 사유를 확인하세요.`
+          : `${successCount}개 파일은 처리했고 ${failedCount}개 파일은 처리하지 못했습니다.`
+        : successCount === 0
+          ? `${failedCount} files failed to process. Check the reasons below.`
+          : `${successCount} files were processed, but ${failedCount} files could not be processed.`,
     retryable: true,
     scope: 'process',
   });
@@ -177,7 +208,9 @@ export function createImageWorkerError(
   if (payload.code === 'INVALID_REQUEST') {
     return createUiError({
       code: 'INVALID_REQUEST',
-      message: '요청 형식이 올바르지 않습니다. 파일을 다시 선택해 주세요.',
+      message: isKoreanLocale()
+        ? '요청 형식이 올바르지 않습니다. 파일을 다시 선택해 주세요.'
+        : 'The request format is invalid. Please choose the file again.',
       retryable: true,
       scope: 'process',
       fileName: file.name,
@@ -186,7 +219,13 @@ export function createImageWorkerError(
   }
 
   return createUiError({
-    ...createImageProcessingError(file, undefined, payload.error ?? `요청 처리에 실패했습니다. (${status})`),
+    ...createImageProcessingError(
+      file,
+      undefined,
+      payload.error ?? (isKoreanLocale()
+        ? `요청 처리에 실패했습니다. (${status})`
+        : `The request could not be processed. (${status})`),
+    ),
     status,
   });
 }

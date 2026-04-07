@@ -1,7 +1,8 @@
 import { useCallback, useRef } from 'react';
+import { formatSelectedCount, useI18n } from '../i18n/messages';
 import { acceptedImageInput } from '../lib/formatUtils';
+import { getToolDisplayLabel } from '../lib/toolConstants';
 import { useImageStore } from '../store/imageStore';
-import { TOOL_LABELS } from '../lib/toolConstants';
 import Brand from './Brand';
 import type { ToolName } from '../types/image';
 
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function UploadZone({ tool, onConfirm, onBack }: Props) {
+  const { locale, messages } = useI18n();
   const files = useImageStore((s) => s.files);
   const error = useImageStore((s) => s.error);
   const uploadErrors = useImageStore((s) => s.uploadErrors);
@@ -53,9 +55,9 @@ export default function UploadZone({ tool, onConfirm, onBack }: Props) {
       />
 
       <header className="upload-header">
-        <button className="back-btn" onClick={onBack}>← 뒤로</button>
+        <button className="back-btn" onClick={onBack}>{messages.imageUpload.back}</button>
         <Brand />
-        <span className="tool-badge">{TOOL_LABELS[tool]}</span>
+        <span className="tool-badge">{getToolDisplayLabel(tool, locale)}</span>
       </header>
 
       {!hasFiles ? (
@@ -70,9 +72,9 @@ export default function UploadZone({ tool, onConfirm, onBack }: Props) {
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
             </div>
-            <strong className="upload-heading">이미지를 끌어다 놓거나</strong>
-            <span className="upload-sub">클릭해서 파일을 선택하세요</span>
-            <span className="upload-hint">JPG · PNG · WebP · SVG · HEIC/HEIF · 여러 파일 동시 가능</span>
+            <strong className="upload-heading">{messages.imageUpload.dropTitle}</strong>
+            <span className="upload-sub">{messages.imageUpload.dropDescription}</span>
+            <span className="upload-hint">{messages.imageUpload.hint}</span>
           </div>
         </label>
       ) : (
@@ -84,12 +86,12 @@ export default function UploadZone({ tool, onConfirm, onBack }: Props) {
                 <button
                   className="upload-thumb-remove"
                   onClick={() => removeFile(f.id)}
-                  title="삭제"
+                  title={messages.imageUpload.remove}
                 >×</button>
                 <span className="upload-thumb-name">{f.file.name}</span>
               </div>
             ))}
-            <label className="upload-thumb-add" htmlFor="upload-input" title="파일 추가">
+            <label className="upload-thumb-add" htmlFor="upload-input" title={messages.imageUpload.addFiles}>
               <span>+</span>
             </label>
           </div>
@@ -98,14 +100,14 @@ export default function UploadZone({ tool, onConfirm, onBack }: Props) {
 
       <footer className="upload-footer">
         {hasFiles && (
-          <span className="upload-count">{files.length}개 선택됨</span>
+          <span className="upload-count">{formatSelectedCount(locale, files.length)}</span>
         )}
         <label className="upload-add-btn" htmlFor="upload-input">
-          {hasFiles ? '+ 파일 추가' : '파일 선택'}
+          {hasFiles ? messages.imageUpload.addFiles : messages.imageUpload.chooseFiles}
         </label>
         {hasFiles && (
           <button className="upload-confirm-btn" onClick={onConfirm}>
-            확인 →
+            {messages.imageUpload.confirm}
           </button>
         )}
       </footer>
