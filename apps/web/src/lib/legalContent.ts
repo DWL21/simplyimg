@@ -1,5 +1,3 @@
-export const LEGAL_EFFECTIVE_DATE = '2026년 4월 7일';
-
 export interface LegalSection {
   title: string;
   paragraphs?: string[];
@@ -8,21 +6,18 @@ export interface LegalSection {
 
 export interface LegalDocumentContent {
   title: string;
-  summary: string;
   sections: LegalSection[];
 }
 
-const contactChannel = 'https://github.com/DWL21/simplyimg/issues';
+const contactChannel = 'simplyimg.com@gmail.com';
 
 export const privacyPolicyContent: LegalDocumentContent = {
   title: '개인정보 처리방침',
-  summary:
-    'SimplyImg는 서비스 제공, 안정성 확보 및 이용환경 개선에 필요한 최소한의 정보만 처리합니다.',
   sections: [
     {
       title: '1. 총칙',
       paragraphs: [
-        '본 개인정보 처리방침은 SimplyImg 및 운영자 DWL21이 제공하는 웹 서비스에서 개인정보를 어떻게 처리하는지 설명합니다.',
+        '본 개인정보 처리방침은 SimplyImg 웹 서비스에서 개인정보를 어떻게 처리하는지 설명합니다.',
         '본 방침은 대한민국 개인정보 보호 관련 법령을 참고하여 작성되었으며, 서비스 기능 변경이나 법령 개정에 따라 수정될 수 있습니다.',
       ],
     },
@@ -53,7 +48,7 @@ export const privacyPolicyContent: LegalDocumentContent = {
     {
       title: '5. 제3자 제공 및 처리위탁',
       paragraphs: [
-        'SimplyImg는 서비스 제공과 운영을 위해 외부 전문업체 또는 인프라 서비스를 이용할 수 있습니다.',
+        '서비스 제공과 운영을 위해 외부 전문업체 또는 인프라 서비스를 이용할 수 있습니다.',
         '개인정보 처리의 위탁 또는 제3자 제공이 필요한 경우 관련 법령에 따라 필요한 사항을 고지하거나 공개합니다.',
       ],
     },
@@ -93,13 +88,7 @@ export const privacyPolicyContent: LegalDocumentContent = {
       title: '10. 방침 변경 및 문의',
       paragraphs: [
         '본 방침의 내용이 변경되는 경우 서비스 내 공지 또는 본 페이지를 통해 고지합니다.',
-        `운영자: DWL21 / 문의: ${contactChannel}`,
-      ],
-    },
-    {
-      title: '부칙',
-      paragraphs: [
-        `본 개인정보 처리방침은 ${LEGAL_EFFECTIVE_DATE}부터 적용됩니다.`,
+        `문의 채널: ${contactChannel}`,
       ],
     },
   ],
@@ -107,13 +96,11 @@ export const privacyPolicyContent: LegalDocumentContent = {
 
 export const termsContent: LegalDocumentContent = {
   title: '이용약관',
-  summary:
-    '본 약관은 SimplyImg 웹 서비스의 이용 조건, 서비스 제공 범위, 이용자와 운영자의 권리 및 책임을 정합니다.',
   sections: [
     {
       title: '1. 목적',
       paragraphs: [
-        '본 약관은 DWL21이 운영하는 SimplyImg 웹 서비스의 이용과 관련하여 운영자와 이용자 간의 권리, 의무 및 책임사항을 규정하는 것을 목적으로 합니다.',
+        '본 약관은 SimplyImg 웹 서비스의 이용과 관련하여 서비스와 이용자 간의 권리, 의무 및 책임사항을 규정하는 것을 목적으로 합니다.',
       ],
     },
     {
@@ -185,13 +172,7 @@ export const termsContent: LegalDocumentContent = {
     {
       title: '11. 문의',
       paragraphs: [
-        `운영자: DWL21 / 문의 채널: ${contactChannel}`,
-      ],
-    },
-    {
-      title: '부칙',
-      paragraphs: [
-        `본 약관은 ${LEGAL_EFFECTIVE_DATE}부터 적용됩니다.`,
+        `문의 채널: ${contactChannel}`,
       ],
     },
   ],

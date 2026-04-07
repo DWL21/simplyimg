@@ -15,9 +15,7 @@ export function LegalDocumentPage({ document }: LegalDocumentPageProps) {
             ← 홈으로
           </Link>
           <div className="legal-header-copy">
-            <span className="legal-eyebrow">SIMPLYIMG LEGAL</span>
             <h1>{document.title}</h1>
-            <p>{document.summary}</p>
           </div>
         </header>
 
