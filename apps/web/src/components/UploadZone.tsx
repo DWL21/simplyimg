@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import { acceptedImageInput, isSupportedImageFile } from '../lib/formatUtils';
+import { acceptedImageInput } from '../lib/formatUtils';
 import { useImageStore } from '../store/imageStore';
 import { TOOL_LABELS } from '../lib/toolConstants';
 import Brand from './Brand';
@@ -13,14 +13,15 @@ interface Props {
 
 export default function UploadZone({ tool, onConfirm, onBack }: Props) {
   const files = useImageStore((s) => s.files);
+  const error = useImageStore((s) => s.error);
+  const uploadErrors = useImageStore((s) => s.uploadErrors);
   const addFiles = useImageStore((s) => s.addFiles);
   const removeFile = useImageStore((s) => s.removeFile);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = useCallback(
     (incoming: File[]) => {
-      const images = incoming.filter(isSupportedImageFile);
-      if (images.length > 0) addFiles(images);
+      if (incoming.length > 0) addFiles(incoming);
     },
     [addFiles],
   );
@@ -108,6 +109,14 @@ export default function UploadZone({ tool, onConfirm, onBack }: Props) {
           </button>
         )}
       </footer>
+      {error ? <p className="error-msg">{error.message}</p> : null}
+      {uploadErrors.length > 0 ? (
+        <ul className="error-list">
+          {uploadErrors.map((uploadError, index) => (
+            <li key={`${uploadError.fileName ?? 'upload'}-${index}`}>{uploadError.message}</li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

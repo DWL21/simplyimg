@@ -1249,6 +1249,21 @@ img {
   line-height: 1.45;
 }
 
+.error-list {
+  margin: 0;
+  padding: 0 0 0 18px;
+  color: var(--danger);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.error-list li {
+  margin: 0;
+}
+
 .progress-wrap {
   display: flex;
   flex-direction: column;

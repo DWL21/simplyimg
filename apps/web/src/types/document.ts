@@ -1,3 +1,5 @@
+import type { UiError } from '../lib/uiErrors';
+
 export interface UploadedDocument {
   id: string;
   file: File;
@@ -17,7 +19,7 @@ export interface DocumentStoreState {
   options: DocumentRenderOptions;
   isProcessing: boolean;
   progress: number;
-  error: string | null;
+  error: UiError | null;
   addFiles: (files: File[]) => Promise<void>;
   updateOptions: (options: Partial<DocumentRenderOptions>) => Promise<void>;
   removeFile: (id: string) => void;

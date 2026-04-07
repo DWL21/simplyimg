@@ -146,6 +146,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
             <span className="upload-hint">MD</span>
           </div>
         </label>
+        {error ? <p className="error-msg">{error.message}</p> : null}
       </div>
     );
   }
@@ -232,7 +233,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
             <span>MD</span>
             {pageCount > 0 && <span>{pageCount}페이지</span>}
           </div>
-          {error ? <p className="error-msg">{error}</p> : null}
+          {error ? <p className="error-msg">{error.message}</p> : null}
           {isProcessing ? (
             <div className="progress-wrap document-progress">
               <div className="progress-bar">

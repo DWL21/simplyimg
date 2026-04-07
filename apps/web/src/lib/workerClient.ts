@@ -1,5 +1,6 @@
 import type { ProcessedImage, ToolName, ToolOptions } from '../types/image';
 import { inferMimeType } from './formatUtils';
+import { createImageWorkerError, createNetworkError, UiErrorException } from './uiErrors';
 
 const defaultBaseUrl = 'http://localhost:8787';
 
@@ -25,22 +26,31 @@ export async function postToWorker(
   formData.set('file', file);
   formData.set('options', JSON.stringify(normalizeOptions(options)));
 
-  const response = await fetch(`${getWorkerBaseUrl()}/api/${tool}`, {
-    method: 'POST',
-    body: formData,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${getWorkerBaseUrl()}/api/${tool}`, {
+      method: 'POST',
+      body: formData,
+    });
+  } catch {
+    throw new UiErrorException(createNetworkError());
+  }
 
   if (!response.ok) {
-    let message = `Worker request failed with status ${response.status}`;
+    let payload: { error?: string; code?: string } = {};
     try {
-      const payload = (await response.json()) as { error?: string };
-      if (payload.error) {
-        message = payload.error;
-      }
+      payload = (await response.json()) as { error?: string; code?: string };
     } catch {
       // Keep the HTTP status fallback.
     }
-    throw new Error(message);
+
+    throw new UiErrorException(
+      createImageWorkerError(
+        { code: payload.code, error: payload.error },
+        response.status,
+        file,
+      ),
+    );
   }
 
   return {

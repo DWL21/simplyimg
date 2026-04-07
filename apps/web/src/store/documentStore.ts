@@ -1,4 +1,12 @@
 import { create } from 'zustand';
+import {
+  createDocumentFileTooLargeError,
+  createDocumentRenderingError,
+  createEmptyFileError,
+  createUnsupportedDocumentFileError,
+  normalizeUiError,
+} from '../lib/uiErrors';
+import { getDocumentUploadLimitBytes } from '../lib/uploadLimits';
 import { downloadAsPdf, renderMarkdownPreviewDocument } from '../lib/markdownRenderer';
 import type { DocumentRenderOptions, DocumentStoreState } from '../types/document';
 
@@ -9,6 +17,22 @@ function makeId() {
 function isDocumentFile(file: File) {
   const lowered = file.name.toLowerCase();
   return file.type.includes('markdown') || lowered.endsWith('.md') || lowered.endsWith('.markdown');
+}
+
+function validateDocumentFile(file: File) {
+  if (!isDocumentFile(file)) {
+    return createUnsupportedDocumentFileError(file);
+  }
+
+  if (file.size <= 0) {
+    return createEmptyFileError(file);
+  }
+
+  if (file.size > getDocumentUploadLimitBytes()) {
+    return createDocumentFileTooLargeError(file);
+  }
+
+  return null;
 }
 
 const defaultOptions: DocumentRenderOptions = {
@@ -27,14 +51,24 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
   progress: 0,
   error: null,
   async addFiles(files) {
-    const nextFile = files.filter(isDocumentFile).at(-1);
+    const candidates = files.map((file) => ({
+      file,
+      error: validateDocumentFile(file),
+    }));
+    const nextFile = candidates.filter((candidate) => !candidate.error).at(-1)?.file;
     if (!nextFile) {
+      const firstError = candidates.find((candidate) => candidate.error)?.error;
       set({
         files: [],
         previewHtml: null,
         printHtml: null,
         options: defaultOptions,
-        error: 'md 파일만 추가할 수 있습니다.',
+        error: firstError ?? {
+          code: 'UNSUPPORTED_FILE',
+          message: 'Markdown 파일만 추가할 수 있습니다.',
+          retryable: false,
+          scope: 'upload',
+        },
       });
       return;
     }
@@ -58,13 +92,13 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
         progress: 100,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : '문서 렌더링에 실패했습니다.';
+      const uiError = normalizeUiError(error, createDocumentRenderingError(nextFile));
       set({
         previewHtml: null,
         printHtml: null,
         isProcessing: false,
         progress: 0,
-        error: message,
+        error: uiError,
       });
     }
   },
@@ -86,8 +120,10 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
         progress: 100,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : '문서 렌더링에 실패했습니다.';
-      set({ isProcessing: false, error: message });
+      set({
+        isProcessing: false,
+        error: normalizeUiError(error, createDocumentRenderingError(file)),
+      });
     }
   },
   removeFile(id) {
@@ -107,7 +143,14 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
     const html = get().printHtml;
     const file = get().files[0]?.file;
     if (!html || !file) {
-      set({ error: '저장할 문서를 먼저 불러오세요.' });
+      set({
+        error: {
+          code: 'INVALID_REQUEST',
+          message: '저장할 문서를 먼저 불러오세요.',
+          retryable: false,
+          scope: 'render',
+        },
+      });
       return;
     }
 
@@ -115,8 +158,9 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
     try {
       await downloadAsPdf(html, file.name);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'PDF 저장에 실패했습니다.';
-      set({ error: message });
+      set({
+        error: normalizeUiError(error, createDocumentRenderingError(file, 'PDF 저장에 실패했습니다.')),
+      });
     } finally {
       set({ isProcessing: false });
     }

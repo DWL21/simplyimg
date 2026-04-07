@@ -284,7 +284,7 @@ export function ToolWorkspace({
             </div>
           ) : null}
 
-          {error ? <p className="error-banner">{error}</p> : null}
+          {error ? <p className="error-banner">{error.message}</p> : null}
 
           <DownloadPanel
             results={results}

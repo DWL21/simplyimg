@@ -1,3 +1,5 @@
+import type { UiError } from '../lib/uiErrors';
+
 export type ToolName = 'compress' | 'resize' | 'convert' | 'rotate' | 'crop' | 'flip';
 export type OutputFormat = 'jpeg' | 'jpg' | 'png' | 'webp' | 'svg';
 
@@ -79,7 +81,9 @@ export interface ImageStoreState {
   results: ProcessedResult[];
   isProcessing: boolean;
   progress: number;
-  error: string | null;
+  error: UiError | null;
+  uploadErrors: UiError[];
+  fileErrors: Record<string, UiError>;
   activeTool: ToolName;
   addFiles: (files: File[]) => void;
   removeFile: (id: string) => void;

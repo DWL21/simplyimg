@@ -3,7 +3,7 @@ import { useImageStore } from '../store/imageStore';
 import CropEditor from './CropEditor';
 import OptionsPanel, { type OptionsPanelState } from './OptionsPanel';
 import ResizeEditor from './ResizeEditor';
-import { acceptedImageInput, bytesToHuman, isSupportedImageFile } from '../lib/formatUtils';
+import { acceptedImageInput, bytesToHuman } from '../lib/formatUtils';
 import { TOOL_LABELS, ALL_TOOLS } from '../lib/toolConstants';
 import type { ToolName, ToolOptions } from '../types/image';
 
@@ -29,6 +29,8 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const isProcessing = useImageStore((s) => s.isProcessing);
   const progress = useImageStore((s) => s.progress);
   const error = useImageStore((s) => s.error);
+  const uploadErrors = useImageStore((s) => s.uploadErrors);
+  const fileErrors = useImageStore((s) => s.fileErrors);
   const processSingle = useImageStore((s) => s.processSingle);
   const downloadSingle = useImageStore((s) => s.downloadSingle);
   const downloadAll = useImageStore((s) => s.downloadAll);
@@ -127,8 +129,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   }
 
   function handleAddFiles(incoming: File[]) {
-    const images = incoming.filter(isSupportedImageFile);
-    if (images.length > 0) addFiles(images);
+    if (incoming.length > 0) addFiles(incoming);
   }
 
   function handleFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -166,6 +167,8 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const selectedResultIndex = results.findIndex((r) => r.sourceFileId === selectedFile?.id);
   const selectedResult = selectedResultIndex >= 0 ? results[selectedResultIndex] : undefined;
   const hasFiles = files.length > 0;
+  const processingErrors = Object.values(fileErrors);
+  const visibleProcessingErrors = processingErrors.filter((fileError) => fileError.message !== error?.message);
 
   // Derived directly from cropMap — no async effect lag
   const currentCrop = cropMap[selectedFile?.id ?? ''] ?? null;
@@ -588,7 +591,21 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                   </div>
                 </div>
               ) : null}
-              {error && <p className="error-msg">{error}</p>}
+              {error && <p className="error-msg">{error.message}</p>}
+              {uploadErrors.length > 0 ? (
+                <ul className="error-list">
+                  {uploadErrors.map((uploadError, index) => (
+                    <li key={`${uploadError.fileName ?? 'upload'}-${index}`}>{uploadError.message}</li>
+                  ))}
+                </ul>
+              ) : null}
+              {visibleProcessingErrors.length > 0 ? (
+                <ul className="error-list">
+                  {visibleProcessingErrors.map((fileError) => (
+                    <li key={fileError.fileId ?? fileError.fileName ?? fileError.message}>{fileError.message}</li>
+                  ))}
+                </ul>
+              ) : null}
               {isProcessing && (
                 <div className="progress-wrap">
                   <div className="progress-bar">

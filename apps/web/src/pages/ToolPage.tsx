@@ -84,7 +84,7 @@ export function ToolPage({ title, description, tool, options, optionsPanel }: To
             </div>
           </div>
           {isProcessing ? <ProgressBar value={progress} /> : null}
-          {error ? <p className="error">{error}</p> : null}
+          {error ? <p className="error">{error.message}</p> : null}
           <DownloadPanel results={results} onDownloadAll={downloadAll} onDownloadSingle={downloadSingle} />
         </section>
         <aside className="panel">
