@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CropOptions } from '../types/image';
 
 interface Props {
@@ -53,6 +53,7 @@ export default function CropEditor({
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const naturalSizeRef = useRef({ w: 0, h: 0 });
+  const [naturalSize, setNaturalSize] = useState({ w: 0, h: 0 });
   const dragRef = useRef<DragState | null>(null);
   const cachedRectRef = useRef<DOMRect | null>(null);
   const onChangeRef = useRef(onChange);
@@ -69,12 +70,12 @@ export default function CropEditor({
 
   function getLayout() {
     const el = containerRef.current;
-    if (!el || !naturalSizeRef.current.w) {
+    const { w: iw, h: ih } = naturalSize;
+    if (!el || !iw || !ih) {
       return null;
     }
 
     const { width: cw, height: ch } = el.getBoundingClientRect();
-    const { w: iw, h: ih } = naturalSizeRef.current;
     const imageRatio = iw / ih;
     const containerRatio = cw / ch;
     let baseWidth = 0;
@@ -375,6 +376,11 @@ export default function CropEditor({
             onLoad={(event) => {
               const { naturalWidth, naturalHeight } = event.currentTarget;
               naturalSizeRef.current = { w: naturalWidth, h: naturalHeight };
+              setNaturalSize((current) => (
+                current.w === naturalWidth && current.h === naturalHeight
+                  ? current
+                  : { w: naturalWidth, h: naturalHeight }
+              ));
               onImageLoadRef.current?.(naturalWidth, naturalHeight);
 
               if (!valueRef.current) {
@@ -415,6 +421,11 @@ export default function CropEditor({
           onLoad={(event) => {
             const { naturalWidth, naturalHeight } = event.currentTarget;
             naturalSizeRef.current = { w: naturalWidth, h: naturalHeight };
+            setNaturalSize((current) => (
+              current.w === naturalWidth && current.h === naturalHeight
+                ? current
+                : { w: naturalWidth, h: naturalHeight }
+            ));
             onImageLoadRef.current?.(naturalWidth, naturalHeight);
 
             if (!valueRef.current) {

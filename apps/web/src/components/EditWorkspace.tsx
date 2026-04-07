@@ -347,7 +347,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   }
 
   function handleZoomPointerDown(e: React.PointerEvent) {
-    if (!previewUrl) {
+    if (!previewUrl || zoom <= 1) {
       return;
     }
 
@@ -833,7 +833,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
           ) : (
             <div
               ref={previewFrameRef}
-              className={`preview-frame ${previewUrl ? 'is-pannable' : ''} ${isPanning ? 'is-panning' : ''}`}
+              className={`preview-frame ${previewUrl && zoom > 1 ? 'is-pannable' : ''} ${isPanning ? 'is-panning' : ''}`}
               onWheel={handleWheelZoom}
               onDoubleClick={resetZoom}
               onPointerDown={handleZoomPointerDown}
