@@ -91,14 +91,47 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const previewUrl = showResult && selectedResult ? selectedResult.url : basePreviewUrl;
   const isCropMode = tool === 'crop' && !showResult && !!selectedFile;
   const isResizeMode = tool === 'resize' && !!selectedFile;
+  const isCropPanEnabled = isCropMode && zoom > 1;
+
+  function getBasePreviewDisplaySize() {
+    if (frameDims.w <= 0 || frameDims.h <= 0 || previewNaturalSize.width <= 0 || previewNaturalSize.height <= 0) {
+      return null;
+    }
+
+    let contentWidth = previewNaturalSize.width;
+    let contentHeight = previewNaturalSize.height;
+
+    if (tool === 'rotate' && selectedFile) {
+      const delta = (options.rotate.degrees - selectedFile.committedRotateDegrees + 360) % 360;
+      if (delta !== 0) {
+        const radians = (delta * Math.PI) / 180;
+        const absSin = Math.abs(Math.sin(radians));
+        const absCos = Math.abs(Math.cos(radians));
+        contentWidth = previewNaturalSize.width * absCos + previewNaturalSize.height * absSin;
+        contentHeight = previewNaturalSize.width * absSin + previewNaturalSize.height * absCos;
+      }
+    }
+
+    const scale = Math.min(1, frameDims.w / contentWidth, frameDims.h / contentHeight);
+
+    return {
+      width: contentWidth * scale,
+      height: contentHeight * scale,
+    };
+  }
 
   function clampZoom(value: number) {
     return Math.min(8, Math.max(0.25, value));
   }
 
   function clampPan(nextPan: { x: number; y: number }, nextZoom: number = zoom) {
-    const maxOffsetX = Math.max(0, (frameDims.w * Math.abs(nextZoom - 1)) / 2);
-    const maxOffsetY = Math.max(0, (frameDims.h * Math.abs(nextZoom - 1)) / 2);
+    const baseSize = getBasePreviewDisplaySize();
+    const maxOffsetX = baseSize
+      ? Math.max(0, (baseSize.width * nextZoom - frameDims.w) / 2)
+      : Math.max(0, (frameDims.w * Math.abs(nextZoom - 1)) / 2);
+    const maxOffsetY = baseSize
+      ? Math.max(0, (baseSize.height * nextZoom - frameDims.h) / 2)
+      : Math.max(0, (frameDims.h * Math.abs(nextZoom - 1)) / 2);
 
     return {
       x: Math.max(-maxOffsetX, Math.min(maxOffsetX, nextPan.x)),
@@ -180,7 +213,17 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
       const nextPan = clampPan(currentPan);
       return nextPan.x === currentPan.x && nextPan.y === currentPan.y ? currentPan : nextPan;
     });
-  }, [frameDims.h, frameDims.w, zoom]);
+  }, [
+    frameDims.h,
+    frameDims.w,
+    options.rotate.degrees,
+    previewNaturalSize.height,
+    previewNaturalSize.width,
+    selectedFile?.committedRotateDegrees,
+    selectedFile?.id,
+    tool,
+    zoom,
+  ]);
 
   useEffect(() => {
     zoomRef.current = zoom;
@@ -699,12 +742,86 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               <span>{acceptedImageFormatsHint}</span>
             </div>
           ) : isCropMode ? (
-            <CropEditor
-              key={selectedFile.id}
-              imageUrl={selectedFile.previewUrl}
-              value={currentCrop}
-              onChange={handleCropChange}
-            />
+            <div
+              ref={previewFrameRef}
+              className={`preview-frame ${zoom > 1 ? 'is-pannable' : ''}`}
+              onWheel={handleWheelZoom}
+              onDoubleClick={resetZoom}
+            >
+              <CropEditor
+                key={selectedFile.id}
+                imageUrl={selectedFile.previewUrl}
+                value={currentCrop}
+                zoom={zoom}
+                pan={pan}
+                panEnabled={isCropPanEnabled}
+                onPanChange={(nextPan) => {
+                  setPan((currentPan) => {
+                    const clampedPan = clampPan(nextPan);
+                    return clampedPan.x === currentPan.x && clampedPan.y === currentPan.y
+                      ? currentPan
+                      : clampedPan;
+                  });
+                }}
+                onImageLoad={(naturalWidth, naturalHeight) => {
+                  setPreviewNaturalSize((current) => {
+                    if (current.width === naturalWidth && current.height === naturalHeight) {
+                      return current;
+                    }
+
+                    return { width: naturalWidth, height: naturalHeight };
+                  });
+                }}
+                onChange={handleCropChange}
+              />
+              <div className="zoom-controls">
+                <button
+                  className="zoom-btn"
+                  onClick={() => updateZoom((currentZoom) => currentZoom * 1.25)}
+                  title={messages.editor.zoomIn}
+                  type="button"
+                >
+                  +
+                </button>
+                <select
+                  className="zoom-select"
+                  value={zoomPresetValue}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    if (nextValue === 'fit') {
+                      resetZoom();
+                      return;
+                    }
+
+                    if (nextValue === 'custom') {
+                      return;
+                    }
+
+                    setZoomPreset(Number(nextValue));
+                  }}
+                  title={messages.editor.zoomFit}
+                  aria-label={messages.editor.zoomFit}
+                >
+                  <option value="fit">{messages.editor.zoomPresetFit}</option>
+                  {ZOOM_PRESET_LEVELS.map((level) => (
+                    <option key={level} value={level}>
+                      {Math.round(level * 100)}%
+                    </option>
+                  ))}
+                  {zoomPresetValue === 'custom' ? (
+                    <option value="custom">{Math.round(zoom * 100)}%</option>
+                  ) : null}
+                </select>
+                <button
+                  className="zoom-btn"
+                  onClick={() => updateZoom((currentZoom) => currentZoom / 1.25)}
+                  title={messages.editor.zoomOut}
+                  type="button"
+                >
+                  −
+                </button>
+              </div>
+            </div>
           ) : isResizeMode ? (
             <ResizeEditor
               imageUrl={selectedFile.previewUrl}
