@@ -10,13 +10,14 @@ import { bytesToHuman } from '../lib/formatUtils';
 
 interface DocumentWorkspaceProps {
   onBack: () => void;
+  returnToEditor?: boolean;
 }
 
 const MIN_PAGE_STRIP_WIDTH = 112;
 const MAX_PAGE_STRIP_WIDTH = 280;
 const SHORT_DOC_HEIGHT_BREAKPOINT = 820;
 
-export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
+export default function DocumentWorkspace({ onBack, returnToEditor = false }: DocumentWorkspaceProps) {
   const defaultStripWidth = 144;
   const { locale, messages } = useI18n();
   const files = useDocumentStore((state) => state.files);
@@ -168,6 +169,9 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
     event.target.value = '';
   }
 
+  const backButtonLabel = returnToEditor ? messages.document.backEditor : messages.document.backHome;
+  const emptyStateBackButtonLabel = returnToEditor ? messages.document.backEditor : messages.document.back;
+
   if (!selectedFile) {
     return (
       <div className="upload-page" onDrop={handleDrop} onDragOver={(event) => event.preventDefault()}>
@@ -181,7 +185,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
         />
 
         <header className="upload-header">
-          <button className="back-btn" onClick={onBack}>{messages.document.back}</button>
+          <button className="back-btn" onClick={onBack}>{emptyStateBackButtonLabel}</button>
           <div className="document-upload-title">{messages.document.title}</div>
           <span className="tool-badge">MD</span>
         </header>
@@ -227,7 +231,7 @@ export default function DocumentWorkspace({ onBack }: DocumentWorkspaceProps) {
       />
 
       <header className="edit-header">
-        <button className="back-btn" onClick={onBack}>{messages.document.backHome}</button>
+        <button className="back-btn" onClick={onBack}>{backButtonLabel}</button>
         <div className="document-header-copy">
           <strong>{messages.document.title}</strong>
         </div>

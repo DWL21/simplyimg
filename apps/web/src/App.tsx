@@ -36,6 +36,7 @@ function DocumentRoute() {
 
   return (
     <DocumentWorkspace
+      returnToEditor={state?.source === 'markdown-editor'}
       onBack={() => {
         useDocumentStore.getState().reset();
         if (state?.source === 'markdown-editor') {

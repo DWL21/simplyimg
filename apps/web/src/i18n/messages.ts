@@ -50,6 +50,7 @@ type LocaleMessages = {
     imageSectionTitle: string;
     documentSectionLabel: string;
     documentSectionTitle: string;
+    documentSectionDescription: string;
     documentToolTitle: string;
     documentToolDescription: string;
     documentEditorTitle: string;
@@ -173,6 +174,7 @@ type LocaleMessages = {
   document: {
     back: string;
     backHome: string;
+    backEditor: string;
     title: string;
     dropTitle: string;
     dropDescription: string;
@@ -255,12 +257,13 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       imageSectionTitle: '이미지 작업',
       documentSectionLabel: 'DOCUMENT',
       documentSectionTitle: '문서 작업',
+      documentSectionDescription: '새 MD 파일을 작성하거나, 기존 MD 파일을 열어 수정한 뒤 PDF로 저장할 수 있습니다.',
       documentToolTitle: 'Markdown을 PDF로 변환',
-      documentToolDescription: 'Markdown 파일을 PDF로 변환합니다.',
-      documentEditorTitle: 'Markdown 작성하기',
-      documentEditorDescription: '새 Markdown 문서를 직접 작성합니다.',
-      documentOpenTitle: 'MD 파일 열기',
-      documentOpenDescription: '기존 MD 파일을 불러와 바로 편집합니다.',
+      documentToolDescription: '완성된 Markdown 파일을 불러와 PDF로 저장합니다.',
+      documentEditorTitle: '새 Markdown 작성하기',
+      documentEditorDescription: '비어 있는 새 MD 파일을 처음부터 작성합니다.',
+      documentOpenTitle: '기존 MD 파일 열기',
+      documentOpenDescription: '기존 MD 파일을 불러와 내용을 이어서 수정합니다.',
       toolDescriptions: {
         compress: '파일 크기를 줄이고 품질을 최적화합니다',
         resize: '가로/세로 픽셀 크기를 바꿉니다',
@@ -413,6 +416,7 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
     document: {
       back: '← 뒤로',
       backHome: '← 처음으로',
+      backEditor: '← 에디터로 돌아가기',
       title: 'Markdown → PDF',
       dropTitle: 'Markdown 파일을 끌어다 놓거나',
       dropDescription: '클릭해서 파일을 선택하세요',
@@ -493,11 +497,12 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       imageSectionTitle: 'Image tools',
       documentSectionLabel: 'DOCUMENT',
       documentSectionTitle: 'Document tools',
+      documentSectionDescription: 'Create a new MD file, open an existing one to edit it, or save Markdown as PDF.',
       documentToolTitle: 'Convert Markdown to PDF',
-      documentToolDescription: 'Turn Markdown files into PDFs.',
-      documentEditorTitle: 'Write Markdown',
-      documentEditorDescription: 'Start a new Markdown draft and edit it directly.',
-      documentOpenTitle: 'Open MD file',
+      documentToolDescription: 'Load a finished Markdown file and save it as a PDF.',
+      documentEditorTitle: 'Write New Markdown',
+      documentEditorDescription: 'Start a blank MD file and write it from scratch.',
+      documentOpenTitle: 'Open Existing MD',
       documentOpenDescription: 'Open an existing MD file and continue editing it.',
       toolDescriptions: {
         compress: 'Reduce file size and optimize quality',
@@ -651,6 +656,7 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
     document: {
       back: '← Back',
       backHome: '← Home',
+      backEditor: '← Back to editor',
       title: 'Markdown → PDF',
       dropTitle: 'Drag and drop a Markdown file',
       dropDescription: 'or click to choose a file',

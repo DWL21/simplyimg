@@ -1883,6 +1883,7 @@ img {
 }
 
 .markdown-editor-panel {
+  width: 100%;
   max-width: 980px;
   height: 100%;
   margin: 0 auto;
@@ -1969,6 +1970,23 @@ img {
   flex: 1;
   min-height: 360px;
   overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .markdown-editor-shell {
+    padding-inline: 24px;
+    padding-bottom: 24px;
+  }
+
+  .markdown-editor-panel {
+    max-width: 1200px;
+    padding: 22px 24px 24px;
+  }
+
+  .markdown-editor-textarea,
+  .markdown-editor-view {
+    min-height: clamp(480px, 68dvh, 860px);
+  }
 }
 
 .markdown-editor-viewer {

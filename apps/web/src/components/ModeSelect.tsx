@@ -82,6 +82,7 @@ export default function ModeSelect({
             <div>
               <span className="mode-section-label">{messages.modeSelect.documentSectionLabel}</span>
               <h2>{messages.modeSelect.documentSectionTitle}</h2>
+              <p>{messages.modeSelect.documentSectionDescription}</p>
             </div>
           </div>
           <input
@@ -92,16 +93,8 @@ export default function ModeSelect({
             onChange={(event) => void handleMarkdownFileChange(event)}
           />
           <div className="mode-grid">
-            <button className="mode-card mode-card-document" onClick={onSelectDocument}>
-              <span className="mode-icon">PDF</span>
-              <div className="mode-copy">
-                <strong>{messages.modeSelect.documentToolTitle}</strong>
-                <p>{messages.modeSelect.documentToolDescription}</p>
-              </div>
-              <span className="mode-arrow">→</span>
-            </button>
             <button className="mode-card mode-card-document" onClick={onSelectDocumentEditor}>
-              <span className="mode-icon">MD</span>
+              <span className="mode-icon">NEW</span>
               <div className="mode-copy">
                 <strong>{messages.modeSelect.documentEditorTitle}</strong>
                 <p>{messages.modeSelect.documentEditorDescription}</p>
@@ -112,10 +105,18 @@ export default function ModeSelect({
               className="mode-card mode-card-document"
               onClick={() => markdownFileInputRef.current?.click()}
             >
-              <span className="mode-icon">OPEN</span>
+              <span className="mode-icon">EDIT</span>
               <div className="mode-copy">
                 <strong>{messages.modeSelect.documentOpenTitle}</strong>
                 <p>{messages.modeSelect.documentOpenDescription}</p>
+              </div>
+              <span className="mode-arrow">→</span>
+            </button>
+            <button className="mode-card mode-card-document" onClick={onSelectDocument}>
+              <span className="mode-icon">PDF</span>
+              <div className="mode-copy">
+                <strong>{messages.modeSelect.documentToolTitle}</strong>
+                <p>{messages.modeSelect.documentToolDescription}</p>
               </div>
               <span className="mode-arrow">→</span>
             </button>
