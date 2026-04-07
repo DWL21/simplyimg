@@ -9,7 +9,6 @@ export interface LegalSection {
 export interface LegalDocumentContent {
   title: string;
   summary: string;
-  effectiveDate: string;
   sections: LegalSection[];
 }
 
@@ -19,7 +18,6 @@ export const privacyPolicyContent: LegalDocumentContent = {
   title: '개인정보 처리방침',
   summary:
     'SimplyImg는 서비스 제공, 안정성 확보 및 이용환경 개선에 필요한 최소한의 정보만 처리합니다.',
-  effectiveDate: LEGAL_EFFECTIVE_DATE,
   sections: [
     {
       title: '1. 총칙',
@@ -94,8 +92,14 @@ export const privacyPolicyContent: LegalDocumentContent = {
     {
       title: '10. 방침 변경 및 문의',
       paragraphs: [
-        `본 방침의 시행일은 ${LEGAL_EFFECTIVE_DATE}이며, 내용이 변경되는 경우 서비스 내 공지 또는 본 페이지를 통해 고지합니다.`,
+        '본 방침의 내용이 변경되는 경우 서비스 내 공지 또는 본 페이지를 통해 고지합니다.',
         `운영자: DWL21 / 문의: ${contactChannel}`,
+      ],
+    },
+    {
+      title: '부칙',
+      paragraphs: [
+        `본 개인정보 처리방침은 ${LEGAL_EFFECTIVE_DATE}부터 적용됩니다.`,
       ],
     },
   ],
@@ -105,7 +109,6 @@ export const termsContent: LegalDocumentContent = {
   title: '이용약관',
   summary:
     '본 약관은 SimplyImg 웹 서비스의 이용 조건, 서비스 제공 범위, 이용자와 운영자의 권리 및 책임을 정합니다.',
-  effectiveDate: LEGAL_EFFECTIVE_DATE,
   sections: [
     {
       title: '1. 목적',
@@ -124,7 +127,6 @@ export const termsContent: LegalDocumentContent = {
     {
       title: '3. 약관의 효력 및 변경',
       paragraphs: [
-        `본 약관은 ${LEGAL_EFFECTIVE_DATE}부터 적용됩니다.`,
         '운영자는 관련 법령, 서비스 정책 또는 기능 변경에 따라 약관을 수정할 수 있으며, 중요한 변경은 서비스 내 고지합니다.',
       ],
     },
@@ -184,6 +186,12 @@ export const termsContent: LegalDocumentContent = {
       title: '11. 문의',
       paragraphs: [
         `운영자: DWL21 / 문의 채널: ${contactChannel}`,
+      ],
+    },
+    {
+      title: '부칙',
+      paragraphs: [
+        `본 약관은 ${LEGAL_EFFECTIVE_DATE}부터 적용됩니다.`,
       ],
     },
   ],

@@ -22,11 +22,6 @@ export function LegalDocumentPage({ document }: LegalDocumentPageProps) {
         </header>
 
         <article className="legal-card">
-          <div className="legal-meta">
-            <span>시행일</span>
-            <strong>{document.effectiveDate}</strong>
-          </div>
-
           <div className="legal-sections">
             {document.sections.map((section) => (
               <section key={section.title} className="legal-section">

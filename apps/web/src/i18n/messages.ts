@@ -11,7 +11,6 @@ type LocaleMessages = {
   brand: {
     name: string;
     tagline: string;
-    footer: string;
   };
   home: {
     eyebrow: string;
@@ -110,7 +109,6 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
     brand: {
       name: 'SimplyImg',
       tagline: 'simple image toolkit',
-      footer: 'SimplyImg는 빠른 이미지 작업 흐름에 집중한 웹 도구입니다.',
     },
     home: {
       eyebrow: 'SIMPLYIMG',
@@ -229,7 +227,6 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
     brand: {
       name: 'SimplyImg',
       tagline: 'simple image toolkit',
-      footer: 'SimplyImg focuses on a fast and simple image workflow.',
     },
     home: {
       eyebrow: 'SIMPLYIMG',

@@ -213,17 +213,9 @@ img {
 .app-footer-inner {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 16px;
   flex-wrap: wrap;
-}
-
-.app-footer-copy,
-.app-footer-meta {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.82rem;
-  line-height: 1.5;
 }
 
 .app-footer-links {
@@ -310,22 +302,6 @@ img {
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-sm);
   padding: 28px 24px;
-}
-
-.legal-meta {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding-bottom: 16px;
-  margin-bottom: 22px;
-  border-bottom: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
-.legal-meta strong {
-  color: var(--text);
-  font-size: 1rem;
 }
 
 .legal-sections {
