@@ -1,17 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
+import { CanvasControls } from './editor/CanvasControls';
 
 interface Props {
   imageUrl: string;
   width: number;
   height: number;
   crop?: { x: number; y: number; width: number; height: number };
+  alignLabel: string;
+  zoomInLabel: string;
+  zoomOutLabel: string;
   onChange: (next: { width: number; height: number; crop: { x: number; y: number; width: number; height: number } }) => void;
 }
 
 type Handle = 'tl' | 'tr' | 'bl' | 'br' | 'tm' | 'bm' | 'ml' | 'mr';
 
 const MIN_SIZE = 1;
-const ZOOM_STEP = 1.25;
+const ZOOM_BUTTON_FACTOR = 1.15;
+const ZOOM_WHEEL_SPEED = 0.00085;
+const ZOOM_WHEEL_CTRL_SPEED = 0.0018;
+const PINCH_ZOOM_DAMPING = 0.4;
 const MIN_ZOOM = 0.02;
 const MAX_ZOOM = 16;
 
@@ -99,7 +106,24 @@ function scalePanAroundPoint(
   };
 }
 
-export default function ResizeEditor({ imageUrl, width, height, crop, onChange }: Props) {
+function applyPinchZoomDamping(rawScale: number) {
+  if (!Number.isFinite(rawScale) || rawScale <= 0) {
+    return 1;
+  }
+
+  return Math.exp(Math.log(rawScale) * PINCH_ZOOM_DAMPING);
+}
+
+export default function ResizeEditor({
+  imageUrl,
+  width,
+  height,
+  crop,
+  alignLabel,
+  zoomInLabel,
+  zoomOutLabel,
+  onChange,
+}: Props) {
   const frameRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const pinchRef = useRef<PinchState | null>(null);
@@ -186,16 +210,9 @@ export default function ResizeEditor({ imageUrl, width, height, crop, onChange }
     ));
   }
 
-  function handleFit() {
-    const frame = frameRef.current;
-    if (!frame) return;
-    const { width: fw, height: fh } = frame.getBoundingClientRect();
-    const fitted = Math.min((fw * 0.84) / width, (fh * 0.8) / height);
-    const safe = Number.isFinite(fitted) && fitted > 0 ? fitted : 1;
-    zoomRef.current = safe;
+  function handleAlign() {
     canvasPanRef.current = { x: 0, y: 0 };
     boxOffsetRef.current = { x: 0, y: 0 };
-    setZoom(safe);
     setCanvasPan({ x: 0, y: 0 });
     setBoxOffset({ x: 0, y: 0 });
   }
@@ -248,7 +265,7 @@ export default function ResizeEditor({ imageUrl, width, height, crop, onChange }
 
       if (firstPointer && secondPointer) {
         const nextDistance = Math.max(1, Math.hypot(firstPointer.x - secondPointer.x, firstPointer.y - secondPointer.y));
-        const nextZoom = (zoomRef.current ?? 1) * (nextDistance / pinch.lastDistance);
+        const nextZoom = (zoomRef.current ?? 1) * applyPinchZoomDamping(nextDistance / pinch.lastDistance);
         const centerX = (firstPointer.x + secondPointer.x) / 2;
         const centerY = (firstPointer.y + secondPointer.y) / 2;
         setZoomAround(nextZoom, centerX, centerY);
@@ -400,7 +417,8 @@ export default function ResizeEditor({ imageUrl, width, height, crop, onChange }
       onPointerCancel={(event) => finishPointer(event.pointerId)}
       onWheel={(event) => {
         event.preventDefault();
-        const factor = event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
+        const speed = event.ctrlKey ? ZOOM_WHEEL_CTRL_SPEED : ZOOM_WHEEL_SPEED;
+        const factor = Math.exp(-event.deltaY * speed);
         setZoomAround((zoomRef.current ?? 1) * factor, event.clientX, event.clientY);
       }}
     >
@@ -543,36 +561,15 @@ export default function ResizeEditor({ imageUrl, width, height, crop, onChange }
         </div>
       ) : null}
 
-      <div className="resize-zoom-bar">
-        <button
-          type="button"
-          className="resize-zoom-btn"
-          onClick={() => setZoomAround((zoomRef.current ?? 1) / ZOOM_STEP)}
-          aria-label="Zoom out"
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M2 6h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          className="resize-zoom-pct"
-          onClick={handleFit}
-          title="Click to fit"
-        >
-          {Math.round(effectiveZoom * 100)}%
-        </button>
-        <button
-          type="button"
-          className="resize-zoom-btn"
-          onClick={() => setZoomAround((zoomRef.current ?? 1) * ZOOM_STEP)}
-          aria-label="Zoom in"
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-        </button>
-      </div>
+      <CanvasControls
+        zoom={effectiveZoom}
+        alignLabel={alignLabel}
+        zoomInLabel={zoomInLabel}
+        zoomOutLabel={zoomOutLabel}
+        onAlign={handleAlign}
+        onZoomOut={() => setZoomAround((zoomRef.current ?? 1) / ZOOM_BUTTON_FACTOR)}
+        onZoomIn={() => setZoomAround((zoomRef.current ?? 1) * ZOOM_BUTTON_FACTOR)}
+      />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { useImageStore } from '../store/imageStore';
 import CropEditor from './CropEditor';
 import OptionsPanel, { type OptionsPanelState } from './OptionsPanel';
 import ResizeEditor from './ResizeEditor';
+import { CanvasControls } from './editor/CanvasControls';
 import { acceptedImageFormatsHint, acceptedImageInput, bytesToHuman } from '../lib/formatUtils';
 import { ALL_TOOLS, getToolDisplayLabel } from '../lib/toolConstants';
 import type { ToolName, ToolOptions } from '../types/image';
@@ -18,7 +19,6 @@ const MIN_STRIP_WIDTH = 72;
 const MAX_STRIP_WIDTH = 440;
 const COMPACT_STRIP_HEIGHT_BREAKPOINT = 780;
 const COMPACT_STRIP_WIDTH = 58;
-const ZOOM_PRESET_LEVELS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 const ZOOM_BUTTON_FACTOR = 1.15;
 const ZOOM_WHEEL_SPEED = 0.00085;
 const ZOOM_WHEEL_CTRL_SPEED = 0.0018;
@@ -429,7 +429,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     }
 
     const target = e.target as HTMLElement | null;
-    if (target?.closest('.zoom-controls, .toggle-btn')) {
+    if (target?.closest('.canvas-controls, .canvas-action-btn')) {
       return;
     }
 
@@ -573,8 +573,8 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     gestureStartZoomRef.current = null;
   }
 
-  function setZoomPreset(nextZoom: number) {
-    updateZoom(() => nextZoom);
+  function alignCanvas() {
+    setViewport(zoomRef.current, { x: 0, y: 0 });
   }
 
   function handleCropChange(crop: import('../types/image').CropOptions | null) {
@@ -827,9 +827,6 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
         || currentCrop !== null),
   );
   const toolLabel = getToolDisplayLabel(tool, locale);
-  const zoomPresetValue = ZOOM_PRESET_LEVELS.some((level) => Math.abs(level - zoom) < 0.001)
-    ? String(zoom)
-    : 'custom';
   const effectiveStripWidth = compactStrip ? COMPACT_STRIP_WIDTH : stripWidth;
 
   useEffect(() => {
@@ -972,53 +969,15 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                 }}
                 onChange={handleCropChange}
               />
-              <div className="zoom-controls">
-                <button
-                  className="zoom-btn"
-                  onClick={() => updateZoom((currentZoom) => currentZoom * ZOOM_BUTTON_FACTOR)}
-                  title={messages.editor.zoomIn}
-                  type="button"
-                >
-                  +
-                </button>
-                <select
-                  className="zoom-select"
-                  value={zoomPresetValue}
-                  onChange={(event) => {
-                    const nextValue = event.target.value;
-                    if (nextValue === 'fit') {
-                      resetZoom();
-                      return;
-                    }
-
-                    if (nextValue === 'custom') {
-                      return;
-                    }
-
-                    setZoomPreset(Number(nextValue));
-                  }}
-                  title={messages.editor.zoomFit}
-                  aria-label={messages.editor.zoomFit}
-                >
-                  <option value="fit">{messages.editor.zoomPresetFit}</option>
-                  {ZOOM_PRESET_LEVELS.map((level) => (
-                    <option key={level} value={level}>
-                      {Math.round(level * 100)}%
-                    </option>
-                  ))}
-                  {zoomPresetValue === 'custom' ? (
-                    <option value="custom">{Math.round(zoom * 100)}%</option>
-                  ) : null}
-                </select>
-                <button
-                  className="zoom-btn"
-                  onClick={() => updateZoom((currentZoom) => currentZoom / ZOOM_BUTTON_FACTOR)}
-                  title={messages.editor.zoomOut}
-                  type="button"
-                >
-                  −
-                </button>
-              </div>
+              <CanvasControls
+                zoom={zoom}
+                alignLabel={messages.editor.alignCenter}
+                zoomInLabel={messages.editor.zoomIn}
+                zoomOutLabel={messages.editor.zoomOut}
+                onAlign={alignCanvas}
+                onZoomOut={() => updateZoom((currentZoom) => currentZoom / ZOOM_BUTTON_FACTOR)}
+                onZoomIn={() => updateZoom((currentZoom) => currentZoom * ZOOM_BUTTON_FACTOR)}
+              />
             </div>
           ) : isResizeMode ? (
             <ResizeEditor
@@ -1026,6 +985,9 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               width={options.resize.width}
               height={options.resize.height}
               crop={options.resize.crop}
+              alignLabel={messages.editor.alignCenter}
+              zoomInLabel={messages.editor.zoomIn}
+              zoomOutLabel={messages.editor.zoomOut}
               onChange={(nextResize) => setOptions((current) => ({ ...current, resize: nextResize }))}
             />
           ) : (
@@ -1071,58 +1033,15 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               ) : (
                 <div className="preview-empty">{messages.editor.emptyPreview}</div>
               )}
-              <div className="zoom-controls">
-                <button
-                  className="zoom-btn"
-                  onClick={() => updateZoom((currentZoom) => currentZoom * ZOOM_BUTTON_FACTOR)}
-                  title={messages.editor.zoomIn}
-                  type="button"
-                >
-                  +
-                </button>
-                <select
-                  className="zoom-select"
-                  value={zoomPresetValue}
-                  onChange={(event) => {
-                    const nextValue = event.target.value;
-                    if (nextValue === 'fit') {
-                      resetZoom();
-                      return;
-                    }
-
-                    if (nextValue === 'custom') {
-                      return;
-                    }
-
-                    setZoomPreset(Number(nextValue));
-                  }}
-                  title={messages.editor.zoomFit}
-                  aria-label={messages.editor.zoomFit}
-                >
-                  <option value="fit">{messages.editor.zoomPresetFit}</option>
-                  {ZOOM_PRESET_LEVELS.map((level) => (
-                    <option key={level} value={level}>
-                      {Math.round(level * 100)}%
-                    </option>
-                  ))}
-                  {zoomPresetValue === 'custom' ? (
-                    <option value="custom">{Math.round(zoom * 100)}%</option>
-                  ) : null}
-                </select>
-                <button
-                  className="zoom-btn"
-                  onClick={() => updateZoom((currentZoom) => currentZoom / ZOOM_BUTTON_FACTOR)}
-                  title={messages.editor.zoomOut}
-                  type="button"
-                >
-                  −
-                </button>
-              </div>
-              {selectedResult && (
-                <button className="toggle-btn" onClick={() => setShowResult((v) => !v)}>
-                  {showResult ? messages.workspace.original : messages.workspace.processed}
-                </button>
-              )}
+              <CanvasControls
+                zoom={zoom}
+                alignLabel={messages.editor.alignCenter}
+                zoomInLabel={messages.editor.zoomIn}
+                zoomOutLabel={messages.editor.zoomOut}
+                onAlign={alignCanvas}
+                onZoomOut={() => updateZoom((currentZoom) => currentZoom / ZOOM_BUTTON_FACTOR)}
+                onZoomIn={() => updateZoom((currentZoom) => currentZoom * ZOOM_BUTTON_FACTOR)}
+              />
             </div>
           )}
 

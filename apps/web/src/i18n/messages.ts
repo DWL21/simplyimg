@@ -158,6 +158,7 @@ type LocaleMessages = {
     remove: string;
     emptyDropTitle: string;
     emptyPreview: string;
+    alignCenter: string;
     zoomIn: string;
     zoomOut: string;
     zoomFit: string;
@@ -400,6 +401,7 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       remove: '삭제',
       emptyDropTitle: '이미지를 끌어다 놓거나 클릭하여 추가',
       emptyPreview: '이미지를 선택하세요',
+      alignCenter: '정렬',
       zoomIn: '확대',
       zoomOut: '축소',
       zoomFit: '맞춤 (더블클릭)',
@@ -640,6 +642,7 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       remove: 'Remove',
       emptyDropTitle: 'Drag images here or click to add',
       emptyPreview: 'Select an image',
+      alignCenter: 'Center',
       zoomIn: 'Zoom in',
       zoomOut: 'Zoom out',
       zoomFit: 'Fit (double-click)',

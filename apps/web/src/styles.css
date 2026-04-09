@@ -977,10 +977,36 @@ img {
   pointer-events: none;
 }
 
-.zoom-controls {
+.canvas-controls {
   position: absolute;
-  bottom: 14px;
   right: 14px;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+}
+
+.canvas-action-btn {
+  height: 32px;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  border: none;
+  background: rgba(0, 0, 0, 0.52);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: background 140ms;
+  white-space: nowrap;
+}
+
+.canvas-action-btn:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.zoom-controls {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1010,64 +1036,23 @@ img {
   background: rgba(255, 255, 255, 0.18);
 }
 
-.zoom-select {
-  min-width: 72px;
+.zoom-value {
+  min-width: 62px;
   height: 28px;
   border-radius: 999px;
-  border: none;
   background: rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.92);
   font-size: 0.74rem;
   font-weight: 700;
-  padding: 0 0.8rem 0 0.7rem;
-  cursor: pointer;
-  outline: none;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image:
-    linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, 0.9) 50%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.9) 50%, transparent 50%);
-  background-position:
-    calc(100% - 13px) 11px,
-    calc(100% - 8px) 11px;
-  background-size: 5px 5px, 5px 5px;
-  background-repeat: no-repeat;
-  transition: background-color 120ms;
-}
-
-.zoom-select:hover {
-  background-color: rgba(255, 255, 255, 0.18);
-}
-
-.zoom-select option {
-  color: var(--text);
+  padding: 0 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .preview-empty {
   color: var(--muted);
   font-size: 0.92rem;
-}
-
-.toggle-btn {
-  position: absolute;
-  bottom: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 0.42rem 0.9rem;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.52);
-  color: white;
-  border: none;
-  cursor: pointer;
-  font-size: 0.8rem;
-  font-weight: 600;
-  backdrop-filter: blur(8px);
-  transition: background 140ms;
-  white-space: nowrap;
-}
-
-.toggle-btn:hover {
-  background: rgba(0, 0, 0, 0.7);
 }
 
 .file-meta-bar {
@@ -2849,22 +2834,25 @@ img {
   }
 
   .zoom-controls {
-    right: 10px;
-    bottom: 10px;
     gap: 3px;
     padding: 3px 4px;
   }
 
-  .zoom-select {
-    min-width: 64px;
-    font-size: 0.72rem;
+  .canvas-controls {
+    right: 10px;
+    bottom: 10px;
+    gap: 6px;
   }
 
-  .toggle-btn {
-    bottom: 52px;
-    max-width: calc(100% - 24px);
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .canvas-action-btn {
+    height: 30px;
+    padding: 0 0.75rem;
+    font-size: 0.76rem;
+  }
+
+  .zoom-value {
+    min-width: 58px;
+    font-size: 0.72rem;
   }
 
   .file-meta-bar {

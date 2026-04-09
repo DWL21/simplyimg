@@ -224,6 +224,9 @@ export function ToolWorkspace({
                           width={resizeOptions.width}
                           height={resizeOptions.height}
                           crop={resizeOptions.crop}
+                          alignLabel={appMessages.editor.alignCenter}
+                          zoomInLabel={appMessages.editor.zoomIn}
+                          zoomOutLabel={appMessages.editor.zoomOut}
                           onChange={(nextResize) => onOptionsChange({ ...resizeOptions, ...nextResize })}
                         />
                       </div>
