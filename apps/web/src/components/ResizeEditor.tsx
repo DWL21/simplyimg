@@ -235,7 +235,7 @@ export default function ResizeEditor({ imageUrl, width, height, crop, onChange }
     document.body.style.cursor = '';
   }
 
-  function handleFramePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+  function handleFramePointerMove(event: React.PointerEvent<HTMLElement>) {
     if (activePointersRef.current.has(event.pointerId)) {
       activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     }
