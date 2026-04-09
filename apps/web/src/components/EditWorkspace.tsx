@@ -1152,7 +1152,12 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               {hasFiles ? (
                 <>
                   <h3 className="panel-title">{`${toolLabel} ${messages.editor.optionsSuffix}`}</h3>
-                  <OptionsPanel tool={tool} state={{ ...options, crop: currentCrop }} onChange={handleOptionsChange} />
+                  <OptionsPanel
+                    tool={tool}
+                    state={{ ...options, crop: currentCrop }}
+                    selectedFile={selectedFile?.file}
+                    onChange={handleOptionsChange}
+                  />
                 </>
               ) : (
                 <div className="crop-guide">

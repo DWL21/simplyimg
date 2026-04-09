@@ -1,4 +1,5 @@
 import { useI18n } from '../i18n/messages';
+import { bytesToHuman, inferMimeType } from '../lib/formatUtils';
 import type { ToolName, OutputFormat, CropOptions } from '../types/image';
 
 export interface OptionsPanelState {
@@ -13,10 +14,53 @@ export interface OptionsPanelState {
 interface Props {
   tool: ToolName;
   state: OptionsPanelState;
+  selectedFile?: File;
   onChange: (state: OptionsPanelState) => void;
 }
 
-export default function OptionsPanel({ tool, state, onChange }: Props) {
+function estimateCompressedSize(file: File, quality: number) {
+  const mimeType = inferMimeType(file);
+  const normalizedQuality = Math.max(1, Math.min(100, Math.round(quality))) / 100;
+
+  let estimatedRatio: number;
+
+  switch (mimeType) {
+    case 'image/jpeg':
+      estimatedRatio = 0.16 + Math.pow(normalizedQuality, 1.35) * 0.84;
+      break;
+    case 'image/webp':
+      estimatedRatio = 0.1 + Math.pow(normalizedQuality, 1.2) * 0.78;
+      break;
+    case 'image/png':
+      estimatedRatio = 0.62 + normalizedQuality * 0.28;
+      break;
+    case 'image/svg+xml':
+      estimatedRatio = 0.4 + normalizedQuality * 0.35;
+      break;
+    case 'image/gif':
+      estimatedRatio = 0.55 + normalizedQuality * 0.25;
+      break;
+    case 'image/heic':
+    case 'image/heif':
+      estimatedRatio = 0.58 + normalizedQuality * 0.27;
+      break;
+    default:
+      estimatedRatio = 0.45 + normalizedQuality * 0.4;
+      break;
+  }
+
+  const estimatedSize = Math.max(1, Math.round(file.size * Math.min(1, estimatedRatio)));
+  const savedBytes = Math.max(0, file.size - estimatedSize);
+  const savedPercent = file.size > 0 ? Math.round((savedBytes / file.size) * 100) : 0;
+
+  return {
+    estimatedSize,
+    savedBytes,
+    savedPercent,
+  };
+}
+
+export default function OptionsPanel({ tool, state, selectedFile, onChange }: Props) {
   const { locale, messages } = useI18n();
 
   function patch<K extends keyof OptionsPanelState>(key: K, val: OptionsPanelState[K]) {
@@ -38,6 +82,7 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
 
   if (tool === 'compress') {
     const s = state.compress;
+    const compressionEstimate = selectedFile ? estimateCompressedSize(selectedFile, s.quality) : null;
     return (
       <div className="opt-stack">
         <div className="opt-group">
@@ -53,6 +98,31 @@ export default function OptionsPanel({ tool, state, onChange }: Props) {
             onChange={(e) => patch('compress', { ...s, quality: +e.target.value })}
             className="slider"
           />
+          {selectedFile && compressionEstimate ? (
+            <div className="compress-estimate">
+              <div className="compress-estimate-row">
+                <span>{locale === 'ko' ? '현재 용량' : 'Current size'}</span>
+                <strong>{bytesToHuman(selectedFile.size)}</strong>
+              </div>
+              <div className="compress-estimate-row">
+                <span>{locale === 'ko' ? '예상 용량' : 'Estimated size'}</span>
+                <strong>{bytesToHuman(compressionEstimate.estimatedSize)}</strong>
+              </div>
+              <div className="compress-estimate-row">
+                <span>{locale === 'ko' ? '예상 절감' : 'Estimated savings'}</span>
+                <strong>
+                  {bytesToHuman(compressionEstimate.savedBytes)}
+                  {' '}
+                  ({compressionEstimate.savedPercent}%)
+                </strong>
+              </div>
+              <p className="compress-estimate-note">
+                {locale === 'ko'
+                  ? '슬라이더 값 기준의 예상치이며 실제 결과는 이미지 형식과 내용에 따라 달라질 수 있습니다.'
+                  : 'This is an estimate based on the slider value. Actual results depend on image format and content.'}
+              </p>
+            </div>
+          ) : null}
         </div>
       </div>
     );

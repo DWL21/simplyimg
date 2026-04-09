@@ -1464,6 +1464,37 @@ img {
   cursor: pointer;
 }
 
+.compress-estimate {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.compress-estimate-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.compress-estimate-row span {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.compress-estimate-row strong {
+  font-size: 0.92rem;
+  letter-spacing: -0.02em;
+}
+
+.compress-estimate-note {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
 .chip-row {
   display: flex;
   flex-wrap: wrap;
