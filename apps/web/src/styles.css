@@ -1659,7 +1659,7 @@ img {
 
 .crop-box {
   position: absolute;
-  border: 2px solid #111111;
+  border: 3px solid #111111;
   background: rgba(31, 122, 95, 0.1);
   pointer-events: none;
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35);
@@ -1673,31 +1673,31 @@ img {
 
 .crop-handle {
   position: absolute;
-  width: 10px;
-  height: 10px;
-  background: white;
-  border: 2px solid #111111;
-  border-radius: 2px;
+  width: 14px;
+  height: 14px;
+  background: #111111;
+  border: 3px solid #111111;
+  border-radius: 3px;
 }
 
 .crop-handle-tl {
-  top: -5px;
-  left: -5px;
+  top: -8px;
+  left: -8px;
 }
 
 .crop-handle-tr {
-  top: -5px;
-  right: -5px;
+  top: -8px;
+  right: -8px;
 }
 
 .crop-handle-bl {
-  bottom: -5px;
-  left: -5px;
+  bottom: -8px;
+  left: -8px;
 }
 
 .crop-handle-br {
-  bottom: -5px;
-  right: -5px;
+  bottom: -8px;
+  right: -8px;
 }
 
 .crop-handle-tm {
@@ -1911,23 +1911,7 @@ img {
 /* Corner handles */
 .crop-box::before,
 .crop-box::after {
-  content: '';
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  background: white;
-  border: 2px solid #111111;
-  border-radius: 2px;
-}
-
-.crop-box::before {
-  top: -5px;
-  left: -5px;
-}
-
-.crop-box::after {
-  bottom: -5px;
-  right: -5px;
+  content: none;
 }
 
 .crop-hint-overlay {

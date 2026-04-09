@@ -12,11 +12,12 @@ interface Props {
   onChange: (crop: CropOptions | null) => void;
 }
 
-type HitZone = 'tl' | 'tr' | 'bl' | 'br' | 'inside' | 'outside';
+type HitZone = 'tl' | 'tr' | 'bl' | 'br' | 'tm' | 'bm' | 'ml' | 'mr' | 'inside' | 'outside';
 type DragMode = 'move' | 'resize' | 'new' | 'pan';
 
 interface DragState {
   mode: DragMode;
+  hit: HitZone;
   fixedImgX: number;
   fixedImgY: number;
   offsetX: number;
@@ -37,12 +38,17 @@ interface PinchState {
 const HIT_RADIUS = 10;
 const DEFAULT_PAD = 0.1;
 const CLICK_DRAG_THRESHOLD = 4;
+const PINCH_ZOOM_DAMPING = 0.4;
 
 const CURSOR: Record<HitZone, string> = {
   tl: 'nwse-resize',
   br: 'nwse-resize',
   tr: 'nesw-resize',
   bl: 'nesw-resize',
+  tm: 'ns-resize',
+  bm: 'ns-resize',
+  ml: 'ew-resize',
+  mr: 'ew-resize',
   inside: 'move',
   outside: 'crosshair',
 };
@@ -81,6 +87,35 @@ export default function CropEditor({
   panRef.current = pan;
 
   useEffect(() => () => { document.body.style.cursor = ''; }, []);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) {
+      return undefined;
+    }
+
+    function preventNativeGesture(event: Event) {
+      event.preventDefault();
+    }
+
+    el.addEventListener('gesturestart', preventNativeGesture, { passive: false });
+    el.addEventListener('gesturechange', preventNativeGesture, { passive: false });
+    el.addEventListener('gestureend', preventNativeGesture, { passive: false });
+
+    return () => {
+      el.removeEventListener('gesturestart', preventNativeGesture);
+      el.removeEventListener('gesturechange', preventNativeGesture);
+      el.removeEventListener('gestureend', preventNativeGesture);
+    };
+  }, []);
+
+  function applyPinchZoomDamping(rawScale: number) {
+    if (!Number.isFinite(rawScale) || rawScale <= 0) {
+      return 1;
+    }
+
+    return Math.exp(Math.log(rawScale) * PINCH_ZOOM_DAMPING);
+  }
 
   function commitNaturalSize(naturalWidth: number, naturalHeight: number) {
     naturalSizeRef.current = { w: naturalWidth, h: naturalHeight };
@@ -250,8 +285,63 @@ export default function CropEditor({
     if (near(right, top)) return 'tr';
     if (near(left, bottom)) return 'bl';
     if (near(right, bottom)) return 'br';
+    if (Math.abs(cy - top) <= HIT_RADIUS && cx >= left && cx <= right) return 'tm';
+    if (Math.abs(cy - bottom) <= HIT_RADIUS && cx >= left && cx <= right) return 'bm';
+    if (Math.abs(cx - left) <= HIT_RADIUS && cy >= top && cy <= bottom) return 'ml';
+    if (Math.abs(cx - right) <= HIT_RADIUS && cy >= top && cy <= bottom) return 'mr';
     if (cx >= left && cx <= right && cy >= top && cy <= bottom) return 'inside';
     return 'outside';
+  }
+
+  function resizeFromHandle(drag: DragState, imagePoint: { x: number; y: number }): CropOptions {
+    const { w, h } = naturalSizeRef.current;
+
+    if (drag.hit === 'tl' || drag.hit === 'tr' || drag.hit === 'bl' || drag.hit === 'br') {
+      return makeBox(drag.fixedImgX, drag.fixedImgY, imagePoint.x, imagePoint.y);
+    }
+
+    const startLeft = drag.startCrop.x;
+    const startTop = drag.startCrop.y;
+    const startRight = drag.startCrop.x + drag.startCrop.width;
+    const startBottom = drag.startCrop.y + drag.startCrop.height;
+
+    if (drag.hit === 'ml') {
+      const nextLeft = Math.max(0, Math.min(imagePoint.x, startRight - 1));
+      return {
+        x: Math.round(nextLeft),
+        y: drag.startCrop.y,
+        width: Math.max(1, Math.min(Math.round(startRight - nextLeft), w - nextLeft)),
+        height: drag.startCrop.height,
+      };
+    }
+
+    if (drag.hit === 'mr') {
+      const nextRight = Math.max(startLeft + 1, Math.min(imagePoint.x, w));
+      return {
+        x: drag.startCrop.x,
+        y: drag.startCrop.y,
+        width: Math.max(1, Math.min(Math.round(nextRight - startLeft), w - startLeft)),
+        height: drag.startCrop.height,
+      };
+    }
+
+    if (drag.hit === 'tm') {
+      const nextTop = Math.max(0, Math.min(imagePoint.y, startBottom - 1));
+      return {
+        x: drag.startCrop.x,
+        y: Math.round(nextTop),
+        width: drag.startCrop.width,
+        height: Math.max(1, Math.min(Math.round(startBottom - nextTop), h - nextTop)),
+      };
+    }
+
+    const nextBottom = Math.max(startTop + 1, Math.min(imagePoint.y, h));
+    return {
+      x: drag.startCrop.x,
+      y: drag.startCrop.y,
+      width: drag.startCrop.width,
+      height: Math.max(1, Math.min(Math.round(nextBottom - startTop), h - startTop)),
+    };
   }
 
   function updateHoverCursor(clientX: number, clientY: number) {
@@ -317,6 +407,7 @@ export default function CropEditor({
     if (shouldPanPreview) {
       dragRef.current = {
         mode: 'pan',
+        hit,
         fixedImgX: 0,
         fixedImgY: 0,
         offsetX: 0,
@@ -333,6 +424,7 @@ export default function CropEditor({
     if (hit === 'inside' && currentCrop) {
       dragRef.current = {
         mode: 'move',
+        hit,
         fixedImgX: 0,
         fixedImgY: 0,
         offsetX: imagePoint.x - currentCrop.x,
@@ -346,11 +438,20 @@ export default function CropEditor({
       return;
     }
 
-    if ((hit === 'tl' || hit === 'tr' || hit === 'bl' || hit === 'br') && currentCrop) {
-      const fixedImgX = hit === 'tl' || hit === 'bl' ? currentCrop.x + currentCrop.width : currentCrop.x;
-      const fixedImgY = hit === 'tl' || hit === 'tr' ? currentCrop.y + currentCrop.height : currentCrop.y;
+    if ((hit === 'tl' || hit === 'tr' || hit === 'bl' || hit === 'br' || hit === 'tm' || hit === 'bm' || hit === 'ml' || hit === 'mr') && currentCrop) {
+      const fixedImgX = hit === 'tl' || hit === 'bl'
+        ? currentCrop.x + currentCrop.width
+        : hit === 'tr' || hit === 'br'
+          ? currentCrop.x
+          : 0;
+      const fixedImgY = hit === 'tl' || hit === 'tr'
+        ? currentCrop.y + currentCrop.height
+        : hit === 'bl' || hit === 'br'
+          ? currentCrop.y
+          : 0;
       dragRef.current = {
         mode: 'resize',
+        hit,
         fixedImgX,
         fixedImgY,
         offsetX: 0,
@@ -366,6 +467,7 @@ export default function CropEditor({
 
     dragRef.current = {
       mode: 'new',
+      hit,
       fixedImgX: imagePoint.x,
       fixedImgY: imagePoint.y,
       offsetX: 0,
@@ -419,7 +521,7 @@ export default function CropEditor({
         );
 
         if (centerPoint) {
-          const scale = nextDistance / pinch.lastDistance;
+          const scale = applyPinchZoomDamping(nextDistance / pinch.lastDistance);
           const nextZoom = zoomRef.current * scale;
           const nextPan = {
             x: centerPoint.x + scale * (panRef.current.x - pinch.lastCenter.x),
@@ -474,7 +576,7 @@ export default function CropEditor({
           y: Math.max(0, Math.min(nextCrop.y, h - nextCrop.height)),
         };
       } else {
-        nextCrop = makeBox(drag.fixedImgX, drag.fixedImgY, imagePoint.x, imagePoint.y);
+        nextCrop = resizeFromHandle(drag, imagePoint);
       }
 
       onChangeRef.current(nextCrop);
@@ -602,9 +704,13 @@ export default function CropEditor({
               }}
             >
               <div className="crop-handle crop-handle-tl" />
+              <div className="crop-handle crop-handle-tm" />
               <div className="crop-handle crop-handle-tr" />
+              <div className="crop-handle crop-handle-mr" />
               <div className="crop-handle crop-handle-bl" />
+              <div className="crop-handle crop-handle-bm" />
               <div className="crop-handle crop-handle-br" />
+              <div className="crop-handle crop-handle-ml" />
             </div>
           ) : null}
         </div>

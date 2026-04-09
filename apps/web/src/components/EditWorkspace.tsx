@@ -19,6 +19,10 @@ const MAX_STRIP_WIDTH = 440;
 const COMPACT_STRIP_HEIGHT_BREAKPOINT = 780;
 const COMPACT_STRIP_WIDTH = 58;
 const ZOOM_PRESET_LEVELS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2] as const;
+const ZOOM_BUTTON_FACTOR = 1.15;
+const ZOOM_WHEEL_SPEED = 0.00085;
+const ZOOM_WHEEL_CTRL_SPEED = 0.0018;
+const PINCH_ZOOM_DAMPING = 0.4;
 
 const DEFAULT_OPTIONS: OptionsPanelState = {
   compress: { quality: 80 },
@@ -102,7 +106,8 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const previewUrl = showResult && selectedResult ? selectedResult.url : basePreviewUrl;
   const isCropMode = tool === 'crop' && !showResult && !!selectedFile;
   const isResizeMode = tool === 'resize' && !!selectedFile;
-  const isCropPanEnabled = isCropMode && zoom > 1;
+  const usesFreeCanvasViewport = !showResult && (tool === 'crop' || tool === 'rotate' || tool === 'flip');
+  const isCropPanEnabled = isCropMode;
 
   function getBasePreviewDisplaySize() {
     if (frameDims.w <= 0 || frameDims.h <= 0 || previewNaturalSize.width <= 0 || previewNaturalSize.height <= 0) {
@@ -166,6 +171,10 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   }
 
   function clampPan(nextPan: { x: number; y: number }, nextZoom: number = zoom) {
+    if (usesFreeCanvasViewport) {
+      return nextPan;
+    }
+
     const baseSize = getBasePreviewDisplaySize();
     const maxOffsetX = baseSize
       ? Math.max(0, (baseSize.width * nextZoom - frameDims.w) / 2)
@@ -210,6 +219,14 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
 
   function setAbsoluteZoom(nextZoom: number, focalClient?: { x: number; y: number }) {
     updateZoom(() => nextZoom, focalClient);
+  }
+
+  function applyPinchZoomDamping(rawScale: number) {
+    if (!Number.isFinite(rawScale) || rawScale <= 0) {
+      return 1;
+    }
+
+    return Math.exp(Math.log(rawScale) * PINCH_ZOOM_DAMPING);
   }
 
   function releasePanPointerCapture(pointerId: number | null = activePanPointerIdRef.current) {
@@ -360,9 +377,9 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     }
 
     previewFrame.addEventListener('wheel', handleNativeWheel, { passive: false });
-    previewFrame.addEventListener('gesturestart', handleGestureStart as EventListener);
-    previewFrame.addEventListener('gesturechange', handleGestureChange as EventListener);
-    previewFrame.addEventListener('gestureend', handleGestureEnd as EventListener);
+    previewFrame.addEventListener('gesturestart', handleGestureStart as EventListener, { passive: false });
+    previewFrame.addEventListener('gesturechange', handleGestureChange as EventListener, { passive: false });
+    previewFrame.addEventListener('gestureend', handleGestureEnd as EventListener, { passive: false });
 
     return () => {
       previewFrame.removeEventListener('wheel', handleNativeWheel);
@@ -375,7 +392,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
 
   function handleWheelZoom(e: React.WheelEvent) {
     e.preventDefault();
-    const speed = e.ctrlKey ? 0.0035 : 0.0015;
+    const speed = e.ctrlKey ? ZOOM_WHEEL_CTRL_SPEED : ZOOM_WHEEL_SPEED;
     const factor = Math.exp(-e.deltaY * speed);
     updateZoom((currentZoom) => currentZoom * factor, {
       x: e.clientX,
@@ -401,7 +418,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   }
 
   function handlePreviewPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (!previewUrl || zoom <= 1) {
+    if (!previewUrl) {
       if (!previewUrl) {
         return;
       }
@@ -444,7 +461,11 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
       return;
     }
 
-    if (zoomRef.current <= 1 || activePanPointerIdRef.current !== null) {
+    if (!usesFreeCanvasViewport && zoomRef.current <= 1) {
+      return;
+    }
+
+    if (activePanPointerIdRef.current !== null) {
       return;
     }
 
@@ -480,7 +501,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
         );
 
         if (centerPoint) {
-          const scale = nextDistance / pinchGesture.lastDistance;
+          const scale = applyPinchZoomDamping(nextDistance / pinchGesture.lastDistance);
           const nextZoom = zoomRef.current * scale;
           const nextPan = {
             x: centerPoint.x + scale * (panRef.current.x - pinchGesture.lastCenter.x),
@@ -518,7 +539,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     const pinchGesture = pinchGestureRef.current;
     if (pinchGesture?.pointerIds.includes(e.pointerId)) {
       pinchGestureRef.current = null;
-      if (previewPointersRef.current.size === 1 && zoomRef.current > 1) {
+      if (previewPointersRef.current.size === 1 && (usesFreeCanvasViewport || zoomRef.current > 1)) {
         const [[pointerId, pointer]] = Array.from(previewPointersRef.current.entries());
         activePanPointerIdRef.current = pointerId;
         panStartRef.current = {
@@ -926,7 +947,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
           ) : isCropMode ? (
             <div
               ref={previewFrameRef}
-              className={`preview-frame ${zoom > 1 ? 'is-pannable' : ''}`}
+              className={`preview-frame ${zoom > 1 || usesFreeCanvasViewport ? 'is-pannable' : ''}`}
               onWheel={handleWheelZoom}
               onDoubleClick={resetZoom}
             >
@@ -954,7 +975,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               <div className="zoom-controls">
                 <button
                   className="zoom-btn"
-                  onClick={() => updateZoom((currentZoom) => currentZoom * 1.25)}
+                  onClick={() => updateZoom((currentZoom) => currentZoom * ZOOM_BUTTON_FACTOR)}
                   title={messages.editor.zoomIn}
                   type="button"
                 >
@@ -991,7 +1012,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                 </select>
                 <button
                   className="zoom-btn"
-                  onClick={() => updateZoom((currentZoom) => currentZoom / 1.25)}
+                  onClick={() => updateZoom((currentZoom) => currentZoom / ZOOM_BUTTON_FACTOR)}
                   title={messages.editor.zoomOut}
                   type="button"
                 >
@@ -1010,7 +1031,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
           ) : (
             <div
               ref={previewFrameRef}
-              className={`preview-frame ${previewUrl && zoom > 1 ? 'is-pannable' : ''} ${isPanning ? 'is-panning' : ''}`}
+              className={`preview-frame ${previewUrl && (zoom > 1 || usesFreeCanvasViewport) ? 'is-pannable' : ''} ${isPanning ? 'is-panning' : ''}`}
               onWheel={handleWheelZoom}
               onDoubleClick={resetZoom}
               onPointerDown={handlePreviewPointerDown}
@@ -1053,7 +1074,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               <div className="zoom-controls">
                 <button
                   className="zoom-btn"
-                  onClick={() => updateZoom((currentZoom) => currentZoom * 1.25)}
+                  onClick={() => updateZoom((currentZoom) => currentZoom * ZOOM_BUTTON_FACTOR)}
                   title={messages.editor.zoomIn}
                   type="button"
                 >
@@ -1090,7 +1111,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                 </select>
                 <button
                   className="zoom-btn"
-                  onClick={() => updateZoom((currentZoom) => currentZoom / 1.25)}
+                  onClick={() => updateZoom((currentZoom) => currentZoom / ZOOM_BUTTON_FACTOR)}
                   title={messages.editor.zoomOut}
                   type="button"
                 >
