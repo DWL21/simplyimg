@@ -7,7 +7,7 @@ interface Props {
   zoom: number;
   pan: { x: number; y: number };
   panEnabled: boolean;
-  onPanChange: (pan: { x: number; y: number }) => void;
+  onViewportChange: (zoom: number, pan: { x: number; y: number }) => void;
   onImageLoad?: (naturalWidth: number, naturalHeight: number) => void;
   onChange: (crop: CropOptions | null) => void;
 }
@@ -26,6 +26,12 @@ interface DragState {
   startCrop: CropOptions;
   startPanX: number;
   startPanY: number;
+}
+
+interface PinchState {
+  pointerIds: [number, number];
+  lastDistance: number;
+  lastCenter: { x: number; y: number };
 }
 
 const HIT_RADIUS = 10;
@@ -47,7 +53,7 @@ export default function CropEditor({
   zoom,
   pan,
   panEnabled,
-  onPanChange,
+  onViewportChange,
   onImageLoad,
   onChange,
 }: Props) {
@@ -55,18 +61,93 @@ export default function CropEditor({
   const naturalSizeRef = useRef({ w: 0, h: 0 });
   const [naturalSize, setNaturalSize] = useState({ w: 0, h: 0 });
   const dragRef = useRef<DragState | null>(null);
+  const pinchRef = useRef<PinchState | null>(null);
+  const activePointerIdRef = useRef<number | null>(null);
+  const activePointersRef = useRef(new Map<number, { x: number; y: number }>());
   const cachedRectRef = useRef<DOMRect | null>(null);
+  const defaultCropInitializedRef = useRef(false);
   const onChangeRef = useRef(onChange);
   const valueRef = useRef(value);
-  const onPanChangeRef = useRef(onPanChange);
+  const onViewportChangeRef = useRef(onViewportChange);
   const onImageLoadRef = useRef(onImageLoad);
+  const zoomRef = useRef(zoom);
+  const panRef = useRef(pan);
 
   onChangeRef.current = onChange;
   valueRef.current = value;
-  onPanChangeRef.current = onPanChange;
+  onViewportChangeRef.current = onViewportChange;
   onImageLoadRef.current = onImageLoad;
+  zoomRef.current = zoom;
+  panRef.current = pan;
 
   useEffect(() => () => { document.body.style.cursor = ''; }, []);
+
+  function commitNaturalSize(naturalWidth: number, naturalHeight: number) {
+    naturalSizeRef.current = { w: naturalWidth, h: naturalHeight };
+    setNaturalSize((current) => (
+      current.w === naturalWidth && current.h === naturalHeight
+        ? current
+        : { w: naturalWidth, h: naturalHeight }
+    ));
+    onImageLoadRef.current?.(naturalWidth, naturalHeight);
+
+    if (valueRef.current) {
+      defaultCropInitializedRef.current = true;
+      return;
+    }
+
+    if (defaultCropInitializedRef.current) {
+      return;
+    }
+
+    defaultCropInitializedRef.current = true;
+    const pad = DEFAULT_PAD;
+    onChangeRef.current({
+      x: Math.round(naturalWidth * pad),
+      y: Math.round(naturalHeight * pad),
+      width: Math.round(naturalWidth * (1 - 2 * pad)),
+      height: Math.round(naturalHeight * (1 - 2 * pad)),
+    });
+  }
+
+  useEffect(() => {
+    defaultCropInitializedRef.current = value !== null;
+  }, [value]);
+
+  useEffect(() => {
+    defaultCropInitializedRef.current = valueRef.current !== null;
+    setNaturalSize({ w: 0, h: 0 });
+    naturalSizeRef.current = { w: 0, h: 0 };
+    dragRef.current = null;
+    pinchRef.current = null;
+    activePointerIdRef.current = null;
+    const el = containerRef.current;
+    activePointersRef.current.forEach((_, pointerId) => {
+      if (el?.hasPointerCapture(pointerId)) {
+        el.releasePointerCapture(pointerId);
+      }
+    });
+    activePointersRef.current.clear();
+    cachedRectRef.current = null;
+
+    if (!imageUrl) {
+      return undefined;
+    }
+
+    const image = new Image();
+    const commit = () => commitNaturalSize(image.naturalWidth, image.naturalHeight);
+
+    image.addEventListener('load', commit);
+    image.src = imageUrl;
+
+    if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
+      commit();
+    }
+
+    return () => {
+      image.removeEventListener('load', commit);
+    };
+  }, [imageUrl]);
 
   function getLayout() {
     const el = containerRef.current;
@@ -89,16 +170,29 @@ export default function CropEditor({
       baseHeight = ch;
     }
 
-    const rw = baseWidth * zoom;
-    const rh = baseHeight * zoom;
+    const rw = baseWidth * zoomRef.current;
+    const rh = baseHeight * zoomRef.current;
 
     return {
       rw,
       rh,
-      ox: (cw - rw) / 2 + pan.x,
-      oy: (ch - rh) / 2 + pan.y,
+      ox: (cw - rw) / 2 + panRef.current.x,
+      oy: (ch - rh) / 2 + panRef.current.y,
       iw,
       ih,
+    };
+  }
+
+  function getFramePoint(clientX: number, clientY: number) {
+    const el = containerRef.current;
+    if (!el) {
+      return null;
+    }
+
+    const rect = el.getBoundingClientRect();
+    return {
+      x: clientX - rect.left - rect.width / 2,
+      y: clientY - rect.top - rect.height / 2,
     };
   }
 
@@ -160,18 +254,196 @@ export default function CropEditor({
     return 'outside';
   }
 
-  useEffect(() => {
-    function onMouseMove(event: MouseEvent) {
-      const drag = dragRef.current;
-      if (!drag) {
-        return;
+  function updateHoverCursor(clientX: number, clientY: number) {
+    const el = containerRef.current;
+    if (!el) {
+      return;
+    }
+
+    const rect = el.getBoundingClientRect();
+    const hit = hitTest(clientX - rect.left, clientY - rect.top);
+    el.style.cursor = panEnabled && valueRef.current !== null && hit === 'outside' ? 'grab' : CURSOR[hit];
+  }
+
+  function startPinchGesture() {
+    const [firstPointerId, secondPointerId] = Array.from(activePointersRef.current.keys());
+    const firstPointer = activePointersRef.current.get(firstPointerId);
+    const secondPointer = activePointersRef.current.get(secondPointerId);
+    if (!firstPointer || !secondPointer) {
+      return;
+    }
+
+    const centerPoint = getFramePoint(
+      (firstPointer.x + secondPointer.x) / 2,
+      (firstPointer.y + secondPointer.y) / 2,
+    );
+    if (!centerPoint) {
+      return;
+    }
+
+    pinchRef.current = {
+      pointerIds: [firstPointerId, secondPointerId],
+      lastDistance: Math.max(1, Math.hypot(firstPointer.x - secondPointer.x, firstPointer.y - secondPointer.y)),
+      lastCenter: centerPoint,
+    };
+    dragRef.current = null;
+    activePointerIdRef.current = null;
+    cachedRectRef.current = null;
+    document.body.style.cursor = '';
+  }
+
+  function startDrag(pointerId: number, clientX: number, clientY: number) {
+    const el = containerRef.current;
+    if (!el) {
+      return;
+    }
+
+    const rect = el.getBoundingClientRect();
+    cachedRectRef.current = rect;
+    const cx = clientX - rect.left;
+    const cy = clientY - rect.top;
+    const imagePoint = toImage(cx, cy);
+    if (!imagePoint) {
+      return;
+    }
+
+    const hit = hitTest(cx, cy);
+    const currentCrop = valueRef.current;
+    const shouldPanPreview = panEnabled && currentCrop !== null && hit === 'outside';
+
+    document.body.style.cursor = shouldPanPreview ? 'grabbing' : CURSOR[hit];
+    activePointerIdRef.current = pointerId;
+
+    if (shouldPanPreview) {
+      dragRef.current = {
+        mode: 'pan',
+        fixedImgX: 0,
+        fixedImgY: 0,
+        offsetX: 0,
+        offsetY: 0,
+        startClientX: clientX,
+        startClientY: clientY,
+        startCrop: currentCrop,
+        startPanX: panRef.current.x,
+        startPanY: panRef.current.y,
+      };
+      return;
+    }
+
+    if (hit === 'inside' && currentCrop) {
+      dragRef.current = {
+        mode: 'move',
+        fixedImgX: 0,
+        fixedImgY: 0,
+        offsetX: imagePoint.x - currentCrop.x,
+        offsetY: imagePoint.y - currentCrop.y,
+        startClientX: clientX,
+        startClientY: clientY,
+        startCrop: currentCrop,
+        startPanX: 0,
+        startPanY: 0,
+      };
+      return;
+    }
+
+    if ((hit === 'tl' || hit === 'tr' || hit === 'bl' || hit === 'br') && currentCrop) {
+      const fixedImgX = hit === 'tl' || hit === 'bl' ? currentCrop.x + currentCrop.width : currentCrop.x;
+      const fixedImgY = hit === 'tl' || hit === 'tr' ? currentCrop.y + currentCrop.height : currentCrop.y;
+      dragRef.current = {
+        mode: 'resize',
+        fixedImgX,
+        fixedImgY,
+        offsetX: 0,
+        offsetY: 0,
+        startClientX: clientX,
+        startClientY: clientY,
+        startCrop: currentCrop,
+        startPanX: 0,
+        startPanY: 0,
+      };
+      return;
+    }
+
+    dragRef.current = {
+      mode: 'new',
+      fixedImgX: imagePoint.x,
+      fixedImgY: imagePoint.y,
+      offsetX: 0,
+      offsetY: 0,
+      startClientX: clientX,
+      startClientY: clientY,
+      startCrop: currentCrop ?? { x: 0, y: 0, width: 1, height: 1 },
+      startPanX: 0,
+      startPanY: 0,
+    };
+  }
+
+  function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== 'touch' && event.button !== 0) {
+      return;
+    }
+
+    const el = containerRef.current;
+    if (!el) {
+      return;
+    }
+
+    event.preventDefault();
+    el.setPointerCapture(event.pointerId);
+    activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (activePointersRef.current.size >= 2) {
+      startPinchGesture();
+      return;
+    }
+
+    startDrag(event.pointerId, event.clientX, event.clientY);
+  }
+
+  function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (activePointersRef.current.has(event.pointerId)) {
+      activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+
+    const pinch = pinchRef.current;
+    if (pinch && pinch.pointerIds.includes(event.pointerId)) {
+      const [firstPointer, secondPointer] = pinch.pointerIds
+        .map((pointerId) => activePointersRef.current.get(pointerId))
+        .filter((pointer): pointer is { x: number; y: number } => Boolean(pointer));
+
+      if (firstPointer && secondPointer) {
+        const nextDistance = Math.max(1, Math.hypot(firstPointer.x - secondPointer.x, firstPointer.y - secondPointer.y));
+        const centerPoint = getFramePoint(
+          (firstPointer.x + secondPointer.x) / 2,
+          (firstPointer.y + secondPointer.y) / 2,
+        );
+
+        if (centerPoint) {
+          const scale = nextDistance / pinch.lastDistance;
+          const nextZoom = zoomRef.current * scale;
+          const nextPan = {
+            x: centerPoint.x + scale * (panRef.current.x - pinch.lastCenter.x),
+            y: centerPoint.y + scale * (panRef.current.y - pinch.lastCenter.y),
+          };
+
+          onViewportChangeRef.current(nextZoom, nextPan);
+          pinch.lastDistance = nextDistance;
+          pinch.lastCenter = centerPoint;
+          event.preventDefault();
+        }
       }
 
+      return;
+    }
+
+    const drag = dragRef.current;
+    if (drag && activePointerIdRef.current === event.pointerId) {
       if (drag.mode === 'pan') {
-        onPanChangeRef.current({
+        onViewportChangeRef.current(zoomRef.current, {
           x: drag.startPanX + (event.clientX - drag.startClientX),
           y: drag.startPanY + (event.clientY - drag.startClientY),
         });
+        event.preventDefault();
         return;
       }
 
@@ -206,137 +478,63 @@ export default function CropEditor({
       }
 
       onChangeRef.current(nextCrop);
-    }
-
-    function onMouseUp(event: MouseEvent) {
-      const drag = dragRef.current;
-      if (drag?.mode === 'new') {
-        const movedX = Math.abs(event.clientX - drag.startClientX);
-        const movedY = Math.abs(event.clientY - drag.startClientY);
-        const currentCrop = valueRef.current;
-        const shouldClearSelection = movedX < CLICK_DRAG_THRESHOLD && movedY < CLICK_DRAG_THRESHOLD;
-        const createdTinyCrop = currentCrop !== null
-          && currentCrop.width <= 1
-          && currentCrop.height <= 1;
-
-        if (shouldClearSelection || createdTinyCrop) {
-          onChangeRef.current(null);
-        }
-      }
-
-      dragRef.current = null;
-      cachedRectRef.current = null;
-      document.body.style.cursor = '';
-    }
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-  }, []);
-
-  function handleMouseDown(event: React.MouseEvent) {
-    event.preventDefault();
-    const el = containerRef.current;
-    if (!el) {
+      event.preventDefault();
       return;
     }
 
-    const rect = el.getBoundingClientRect();
-    cachedRectRef.current = rect;
-    const cx = event.clientX - rect.left;
-    const cy = event.clientY - rect.top;
-    const imagePoint = toImage(cx, cy);
-    if (!imagePoint) {
-      return;
+    if (event.pointerType === 'mouse') {
+      updateHoverCursor(event.clientX, event.clientY);
     }
-
-    const hit = hitTest(cx, cy);
-    const currentCrop = valueRef.current;
-    const shouldPanPreview = panEnabled && currentCrop !== null && hit === 'outside';
-
-    document.body.style.cursor = shouldPanPreview ? 'grabbing' : CURSOR[hit];
-
-    if (shouldPanPreview) {
-      dragRef.current = {
-        mode: 'pan',
-        fixedImgX: 0,
-        fixedImgY: 0,
-        offsetX: 0,
-        offsetY: 0,
-        startClientX: event.clientX,
-        startClientY: event.clientY,
-        startCrop: currentCrop,
-        startPanX: pan.x,
-        startPanY: pan.y,
-      };
-      return;
-    }
-
-    if (hit === 'inside' && currentCrop) {
-      dragRef.current = {
-        mode: 'move',
-        fixedImgX: 0,
-        fixedImgY: 0,
-        offsetX: imagePoint.x - currentCrop.x,
-        offsetY: imagePoint.y - currentCrop.y,
-        startClientX: event.clientX,
-        startClientY: event.clientY,
-        startCrop: currentCrop,
-        startPanX: 0,
-        startPanY: 0,
-      };
-      return;
-    }
-
-    if ((hit === 'tl' || hit === 'tr' || hit === 'bl' || hit === 'br') && currentCrop) {
-      const fixedImgX = hit === 'tl' || hit === 'bl' ? currentCrop.x + currentCrop.width : currentCrop.x;
-      const fixedImgY = hit === 'tl' || hit === 'tr' ? currentCrop.y + currentCrop.height : currentCrop.y;
-      dragRef.current = {
-        mode: 'resize',
-        fixedImgX,
-        fixedImgY,
-        offsetX: 0,
-        offsetY: 0,
-        startClientX: event.clientX,
-        startClientY: event.clientY,
-        startCrop: currentCrop,
-        startPanX: 0,
-        startPanY: 0,
-      };
-      return;
-    }
-
-    dragRef.current = {
-      mode: 'new',
-      fixedImgX: imagePoint.x,
-      fixedImgY: imagePoint.y,
-      offsetX: 0,
-      offsetY: 0,
-      startClientX: event.clientX,
-      startClientY: event.clientY,
-      startCrop: currentCrop ?? { x: 0, y: 0, width: 1, height: 1 },
-      startPanX: 0,
-      startPanY: 0,
-    };
   }
 
-  function handleMouseMove(event: React.MouseEvent) {
-    if (dragRef.current) {
-      return;
-    }
-
+  function finishPointerInteraction(pointerId: number, clearSelectionOnTinyDrag: boolean) {
     const el = containerRef.current;
-    if (!el) {
-      return;
+    if (el?.hasPointerCapture(pointerId)) {
+      el.releasePointerCapture(pointerId);
     }
 
-    const rect = el.getBoundingClientRect();
-    const hit = hitTest(event.clientX - rect.left, event.clientY - rect.top);
-    el.style.cursor = panEnabled && value !== null && hit === 'outside' ? 'grab' : CURSOR[hit];
+    const pointer = activePointersRef.current.get(pointerId);
+    activePointersRef.current.delete(pointerId);
+
+    if (pinchRef.current?.pointerIds.includes(pointerId)) {
+      pinchRef.current = null;
+    }
+
+    const drag = dragRef.current;
+    if (
+      clearSelectionOnTinyDrag
+      && drag?.mode === 'new'
+      && activePointerIdRef.current === pointerId
+    ) {
+      const endClientX = pointer?.x ?? drag.startClientX;
+      const endClientY = pointer?.y ?? drag.startClientY;
+      const movedX = Math.abs(endClientX - drag.startClientX);
+      const movedY = Math.abs(endClientY - drag.startClientY);
+      const currentCrop = valueRef.current;
+      const shouldClearSelection = movedX < CLICK_DRAG_THRESHOLD && movedY < CLICK_DRAG_THRESHOLD;
+      const createdTinyCrop = currentCrop !== null
+        && currentCrop.width <= 1
+        && currentCrop.height <= 1;
+
+      if (shouldClearSelection || createdTinyCrop) {
+        onChangeRef.current(null);
+      }
+    }
+
+    if (activePointerIdRef.current === pointerId) {
+      activePointerIdRef.current = null;
+      dragRef.current = null;
+      cachedRectRef.current = null;
+    }
+
+    if (activePointersRef.current.size < 2) {
+      pinchRef.current = null;
+    }
+
+    if (el) {
+      el.style.cursor = '';
+    }
+    document.body.style.cursor = '';
   }
 
   const layout = getLayout();
@@ -357,8 +555,18 @@ export default function CropEditor({
     <div
       className="crop-editor"
       ref={containerRef}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={(event) => finishPointerInteraction(event.pointerId, true)}
+      onPointerCancel={(event) => finishPointerInteraction(event.pointerId, false)}
+      onPointerLeave={() => {
+        if (!dragRef.current && !pinchRef.current) {
+          if (containerRef.current) {
+            containerRef.current.style.cursor = '';
+          }
+          document.body.style.cursor = '';
+        }
+      }}
     >
       {layout ? (
         <div
@@ -375,22 +583,8 @@ export default function CropEditor({
             className="crop-img"
             onLoad={(event) => {
               const { naturalWidth, naturalHeight } = event.currentTarget;
-              naturalSizeRef.current = { w: naturalWidth, h: naturalHeight };
-              setNaturalSize((current) => (
-                current.w === naturalWidth && current.h === naturalHeight
-                  ? current
-                  : { w: naturalWidth, h: naturalHeight }
-              ));
-              onImageLoadRef.current?.(naturalWidth, naturalHeight);
-
-              if (!valueRef.current) {
-                const pad = DEFAULT_PAD;
-                onChangeRef.current({
-                  x: Math.round(naturalWidth * pad),
-                  y: Math.round(naturalHeight * pad),
-                  width: Math.round(naturalWidth * (1 - 2 * pad)),
-                  height: Math.round(naturalHeight * (1 - 2 * pad)),
-                });
+              if (naturalWidth && naturalHeight) {
+                commitNaturalSize(naturalWidth, naturalHeight);
               }
             }}
             draggable={false}
@@ -417,25 +611,18 @@ export default function CropEditor({
       ) : (
         <img
           src={imageUrl}
-          className="crop-img crop-img-measure"
+          className="crop-img"
+          style={{
+            width: 'auto',
+            height: 'auto',
+            maxWidth: '100%',
+            maxHeight: '100%',
+            objectFit: 'contain',
+          }}
           onLoad={(event) => {
             const { naturalWidth, naturalHeight } = event.currentTarget;
-            naturalSizeRef.current = { w: naturalWidth, h: naturalHeight };
-            setNaturalSize((current) => (
-              current.w === naturalWidth && current.h === naturalHeight
-                ? current
-                : { w: naturalWidth, h: naturalHeight }
-            ));
-            onImageLoadRef.current?.(naturalWidth, naturalHeight);
-
-            if (!valueRef.current) {
-              const pad = DEFAULT_PAD;
-              onChangeRef.current({
-                x: Math.round(naturalWidth * pad),
-                y: Math.round(naturalHeight * pad),
-                width: Math.round(naturalWidth * (1 - 2 * pad)),
-                height: Math.round(naturalHeight * (1 - 2 * pad)),
-              });
+            if (naturalWidth && naturalHeight) {
+              commitNaturalSize(naturalWidth, naturalHeight);
             }
           }}
           draggable={false}

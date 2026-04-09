@@ -37,6 +37,14 @@ interface Props {
 
 interface GestureEventLike extends Event {
   scale: number;
+  clientX?: number;
+  clientY?: number;
+}
+
+interface PreviewPinchGesture {
+  pointerIds: [number, number];
+  lastDistance: number;
+  lastCenter: { x: number; y: number };
 }
 
 export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
@@ -71,8 +79,11 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
   const activePanPointerIdRef = useRef<number | null>(null);
+  const previewPointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchGestureRef = useRef<PreviewPinchGesture | null>(null);
   const gestureStartZoomRef = useRef<number | null>(null);
   const zoomRef = useRef(1);
+  const panRef = useRef({ x: 0, y: 0 });
   const stripResizeCleanupRef = useRef<(() => void) | null>(null);
 
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -124,6 +135,36 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     return Math.min(8, Math.max(0.25, value));
   }
 
+  function getPreviewFramePoint(clientX: number, clientY: number) {
+    const previewFrame = previewFrameRef.current;
+    if (!previewFrame) {
+      return null;
+    }
+
+    const rect = previewFrame.getBoundingClientRect();
+    return {
+      x: clientX - rect.left - rect.width / 2,
+      y: clientY - rect.top - rect.height / 2,
+    };
+  }
+
+  function scalePanAroundPoint(
+    currentPan: { x: number; y: number },
+    currentZoom: number,
+    nextZoom: number,
+    focalPoint: { x: number; y: number },
+  ) {
+    if (currentZoom === 0) {
+      return currentPan;
+    }
+
+    const scale = nextZoom / currentZoom;
+    return {
+      x: focalPoint.x + scale * (currentPan.x - focalPoint.x),
+      y: focalPoint.y + scale * (currentPan.y - focalPoint.y),
+    };
+  }
+
   function clampPan(nextPan: { x: number; y: number }, nextZoom: number = zoom) {
     const baseSize = getBasePreviewDisplaySize();
     const maxOffsetX = baseSize
@@ -139,26 +180,36 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     };
   }
 
-  function updateZoom(updater: (currentZoom: number) => number) {
-    setZoom((currentZoom) => {
-      const nextZoom = clampZoom(updater(currentZoom));
-      setPan((currentPan) => {
-        const nextPan = clampPan(currentPan, nextZoom);
-        return nextPan.x === currentPan.x && nextPan.y === currentPan.y ? currentPan : nextPan;
-      });
-      return nextZoom;
-    });
+  function setViewport(nextZoom: number, nextPan: { x: number; y: number }) {
+    const clampedZoom = clampZoom(nextZoom);
+    const clampedPan = clampPan(nextPan, clampedZoom);
+
+    zoomRef.current = clampedZoom;
+    panRef.current = clampedPan;
+
+    setZoom((currentZoom) => (clampedZoom === currentZoom ? currentZoom : clampedZoom));
+    setPan((currentPan) => (
+      clampedPan.x === currentPan.x && clampedPan.y === currentPan.y ? currentPan : clampedPan
+    ));
   }
 
-  function setAbsoluteZoom(nextZoom: number) {
-    setZoom((currentZoom) => {
-      const clampedZoom = clampZoom(nextZoom);
-      setPan((currentPan) => {
-        const nextPan = clampPan(currentPan, clampedZoom);
-        return nextPan.x === currentPan.x && nextPan.y === currentPan.y ? currentPan : nextPan;
-      });
-      return clampedZoom === currentZoom ? currentZoom : clampedZoom;
-    });
+  function updateZoom(
+    updater: (currentZoom: number) => number,
+    focalClient?: { x: number; y: number },
+  ) {
+    const currentZoom = zoomRef.current;
+    const currentPan = panRef.current;
+    const nextZoom = clampZoom(updater(currentZoom));
+    const focalPoint = focalClient ? getPreviewFramePoint(focalClient.x, focalClient.y) : null;
+    const nextPan = focalPoint
+      ? scalePanAroundPoint(currentPan, currentZoom, nextZoom, focalPoint)
+      : currentPan;
+
+    setViewport(nextZoom, nextPan);
+  }
+
+  function setAbsoluteZoom(nextZoom: number, focalClient?: { x: number; y: number }) {
+    updateZoom(() => nextZoom, focalClient);
   }
 
   function releasePanPointerCapture(pointerId: number | null = activePanPointerIdRef.current) {
@@ -174,7 +225,11 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
 
   useEffect(() => {
     return () => {
-      releasePanPointerCapture();
+      previewPointersRef.current.forEach((_, pointerId) => {
+        releasePanPointerCapture(pointerId);
+      });
+      previewPointersRef.current.clear();
+      pinchGestureRef.current = null;
       stripResizeCleanupRef.current?.();
       document.body.style.cursor = '';
     };
@@ -192,14 +247,19 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
 
   useEffect(() => {
     const el = previewFrameRef.current;
-    if (!el) return;
+    if (!el) {
+      setFrameDims({ w: 0, h: 0 });
+      return undefined;
+    }
+
     const ro = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect;
       setFrameDims({ w: width, h: height });
     });
+
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [hasFiles, previewUrl, tool]);
 
   // Auto-select first file when files are added
   useEffect(() => {
@@ -211,6 +271,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   useEffect(() => {
     setPan((currentPan) => {
       const nextPan = clampPan(currentPan);
+      panRef.current = nextPan;
       return nextPan.x === currentPan.x && nextPan.y === currentPan.y ? currentPan : nextPan;
     });
   }, [
@@ -230,57 +291,25 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   }, [zoom]);
 
   useEffect(() => {
-    if (!isPanning) {
-      return;
-    }
+    panRef.current = pan;
+  }, [pan]);
 
-    function stopPan(pointerId?: number) {
-      if (pointerId !== undefined && activePanPointerIdRef.current !== pointerId) {
-        return;
-      }
-
-      releasePanPointerCapture();
+  useEffect(() => {
+    function handleWindowBlur() {
+      previewPointersRef.current.forEach((_, pointerId) => {
+        releasePanPointerCapture(pointerId);
+      });
+      previewPointersRef.current.clear();
+      pinchGestureRef.current = null;
       activePanPointerIdRef.current = null;
       panStartRef.current = null;
       setIsPanning(false);
       document.body.style.cursor = '';
     }
 
-    function handleWindowPointerMove(event: PointerEvent) {
-      if (!panStartRef.current || activePanPointerIdRef.current !== event.pointerId) {
-        return;
-      }
-
-      setPan(clampPan({
-        x: panStartRef.current.panX + (event.clientX - panStartRef.current.x),
-        y: panStartRef.current.panY + (event.clientY - panStartRef.current.y),
-      }));
-    }
-
-    function handleWindowPointerUp(event: PointerEvent) {
-      stopPan(event.pointerId);
-    }
-
-    function handleWindowPointerCancel(event: PointerEvent) {
-      stopPan(event.pointerId);
-    }
-
-    function handleWindowBlur() {
-      stopPan();
-    }
-
-    window.addEventListener('pointermove', handleWindowPointerMove);
-    window.addEventListener('pointerup', handleWindowPointerUp);
-    window.addEventListener('pointercancel', handleWindowPointerCancel);
     window.addEventListener('blur', handleWindowBlur);
-
-    return () => {
-      window.removeEventListener('pointermove', handleWindowPointerMove);
-      window.removeEventListener('pointerup', handleWindowPointerUp);
-      window.removeEventListener('pointercancel', handleWindowPointerCancel);
-      window.removeEventListener('blur', handleWindowBlur);
-    };
-  }, [isPanning, zoom, frameDims.h, frameDims.w]);
+    return () => window.removeEventListener('blur', handleWindowBlur);
+  }, []);
 
   useEffect(() => {
     const previewFrame = previewFrameRef.current;
@@ -313,7 +342,12 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
       event.preventDefault();
       const gestureEvent = event as GestureEventLike;
       const baseZoom = gestureStartZoomRef.current ?? zoomRef.current;
-      setAbsoluteZoom(baseZoom * gestureEvent.scale);
+      setAbsoluteZoom(
+        baseZoom * gestureEvent.scale,
+        gestureEvent.clientX !== undefined && gestureEvent.clientY !== undefined
+          ? { x: gestureEvent.clientX, y: gestureEvent.clientY }
+          : undefined,
+      );
     }
 
     function handleGestureEnd(event: Event) {
@@ -343,12 +377,34 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     e.preventDefault();
     const speed = e.ctrlKey ? 0.0035 : 0.0015;
     const factor = Math.exp(-e.deltaY * speed);
-    updateZoom((currentZoom) => currentZoom * factor);
+    updateZoom((currentZoom) => currentZoom * factor, {
+      x: e.clientX,
+      y: e.clientY,
+    });
   }
 
-  function handleZoomPointerDown(e: React.PointerEvent) {
-    if (!previewUrl || zoom <= 1) {
+  function stopPreviewPan(pointerId?: number) {
+    if (pointerId !== undefined && activePanPointerIdRef.current !== pointerId) {
       return;
+    }
+
+    if (pointerId !== undefined) {
+      releasePanPointerCapture(pointerId);
+    } else {
+      releasePanPointerCapture();
+    }
+
+    activePanPointerIdRef.current = null;
+    panStartRef.current = null;
+    setIsPanning(false);
+    document.body.style.cursor = '';
+  }
+
+  function handlePreviewPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (!previewUrl || zoom <= 1) {
+      if (!previewUrl) {
+        return;
+      }
     }
 
     if (e.pointerType !== 'touch' && e.button !== 0) {
@@ -360,21 +416,139 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
       return;
     }
 
-    if (activePanPointerIdRef.current !== null) {
+    const frame = e.currentTarget;
+    frame.setPointerCapture(e.pointerId);
+    previewPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (previewPointersRef.current.size >= 2) {
+      const [firstPointerId, secondPointerId] = Array.from(previewPointersRef.current.keys());
+      const firstPointer = previewPointersRef.current.get(firstPointerId);
+      const secondPointer = previewPointersRef.current.get(secondPointerId);
+
+      if (firstPointer && secondPointer) {
+        const centerPoint = getPreviewFramePoint(
+          (firstPointer.x + secondPointer.x) / 2,
+          (firstPointer.y + secondPointer.y) / 2,
+        );
+        if (centerPoint) {
+          pinchGestureRef.current = {
+            pointerIds: [firstPointerId, secondPointerId],
+            lastDistance: Math.max(1, Math.hypot(firstPointer.x - secondPointer.x, firstPointer.y - secondPointer.y)),
+            lastCenter: centerPoint,
+          };
+        }
+      }
+
+      stopPreviewPan();
+      e.preventDefault();
       return;
     }
 
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    if (zoomRef.current <= 1 || activePanPointerIdRef.current !== null) {
+      return;
+    }
+
     activePanPointerIdRef.current = e.pointerId;
-    panStartRef.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
+    panStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      panX: panRef.current.x,
+      panY: panRef.current.y,
+    };
     setIsPanning(true);
     document.body.style.cursor = 'grabbing';
     e.preventDefault();
   }
 
+  function handlePreviewPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const trackedPointer = previewPointersRef.current.get(e.pointerId);
+    if (trackedPointer) {
+      previewPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    const pinchGesture = pinchGestureRef.current;
+    if (pinchGesture && pinchGesture.pointerIds.includes(e.pointerId)) {
+      const [firstPointer, secondPointer] = pinchGesture.pointerIds
+        .map((pointerId) => previewPointersRef.current.get(pointerId))
+        .filter((pointer): pointer is { x: number; y: number } => Boolean(pointer));
+
+      if (firstPointer && secondPointer) {
+        const nextDistance = Math.max(1, Math.hypot(firstPointer.x - secondPointer.x, firstPointer.y - secondPointer.y));
+        const centerPoint = getPreviewFramePoint(
+          (firstPointer.x + secondPointer.x) / 2,
+          (firstPointer.y + secondPointer.y) / 2,
+        );
+
+        if (centerPoint) {
+          const scale = nextDistance / pinchGesture.lastDistance;
+          const nextZoom = zoomRef.current * scale;
+          const nextPan = {
+            x: centerPoint.x + scale * (panRef.current.x - pinchGesture.lastCenter.x),
+            y: centerPoint.y + scale * (panRef.current.y - pinchGesture.lastCenter.y),
+          };
+
+          setViewport(nextZoom, nextPan);
+          pinchGesture.lastDistance = nextDistance;
+          pinchGesture.lastCenter = centerPoint;
+          e.preventDefault();
+        }
+      }
+
+      return;
+    }
+
+    if (!panStartRef.current || activePanPointerIdRef.current !== e.pointerId) {
+      return;
+    }
+
+    const nextPan = clampPan({
+      x: panStartRef.current.panX + (e.clientX - panStartRef.current.x),
+      y: panStartRef.current.panY + (e.clientY - panStartRef.current.y),
+    });
+
+    panRef.current = nextPan;
+    setPan(nextPan);
+    e.preventDefault();
+  }
+
+  function handlePreviewPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    releasePanPointerCapture(e.pointerId);
+    previewPointersRef.current.delete(e.pointerId);
+
+    const pinchGesture = pinchGestureRef.current;
+    if (pinchGesture?.pointerIds.includes(e.pointerId)) {
+      pinchGestureRef.current = null;
+      if (previewPointersRef.current.size === 1 && zoomRef.current > 1) {
+        const [[pointerId, pointer]] = Array.from(previewPointersRef.current.entries());
+        activePanPointerIdRef.current = pointerId;
+        panStartRef.current = {
+          x: pointer.x,
+          y: pointer.y,
+          panX: panRef.current.x,
+          panY: panRef.current.y,
+        };
+        setIsPanning(true);
+        document.body.style.cursor = 'grabbing';
+      } else {
+        stopPreviewPan();
+      }
+      return;
+    }
+
+    stopPreviewPan(e.pointerId);
+  }
+
+  function handlePreviewPointerCancel(e: React.PointerEvent<HTMLDivElement>) {
+    releasePanPointerCapture(e.pointerId);
+    previewPointersRef.current.delete(e.pointerId);
+    if (pinchGestureRef.current?.pointerIds.includes(e.pointerId)) {
+      pinchGestureRef.current = null;
+    }
+    stopPreviewPan(e.pointerId);
+  }
+
   function resetZoom() {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
+    setViewport(1, { x: 0, y: 0 });
     gestureStartZoomRef.current = null;
   }
 
@@ -558,8 +732,16 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   }
 
   useEffect(() => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
+    previewPointersRef.current.forEach((_, pointerId) => {
+      releasePanPointerCapture(pointerId);
+    });
+    previewPointersRef.current.clear();
+    pinchGestureRef.current = null;
+    activePanPointerIdRef.current = null;
+    panStartRef.current = null;
+    setIsPanning(false);
+    document.body.style.cursor = '';
+    setViewport(1, { x: 0, y: 0 });
     setPreviewNaturalSize(emptyPreviewSize);
   }, [previewUrl]);
 
@@ -755,13 +937,8 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
                 zoom={zoom}
                 pan={pan}
                 panEnabled={isCropPanEnabled}
-                onPanChange={(nextPan) => {
-                  setPan((currentPan) => {
-                    const clampedPan = clampPan(nextPan);
-                    return clampedPan.x === currentPan.x && clampedPan.y === currentPan.y
-                      ? currentPan
-                      : clampedPan;
-                  });
+                onViewportChange={(nextZoom, nextPan) => {
+                  setViewport(nextZoom, nextPan);
                 }}
                 onImageLoad={(naturalWidth, naturalHeight) => {
                   setPreviewNaturalSize((current) => {
@@ -836,7 +1013,10 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               className={`preview-frame ${previewUrl && zoom > 1 ? 'is-pannable' : ''} ${isPanning ? 'is-panning' : ''}`}
               onWheel={handleWheelZoom}
               onDoubleClick={resetZoom}
-              onPointerDown={handleZoomPointerDown}
+              onPointerDown={handlePreviewPointerDown}
+              onPointerMove={handlePreviewPointerMove}
+              onPointerUp={handlePreviewPointerUp}
+              onPointerCancel={handlePreviewPointerCancel}
             >
               {previewUrl ? (
                 <div

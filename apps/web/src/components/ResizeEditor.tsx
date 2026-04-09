@@ -10,228 +10,441 @@ interface Props {
 
 type Handle = 'tl' | 'tr' | 'bl' | 'br' | 'tm' | 'bm' | 'ml' | 'mr';
 
+const MIN_SIZE = 1;
+const ZOOM_STEP = 1.25;
+const MIN_ZOOM = 0.02;
+const MAX_ZOOM = 16;
+
 interface ResizeDragState {
+  pointerId: number;
   mode: 'resize';
   handle: Handle;
-  startX: number;
-  startY: number;
+  startClientX: number;
+  startClientY: number;
   startWidth: number;
   startHeight: number;
+  anchorScreenX: number;
+  anchorScreenY: number;
+  zoom: number;
+  frameCenterScreenX: number;
+  frameCenterScreenY: number;
+  panX: number;
+  panY: number;
 }
 
-interface MoveDragState {
+interface CanvasDragState {
+  pointerId: number;
+  mode: 'canvas';
+  startClientX: number;
+  startClientY: number;
+  startPanX: number;
+  startPanY: number;
+}
+
+interface ImageMoveDragState {
+  pointerId: number;
   mode: 'move';
-  startX: number;
-  startY: number;
+  startClientX: number;
+  startClientY: number;
   startCropX: number;
   startCropY: number;
+  cropWidth: number;
+  cropHeight: number;
+  scaleX: number;
+  scaleY: number;
 }
 
-type DragState = ResizeDragState | MoveDragState;
+interface PinchState {
+  pointerIds: [number, number];
+  lastDistance: number;
+}
 
-const MIN_SIZE = 1;
+type DragState = ResizeDragState | CanvasDragState | ImageMoveDragState;
+
+function computeSafeCrop(
+  crop: Props['crop'],
+  nat: { width: number; height: number },
+) {
+  const maxW = Math.max(1, nat.width);
+  const maxH = Math.max(1, nat.height);
+  const c = crop ?? { x: 0, y: 0, width: maxW, height: maxH };
+  const sw = Math.max(1, Math.min(c.width, maxW));
+  const sh = Math.max(1, Math.min(c.height, maxH));
+  return {
+    x: Math.max(0, Math.min(c.x, maxW - sw)),
+    y: Math.max(0, Math.min(c.y, maxH - sh)),
+    width: sw,
+    height: sh,
+  };
+}
+
+function clampZoom(value: number) {
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
+}
+
+function scalePanAroundPoint(
+  currentPan: { x: number; y: number },
+  currentZoom: number,
+  nextZoom: number,
+  focalPoint: { x: number; y: number },
+) {
+  if (currentZoom === 0) {
+    return currentPan;
+  }
+
+  const scale = nextZoom / currentZoom;
+  return {
+    x: focalPoint.x + scale * (currentPan.x - focalPoint.x),
+    y: focalPoint.y + scale * (currentPan.y - focalPoint.y),
+  };
+}
 
 export default function ResizeEditor({ imageUrl, width, height, crop, onChange }: Props) {
   const frameRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
+  const pinchRef = useRef<PinchState | null>(null);
+  const activePointersRef = useRef(new Map<number, { x: number; y: number }>());
   const onChangeRef = useRef(onChange);
+  const cropRef = useRef(crop);
+  const widthRef = useRef(width);
+  const heightRef = useRef(height);
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
+  const naturalSizeRef = useRef({ width: 0, height: 0 });
+
+  const [zoom, setZoom] = useState<number | null>(null);
+  const [canvasPan, setCanvasPan] = useState({ x: 0, y: 0 });
+  const [boxOffset, setBoxOffset] = useState({ x: 0, y: 0 });
+  const zoomRef = useRef<number | null>(null);
+  const canvasPanRef = useRef({ x: 0, y: 0 });
+  const boxOffsetRef = useRef({ x: 0, y: 0 });
+
+  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+  useEffect(() => { cropRef.current = crop; }, [crop]);
+  useEffect(() => { widthRef.current = width; }, [width]);
+  useEffect(() => { heightRef.current = height; }, [height]);
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  useEffect(() => { canvasPanRef.current = canvasPan; }, [canvasPan]);
+  useEffect(() => { boxOffsetRef.current = boxOffset; }, [boxOffset]);
 
   useEffect(() => {
-    onChangeRef.current = onChange;
-  }, [onChange]);
+    if (zoom !== null) return;
+    const frame = frameRef.current;
+    if (!frame || !width || !height) return;
+    const { width: fw, height: fh } = frame.getBoundingClientRect();
+    if (!fw || !fh) return;
+    const fitted = Math.min((fw * 0.84) / width, (fh * 0.8) / height);
+    const safe = Number.isFinite(fitted) && fitted > 0 ? fitted : 1;
+    setZoom(safe);
+    zoomRef.current = safe;
+  }, [zoom, width, height]);
 
   useEffect(() => () => {
+    activePointersRef.current.clear();
+    pinchRef.current = null;
     document.body.style.cursor = '';
   }, []);
 
-  function getLayout() {
+  useEffect(() => {
+    if (!naturalSize.width || !naturalSize.height || crop) return;
+    onChangeRef.current({
+      width,
+      height,
+      crop: { x: 0, y: 0, width: naturalSize.width, height: naturalSize.height },
+    });
+  }, [crop, height, naturalSize.height, naturalSize.width, width]);
+
+  function getFramePoint(clientX: number, clientY: number) {
     const frame = frameRef.current;
     if (!frame) {
       return null;
     }
 
     const rect = frame.getBoundingClientRect();
-    const scale = Math.min((rect.width * 0.84) / width, (rect.height * 0.8) / height);
-    const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
-    const boxWidth = width * safeScale;
-    const boxHeight = height * safeScale;
-
     return {
-      scale: safeScale,
-      left: (rect.width - boxWidth) / 2,
-      top: (rect.height - boxHeight) / 2,
-      boxWidth,
-      boxHeight,
+      x: clientX - rect.left - rect.width / 2,
+      y: clientY - rect.top - rect.height / 2,
     };
   }
 
-  function getSafeCrop() {
-    const maxWidth = Math.max(1, naturalSize.width);
-    const maxHeight = Math.max(1, naturalSize.height);
-    const nextCrop = crop ?? { x: 0, y: 0, width: maxWidth, height: maxHeight };
-    const safeWidth = Math.max(1, Math.min(nextCrop.width, maxWidth));
-    const safeHeight = Math.max(1, Math.min(nextCrop.height, maxHeight));
-    return {
-      x: Math.max(0, Math.min(nextCrop.x, maxWidth - safeWidth)),
-      y: Math.max(0, Math.min(nextCrop.y, maxHeight - safeHeight)),
-      width: safeWidth,
-      height: safeHeight,
-    };
+  function setZoomAround(nextZoom: number, clientX?: number, clientY?: number) {
+    const clampedZoom = clampZoom(nextZoom);
+    const currentZoom = zoomRef.current ?? 1;
+    const focalPoint = clientX !== undefined && clientY !== undefined
+      ? getFramePoint(clientX, clientY)
+      : null;
+
+    const nextPan = focalPoint
+      ? scalePanAroundPoint(canvasPanRef.current, currentZoom, clampedZoom, focalPoint)
+      : canvasPanRef.current;
+
+    zoomRef.current = clampedZoom;
+    canvasPanRef.current = nextPan;
+
+    setZoom((current) => (current === clampedZoom ? current : clampedZoom));
+    setCanvasPan((current) => (
+      current.x === nextPan.x && current.y === nextPan.y ? current : nextPan
+    ));
   }
 
-  function nextSizeFromDrag(drag: ResizeDragState, clientX: number, clientY: number) {
-    const layout = getLayout();
-    if (!layout) {
-      return null;
-    }
-
-    const deltaX = (clientX - drag.startX) / layout.scale;
-    const deltaY = (clientY - drag.startY) / layout.scale;
-    const ratio = drag.startWidth / drag.startHeight;
-
-    if (drag.handle === 'ml' || drag.handle === 'mr') {
-      const signedDelta = drag.handle === 'mr' ? deltaX : -deltaX;
-      return {
-        width: Math.max(MIN_SIZE, Math.round(drag.startWidth + signedDelta)),
-        height: drag.startHeight,
-      };
-    }
-
-    if (drag.handle === 'tm' || drag.handle === 'bm') {
-      const signedDelta = drag.handle === 'bm' ? deltaY : -deltaY;
-      return {
-        width: drag.startWidth,
-        height: Math.max(MIN_SIZE, Math.round(drag.startHeight + signedDelta)),
-      };
-    }
-
-    const signedDeltaX = (drag.handle === 'tr' || drag.handle === 'br') ? deltaX : -deltaX;
-    const signedDeltaY = (drag.handle === 'bl' || drag.handle === 'br') ? deltaY : -deltaY;
-    const widthFromHeight = signedDeltaY * ratio;
-    const dominantDelta = Math.abs(signedDeltaX) >= Math.abs(widthFromHeight) ? signedDeltaX : widthFromHeight;
-    const nextWidth = Math.max(MIN_SIZE, Math.round(drag.startWidth + dominantDelta));
-
-    return {
-      width: nextWidth,
-      height: Math.max(MIN_SIZE, Math.round(nextWidth / ratio)),
-    };
+  function handleFit() {
+    const frame = frameRef.current;
+    if (!frame) return;
+    const { width: fw, height: fh } = frame.getBoundingClientRect();
+    const fitted = Math.min((fw * 0.84) / width, (fh * 0.8) / height);
+    const safe = Number.isFinite(fitted) && fitted > 0 ? fitted : 1;
+    zoomRef.current = safe;
+    canvasPanRef.current = { x: 0, y: 0 };
+    boxOffsetRef.current = { x: 0, y: 0 };
+    setZoom(safe);
+    setCanvasPan({ x: 0, y: 0 });
+    setBoxOffset({ x: 0, y: 0 });
   }
 
-  function nextCropFromMove(drag: MoveDragState, clientX: number, clientY: number) {
-    const layout = getLayout();
-    if (!layout) {
-      return null;
-    }
-
-    const activeCrop = getSafeCrop();
-    const scaleX = layout.boxWidth / activeCrop.width;
-    const scaleY = layout.boxHeight / activeCrop.height;
-    const deltaX = Math.round((clientX - drag.startX) / scaleX);
-    const deltaY = Math.round((clientY - drag.startY) / scaleY);
-
-    return {
-      ...activeCrop,
-      x: Math.max(0, Math.min(drag.startCropX - deltaX, naturalSize.width - activeCrop.width)),
-      y: Math.max(0, Math.min(drag.startCropY - deltaY, naturalSize.height - activeCrop.height)),
-    };
-  }
-
-  useEffect(() => {
-    if (!naturalSize.width || !naturalSize.height || crop) {
+  function startPinchGesture() {
+    const [firstPointerId, secondPointerId] = Array.from(activePointersRef.current.keys());
+    const firstPointer = activePointersRef.current.get(firstPointerId);
+    const secondPointer = activePointersRef.current.get(secondPointerId);
+    if (!firstPointer || !secondPointer) {
       return;
     }
 
-    onChangeRef.current({
-      width,
-      height,
-      crop: {
-        x: 0,
-        y: 0,
-        width: naturalSize.width,
-        height: naturalSize.height,
-      },
-    });
-  }, [crop, height, naturalSize.height, naturalSize.width, width]);
-
-  useEffect(() => {
-    function handleMouseMove(event: MouseEvent) {
-      const drag = dragRef.current;
-      if (!drag) {
-        return;
-      }
-
-      if (drag.mode === 'resize') {
-        const nextSize = nextSizeFromDrag(drag, event.clientX, event.clientY);
-        if (nextSize) {
-          onChangeRef.current({
-            width: nextSize.width,
-            height: nextSize.height,
-            crop: getSafeCrop(),
-          });
-        }
-        return;
-      }
-
-      const nextCrop = nextCropFromMove(drag, event.clientX, event.clientY);
-      if (nextCrop) {
-        onChangeRef.current({
-          width,
-          height,
-          crop: nextCrop,
-        });
-      }
-    }
-
-    function handleMouseUp() {
-      dragRef.current = null;
-      document.body.style.cursor = '';
-    }
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+    pinchRef.current = {
+      pointerIds: [firstPointerId, secondPointerId],
+      lastDistance: Math.max(1, Math.hypot(firstPointer.x - secondPointer.x, firstPointer.y - secondPointer.y)),
     };
-  }, [height, naturalSize.height, naturalSize.width, width]);
+    dragRef.current = null;
+    document.body.style.cursor = '';
+  }
 
-  const layout = getLayout();
-  const safeCrop = getSafeCrop();
-  const imageLeft = layout ? layout.left - safeCrop.x * (layout.boxWidth / safeCrop.width) : 0;
-  const imageTop = layout ? layout.top - safeCrop.y * (layout.boxHeight / safeCrop.height) : 0;
-  const imageWidth = layout ? naturalSize.width * (layout.boxWidth / safeCrop.width) : 0;
-  const imageHeight = layout ? naturalSize.height * (layout.boxHeight / safeCrop.height) : 0;
+  function finishPointer(pointerId: number) {
+    const frame = frameRef.current;
+    if (frame?.hasPointerCapture(pointerId)) {
+      frame.releasePointerCapture(pointerId);
+    }
+
+    activePointersRef.current.delete(pointerId);
+
+    if (pinchRef.current?.pointerIds.includes(pointerId)) {
+      pinchRef.current = null;
+    }
+
+    if (dragRef.current?.pointerId === pointerId) {
+      dragRef.current = null;
+    }
+
+    document.body.style.cursor = '';
+  }
+
+  function handleFramePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (activePointersRef.current.has(event.pointerId)) {
+      activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+
+    const pinch = pinchRef.current;
+    if (pinch && pinch.pointerIds.includes(event.pointerId)) {
+      const [firstPointer, secondPointer] = pinch.pointerIds
+        .map((pointerId) => activePointersRef.current.get(pointerId))
+        .filter((pointer): pointer is { x: number; y: number } => Boolean(pointer));
+
+      if (firstPointer && secondPointer) {
+        const nextDistance = Math.max(1, Math.hypot(firstPointer.x - secondPointer.x, firstPointer.y - secondPointer.y));
+        const nextZoom = (zoomRef.current ?? 1) * (nextDistance / pinch.lastDistance);
+        const centerX = (firstPointer.x + secondPointer.x) / 2;
+        const centerY = (firstPointer.y + secondPointer.y) / 2;
+        setZoomAround(nextZoom, centerX, centerY);
+        pinch.lastDistance = nextDistance;
+        event.preventDefault();
+      }
+      return;
+    }
+
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (drag.mode === 'canvas') {
+      const nextPan = {
+        x: drag.startPanX + event.clientX - drag.startClientX,
+        y: drag.startPanY + event.clientY - drag.startClientY,
+      };
+      canvasPanRef.current = nextPan;
+      setCanvasPan(nextPan);
+      event.preventDefault();
+      return;
+    }
+
+    if (drag.mode === 'move') {
+      const nat = naturalSizeRef.current;
+      const dx = event.clientX - drag.startClientX;
+      const dy = event.clientY - drag.startClientY;
+      const nextX = Math.max(0, Math.min(drag.startCropX - Math.round(dx / drag.scaleX), nat.width - drag.cropWidth));
+      const nextY = Math.max(0, Math.min(drag.startCropY - Math.round(dy / drag.scaleY), nat.height - drag.cropHeight));
+      onChangeRef.current({
+        width: widthRef.current,
+        height: heightRef.current,
+        crop: { x: nextX, y: nextY, width: drag.cropWidth, height: drag.cropHeight },
+      });
+      event.preventDefault();
+      return;
+    }
+
+    const { handle, zoom: dragZoom, startWidth, startHeight } = drag;
+    const dx = event.clientX - drag.startClientX;
+    const dy = event.clientY - drag.startClientY;
+    const ratio = startWidth / startHeight;
+    let nextWidth = startWidth;
+    let nextHeight = startHeight;
+
+    if (handle === 'mr') {
+      nextWidth = Math.max(MIN_SIZE, Math.round(startWidth + dx / dragZoom));
+    } else if (handle === 'ml') {
+      nextWidth = Math.max(MIN_SIZE, Math.round(startWidth - dx / dragZoom));
+    } else if (handle === 'bm') {
+      nextHeight = Math.max(MIN_SIZE, Math.round(startHeight + dy / dragZoom));
+    } else if (handle === 'tm') {
+      nextHeight = Math.max(MIN_SIZE, Math.round(startHeight - dy / dragZoom));
+    } else {
+      const scaledDx = (handle === 'tl' || handle === 'bl') ? -dx / dragZoom : dx / dragZoom;
+      const scaledDy = (handle === 'tl' || handle === 'tr') ? -dy / dragZoom : dy / dragZoom;
+      const widthFromHeight = scaledDy * ratio;
+      const dominant = Math.abs(scaledDx) >= Math.abs(widthFromHeight) ? scaledDx : widthFromHeight;
+      nextWidth = Math.max(MIN_SIZE, Math.round(startWidth + dominant));
+      nextHeight = Math.max(MIN_SIZE, Math.round(nextWidth / ratio));
+    }
+
+    const nextBoxWidth = nextWidth * dragZoom;
+    const nextBoxHeight = nextHeight * dragZoom;
+
+    let nextBoxCenterX: number;
+    let nextBoxCenterY: number;
+
+    if (handle === 'ml' || handle === 'tl' || handle === 'bl') {
+      nextBoxCenterX = drag.anchorScreenX - nextBoxWidth / 2;
+    } else if (handle === 'mr' || handle === 'tr' || handle === 'br') {
+      nextBoxCenterX = drag.anchorScreenX + nextBoxWidth / 2;
+    } else {
+      nextBoxCenterX = drag.anchorScreenX;
+    }
+
+    if (handle === 'tl' || handle === 'tm' || handle === 'tr') {
+      nextBoxCenterY = drag.anchorScreenY - nextBoxHeight / 2;
+    } else if (handle === 'bl' || handle === 'bm' || handle === 'br') {
+      nextBoxCenterY = drag.anchorScreenY + nextBoxHeight / 2;
+    } else {
+      nextBoxCenterY = drag.anchorScreenY;
+    }
+
+    const nextOffset = {
+      x: nextBoxCenterX - drag.frameCenterScreenX - drag.panX,
+      y: nextBoxCenterY - drag.frameCenterScreenY - drag.panY,
+    };
+    boxOffsetRef.current = nextOffset;
+    setBoxOffset(nextOffset);
+
+    const nextCrop = computeSafeCrop(cropRef.current, naturalSizeRef.current);
+    onChangeRef.current({ width: nextWidth, height: nextHeight, crop: nextCrop });
+    event.preventDefault();
+  }
+
+  const frameRect = frameRef.current?.getBoundingClientRect();
+  const frameWidth = frameRect?.width ?? 0;
+  const frameHeight = frameRect?.height ?? 0;
+  const effectiveZoom = zoom ?? 1;
+  const boxWidth = width * effectiveZoom;
+  const boxHeight = height * effectiveZoom;
+  const boxCenterX = frameWidth / 2 + canvasPan.x + boxOffset.x;
+  const boxCenterY = frameHeight / 2 + canvasPan.y + boxOffset.y;
+  const safeCrop = computeSafeCrop(crop, naturalSize);
+  const scaleX = boxWidth / safeCrop.width;
+  const scaleY = boxHeight / safeCrop.height;
 
   return (
-    <div className="resize-editor-frame" ref={frameRef}>
+    <div
+      className="resize-editor-frame"
+      ref={frameRef}
+      onPointerDown={(event) => {
+        const target = event.target as HTMLElement;
+        if (
+          !target.classList.contains('resize-editor-frame') &&
+          !target.classList.contains('resize-editor-stage')
+        ) {
+          return;
+        }
+
+        if (event.pointerType !== 'touch' && event.button !== 0) {
+          return;
+        }
+
+        event.preventDefault();
+        event.currentTarget.setPointerCapture(event.pointerId);
+        activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+        if (activePointersRef.current.size >= 2) {
+          startPinchGesture();
+          return;
+        }
+
+        dragRef.current = {
+          pointerId: event.pointerId,
+          mode: 'canvas',
+          startClientX: event.clientX,
+          startClientY: event.clientY,
+          startPanX: canvasPanRef.current.x,
+          startPanY: canvasPanRef.current.y,
+        };
+        document.body.style.cursor = 'grabbing';
+      }}
+      onPointerMove={handleFramePointerMove}
+      onPointerUp={(event) => finishPointer(event.pointerId)}
+      onPointerCancel={(event) => finishPointer(event.pointerId)}
+      onWheel={(event) => {
+        event.preventDefault();
+        const factor = event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
+        setZoomAround((zoomRef.current ?? 1) * factor, event.clientX, event.clientY);
+      }}
+    >
       <div className="resize-editor-stage" />
-      {layout ? (
+      {zoom !== null && frameWidth > 0 ? (
         <div
           className="resize-frame-box"
-          style={{
-            left: layout.left,
-            top: layout.top,
-            width: layout.boxWidth,
-            height: layout.boxHeight,
-          }}
+          style={{ left: boxCenterX - boxWidth / 2, top: boxCenterY - boxHeight / 2, width: boxWidth, height: boxHeight }}
         >
           <div
             className="resize-frame-canvas"
-            onMouseDown={(event) => {
-              if (event.target !== event.currentTarget && !(event.target as HTMLElement).classList.contains('resize-object-image')) {
+            onPointerDown={(event) => {
+              const target = event.target as HTMLElement;
+              if (
+                !target.classList.contains('resize-frame-canvas') &&
+                !target.classList.contains('resize-object-image')
+              ) {
                 return;
               }
 
+              if (event.pointerType !== 'touch' && event.button !== 0) {
+                return;
+              }
+
+              event.stopPropagation();
+              event.currentTarget.setPointerCapture(event.pointerId);
+              activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
               dragRef.current = {
+                pointerId: event.pointerId,
                 mode: 'move',
-                startX: event.clientX,
-                startY: event.clientY,
+                startClientX: event.clientX,
+                startClientY: event.clientY,
                 startCropX: safeCrop.x,
                 startCropY: safeCrop.y,
+                cropWidth: safeCrop.width,
+                cropHeight: safeCrop.height,
+                scaleX,
+                scaleY,
               };
               document.body.style.cursor = 'grabbing';
             }}
+            onPointerMove={handleFramePointerMove}
+            onPointerUp={(event) => finishPointer(event.pointerId)}
+            onPointerCancel={(event) => finishPointer(event.pointerId)}
           >
             <img
               src={imageUrl}
@@ -239,44 +452,127 @@ export default function ResizeEditor({ imageUrl, width, height, crop, onChange }
               draggable={false}
               alt=""
               style={{
-                left: imageLeft - layout.left,
-                top: imageTop - layout.top,
-                width: imageWidth,
-                height: imageHeight,
+                left: -safeCrop.x * scaleX,
+                top: -safeCrop.y * scaleY,
+                width: naturalSize.width * scaleX,
+                height: naturalSize.height * scaleY,
               }}
               onLoad={(event) => {
-                setNaturalSize({
+                const nextSize = {
                   width: event.currentTarget.naturalWidth,
                   height: event.currentTarget.naturalHeight,
-                });
+                };
+                setNaturalSize(nextSize);
+                naturalSizeRef.current = nextSize;
               }}
             />
           </div>
-          <div className="resize-object-label">
-            {width} x {height}
-          </div>
+          <div className="resize-object-label">{width} × {height}</div>
           {(['tl', 'tm', 'tr', 'mr', 'br', 'bm', 'bl', 'ml'] as const).map((handle) => (
             <button
               key={handle}
               type="button"
               className={`resize-handle resize-handle-${handle}`}
-              onMouseDown={(event) => {
+              onPointerDown={(event) => {
+                if (event.pointerType !== 'touch' && event.button !== 0) {
+                  return;
+                }
+
                 event.preventDefault();
+                event.stopPropagation();
+                event.currentTarget.setPointerCapture(event.pointerId);
+                activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+                const frame = frameRef.current;
+                if (!frame) return;
+
+                const rect = frame.getBoundingClientRect();
+                const frameCenterScreenX = rect.left + rect.width / 2;
+                const frameCenterScreenY = rect.top + rect.height / 2;
+                const pan = canvasPanRef.current;
+                const offset = boxOffsetRef.current;
+                const activeZoom = zoomRef.current ?? effectiveZoom;
+                const activeBoxWidth = widthRef.current * activeZoom;
+                const activeBoxHeight = heightRef.current * activeZoom;
+                const activeBoxCenterX = frameCenterScreenX + pan.x + offset.x;
+                const activeBoxCenterY = frameCenterScreenY + pan.y + offset.y;
+
+                let anchorX: number;
+                let anchorY: number;
+
+                if (handle === 'ml' || handle === 'tl' || handle === 'bl') {
+                  anchorX = activeBoxCenterX + activeBoxWidth / 2;
+                } else if (handle === 'mr' || handle === 'tr' || handle === 'br') {
+                  anchorX = activeBoxCenterX - activeBoxWidth / 2;
+                } else {
+                  anchorX = activeBoxCenterX;
+                }
+
+                if (handle === 'tl' || handle === 'tm' || handle === 'tr') {
+                  anchorY = activeBoxCenterY + activeBoxHeight / 2;
+                } else if (handle === 'bl' || handle === 'bm' || handle === 'br') {
+                  anchorY = activeBoxCenterY - activeBoxHeight / 2;
+                } else {
+                  anchorY = activeBoxCenterY;
+                }
+
                 dragRef.current = {
+                  pointerId: event.pointerId,
                   mode: 'resize',
                   handle,
-                  startX: event.clientX,
-                  startY: event.clientY,
-                  startWidth: width,
-                  startHeight: height,
+                  startClientX: event.clientX,
+                  startClientY: event.clientY,
+                  startWidth: widthRef.current,
+                  startHeight: heightRef.current,
+                  anchorScreenX: anchorX,
+                  anchorScreenY: anchorY,
+                  zoom: activeZoom,
+                  frameCenterScreenX,
+                  frameCenterScreenY,
+                  panX: pan.x,
+                  panY: pan.y,
                 };
                 document.body.style.cursor = window.getComputedStyle(event.currentTarget).cursor;
               }}
+              onPointerMove={handleFramePointerMove}
+              onPointerUp={(event) => finishPointer(event.pointerId)}
+              onPointerCancel={(event) => finishPointer(event.pointerId)}
               aria-label={`Resize ${handle}`}
             />
           ))}
         </div>
       ) : null}
+
+      <div className="resize-zoom-bar">
+        <button
+          type="button"
+          className="resize-zoom-btn"
+          onClick={() => setZoomAround((zoomRef.current ?? 1) / ZOOM_STEP)}
+          aria-label="Zoom out"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 6h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          className="resize-zoom-pct"
+          onClick={handleFit}
+          title="Click to fit"
+        >
+          {Math.round(effectiveZoom * 100)}%
+        </button>
+        <button
+          type="button"
+          className="resize-zoom-btn"
+          onClick={() => setZoomAround((zoomRef.current ?? 1) * ZOOM_STEP)}
+          aria-label="Zoom in"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }
