@@ -216,6 +216,25 @@ type LocaleMessages = {
     previewEmpty: string;
     previewFailed: string;
     openPdfDescription: string;
+    bold: string;
+    italic: string;
+    strikethrough: string;
+    heading1: string;
+    heading2: string;
+    heading3: string;
+    unorderedList: string;
+    orderedList: string;
+    quote: string;
+    inlineCode: string;
+    codeBlock: string;
+    link: string;
+    image: string;
+    horizontalRule: string;
+    split: string;
+    editMode: string;
+    previewMode: string;
+    wordCount: string;
+    charCount: string;
   };
   imagePreview: {
     empty: string;
@@ -459,6 +478,25 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       previewEmpty: '표시할 Markdown 내용이 없습니다.',
       previewFailed: 'Markdown 미리보기를 불러오지 못했습니다.',
       openPdfDescription: '현재 작성한 본문을 기존 Markdown → PDF 화면으로 넘깁니다.',
+      bold: '굵게',
+      italic: '기울임',
+      strikethrough: '취소선',
+      heading1: '제목 1',
+      heading2: '제목 2',
+      heading3: '제목 3',
+      unorderedList: '글머리 기호',
+      orderedList: '번호 매기기',
+      quote: '인용',
+      inlineCode: '인라인 코드',
+      codeBlock: '코드 블록',
+      link: '링크',
+      image: '이미지',
+      horizontalRule: '가로줄',
+      split: '나누기',
+      editMode: '편집',
+      previewMode: '미리보기',
+      wordCount: '단어',
+      charCount: '글자',
     },
     imagePreview: {
       empty: '표시할 이미지가 없습니다.',
@@ -700,6 +738,25 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       previewEmpty: 'There is no Markdown content to preview.',
       previewFailed: 'Failed to load the Markdown preview.',
       openPdfDescription: 'Send the current Markdown source to the existing Markdown → PDF screen.',
+      bold: 'Bold',
+      italic: 'Italic',
+      strikethrough: 'Strikethrough',
+      heading1: 'Heading 1',
+      heading2: 'Heading 2',
+      heading3: 'Heading 3',
+      unorderedList: 'Bullet list',
+      orderedList: 'Numbered list',
+      quote: 'Quote',
+      inlineCode: 'Inline code',
+      codeBlock: 'Code block',
+      link: 'Link',
+      image: 'Image',
+      horizontalRule: 'Horizontal rule',
+      split: 'Split',
+      editMode: 'Edit',
+      previewMode: 'Preview',
+      wordCount: 'Words',
+      charCount: 'Characters',
     },
     imagePreview: {
       empty: 'No image to display.',

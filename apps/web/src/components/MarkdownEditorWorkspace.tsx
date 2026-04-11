@@ -1,9 +1,152 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../i18n/messages';
 import { normalizeMarkdownFileName } from '../lib/markdownFiles';
+import {
+  type TextEditResult,
+  computeCharCount,
+  computeWordCount,
+  handleAutoIndent,
+  handleTabIndent,
+  handleTabOutdent,
+  insertAtLineStart,
+  insertBlock,
+  wrapSelection,
+} from '../lib/markdownEditHelpers';
 import { renderMarkdownMarkup } from '../lib/markdownRenderer';
 import { getErrorMessage } from '../lib/uiErrors';
 import { useMarkdownEditorStore } from '../store/markdownEditorStore';
+
+/* ── Inline SVG icons (stroke-based, 18×18) ── */
+
+const ICON_PROPS = {
+  width: 18,
+  height: 18,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.6,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+  'aria-hidden': true,
+};
+
+const BOLD_ICON = (
+  <svg {...ICON_PROPS}>
+    <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
+    <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
+  </svg>
+);
+
+const ITALIC_ICON = (
+  <svg {...ICON_PROPS}>
+    <line x1="19" y1="4" x2="10" y2="4" />
+    <line x1="14" y1="20" x2="5" y2="20" />
+    <line x1="15" y1="4" x2="9" y2="20" />
+  </svg>
+);
+
+const STRIKETHROUGH_ICON = (
+  <svg {...ICON_PROPS}>
+    <line x1="4" y1="12" x2="20" y2="12" />
+    <path d="M17.5 7.5c0-2-1.5-3.5-5.5-3.5S6.5 5.5 6.5 7.5c0 4 11 3 11 8 0 2.5-2 4-6 4s-6-1.5-6-4" />
+  </svg>
+);
+
+const H1_ICON = (
+  <svg {...ICON_PROPS}>
+    <polyline points="4 6 4 18" />
+    <polyline points="10 6 10 18" />
+    <line x1="4" y1="12" x2="10" y2="12" />
+    <path d="M15 16l3-10h1l3 10" />
+    <line x1="16" y1="13" x2="21" y2="13" />
+  </svg>
+);
+
+const H2_ICON = (
+  <svg {...ICON_PROPS}>
+    <polyline points="4 6 4 18" />
+    <polyline points="10 6 10 18" />
+    <line x1="4" y1="12" x2="10" y2="12" />
+    <path d="M15 16a2 2 0 1 1 3 1.5L15 20h4" />
+  </svg>
+);
+
+const H3_ICON = (
+  <svg {...ICON_PROPS}>
+    <polyline points="4 6 4 18" />
+    <polyline points="10 6 10 18" />
+    <line x1="4" y1="12" x2="10" y2="12" />
+    <path d="M16 8h4l-2.5 3A2 2 0 1 1 18 16c-1.5 0-2.5-1-2.5-2" />
+  </svg>
+);
+
+const UL_ICON = (
+  <svg {...ICON_PROPS}>
+    <line x1="9" y1="6" x2="20" y2="6" />
+    <line x1="9" y1="12" x2="20" y2="12" />
+    <line x1="9" y1="18" x2="20" y2="18" />
+    <circle cx="5" cy="6" r="1" fill="currentColor" stroke="none" />
+    <circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" />
+    <circle cx="5" cy="18" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+const OL_ICON = (
+  <svg {...ICON_PROPS}>
+    <line x1="10" y1="6" x2="20" y2="6" />
+    <line x1="10" y1="12" x2="20" y2="12" />
+    <line x1="10" y1="18" x2="20" y2="18" />
+    <text x="3" y="8" fontSize="8" fill="currentColor" stroke="none" fontFamily="inherit" fontWeight="700">1</text>
+    <text x="3" y="14" fontSize="8" fill="currentColor" stroke="none" fontFamily="inherit" fontWeight="700">2</text>
+    <text x="3" y="20" fontSize="8" fill="currentColor" stroke="none" fontFamily="inherit" fontWeight="700">3</text>
+  </svg>
+);
+
+const QUOTE_ICON = (
+  <svg {...ICON_PROPS}>
+    <path d="M3 7c2-2 4-2 6 0s4 2 6 0" />
+    <path d="M3 17c2-2 4-2 6 0s4 2 6 0" />
+    <line x1="9" y1="3" x2="9" y2="21" />
+  </svg>
+);
+
+const CODE_ICON = (
+  <svg {...ICON_PROPS}>
+    <polyline points="16 18 22 12 16 6" />
+    <polyline points="8 6 2 12 8 18" />
+  </svg>
+);
+
+const CODE_BLOCK_ICON = (
+  <svg {...ICON_PROPS}>
+    <polyline points="16 18 22 12 16 6" />
+    <polyline points="8 6 2 12 8 18" />
+    <line x1="12" y1="4" x2="12" y2="20" opacity="0.3" />
+  </svg>
+);
+
+const LINK_ICON = (
+  <svg {...ICON_PROPS}>
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+  </svg>
+);
+
+const IMAGE_ICON = (
+  <svg {...ICON_PROPS}>
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+  </svg>
+);
+
+const HR_ICON = (
+  <svg {...ICON_PROPS}>
+    <line x1="2" y1="12" x2="22" y2="12" strokeWidth={2.5} />
+  </svg>
+);
+
+/* ── Helper ── */
 
 interface MarkdownEditorWorkspaceProps {
   entryMode: 'new' | 'edit';
@@ -22,31 +165,31 @@ function downloadMarkdown(markdown: string, fileName: string) {
 }
 
 function getScrollProgress(element: HTMLElement | null) {
-  if (!element) {
-    return 0;
-  }
-
+  if (!element) return 0;
   const maxScrollTop = element.scrollHeight - element.clientHeight;
-  if (maxScrollTop <= 0) {
-    return 0;
-  }
-
-  return element.scrollTop / maxScrollTop;
+  return maxScrollTop <= 0 ? 0 : element.scrollTop / maxScrollTop;
 }
 
 function applyScrollProgress(element: HTMLElement | null, progress: number) {
-  if (!element) {
-    return;
-  }
-
+  if (!element) return;
   const maxScrollTop = element.scrollHeight - element.clientHeight;
-  if (maxScrollTop <= 0) {
-    element.scrollTop = 0;
-    return;
-  }
-
-  element.scrollTop = maxScrollTop * Math.max(0, Math.min(1, progress));
+  element.scrollTop = maxScrollTop <= 0 ? 0 : maxScrollTop * Math.max(0, Math.min(1, progress));
 }
+
+function applyEditResult(
+  textarea: HTMLTextAreaElement,
+  result: TextEditResult,
+  setMarkdown: (v: string) => void,
+) {
+  setMarkdown(result.value);
+  requestAnimationFrame(() => {
+    textarea.selectionStart = result.selectionStart;
+    textarea.selectionEnd = result.selectionEnd;
+    textarea.focus();
+  });
+}
+
+/* ── Component ── */
 
 export default function MarkdownEditorWorkspace({
   entryMode,
@@ -54,12 +197,13 @@ export default function MarkdownEditorWorkspace({
   onOpenPdf,
 }: MarkdownEditorWorkspaceProps) {
   const { locale, messages } = useI18n();
-  const fileName = useMarkdownEditorStore((state) => state.fileName);
-  const markdown = useMarkdownEditorStore((state) => state.markdown);
-  const uploadError = useMarkdownEditorStore((state) => state.error);
-  const loadFile = useMarkdownEditorStore((state) => state.loadFile);
-  const setFileName = useMarkdownEditorStore((state) => state.setFileName);
-  const setMarkdown = useMarkdownEditorStore((state) => state.setMarkdown);
+  const fileName = useMarkdownEditorStore((s) => s.fileName);
+  const markdown = useMarkdownEditorStore((s) => s.markdown);
+  const uploadError = useMarkdownEditorStore((s) => s.error);
+  const loadFile = useMarkdownEditorStore((s) => s.loadFile);
+  const setFileName = useMarkdownEditorStore((s) => s.setFileName);
+  const setMarkdown = useMarkdownEditorStore((s) => s.setMarkdown);
+
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit');
   const [isOpeningPdf, setIsOpeningPdf] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
@@ -69,6 +213,7 @@ export default function MarkdownEditorWorkspace({
   const [showFileImportScreen, setShowFileImportScreen] = useState(
     () => entryMode === 'edit' && !fileName.trim() && !markdown,
   );
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const previewViewerRef = useRef<HTMLDivElement | null>(null);
@@ -82,20 +227,35 @@ export default function MarkdownEditorWorkspace({
     ? messages.modeSelect.documentOpenTitle
     : messages.markdownEditor.title;
 
-  useEffect(() => {
-    if (entryMode === 'edit') {
-      setShowFileImportScreen(!fileName.trim() && !markdown);
-      setViewMode('edit');
-      return;
-    }
+  const wordCount = useMemo(() => computeWordCount(markdown), [markdown]);
+  const charCount = useMemo(() => computeCharCount(markdown), [markdown]);
 
-    setShowFileImportScreen(false);
-  }, [entryMode]);
+  /* ── Scroll sync ── */
 
   useEffect(() => {
-    if (viewMode !== 'preview') {
-      return;
-    }
+    if (!pendingScrollSyncRef.current) return;
+
+    const shouldWait = viewMode === 'preview'
+      && Boolean(markdown.trim())
+      && !previewErrorMessage
+      && lastRenderedPreviewMarkdownRef.current !== markdown;
+
+    if (shouldWait) return;
+
+    const target = viewMode === 'edit' ? textareaRef.current : previewViewerRef.current;
+    if (!target) return;
+
+    const frameId = requestAnimationFrame(() => {
+      applyScrollProgress(target, scrollProgressRef.current);
+      pendingScrollSyncRef.current = false;
+    });
+    return () => cancelAnimationFrame(frameId);
+  }, [markdown, previewErrorMessage, previewHtml, viewMode]);
+
+  /* ── Preview rendering ── */
+
+  useEffect(() => {
+    if (viewMode !== 'preview') return;
 
     if (!markdown.trim()) {
       lastRenderedPreviewMarkdownRef.current = '';
@@ -111,19 +271,13 @@ export default function MarkdownEditorWorkspace({
 
     void renderMarkdownMarkup(markdown)
       .then((html) => {
-        if (cancelled) {
-          return;
-        }
-
+        if (cancelled) return;
         lastRenderedPreviewMarkdownRef.current = markdown;
         setPreviewHtml(html);
         setIsPreviewLoading(false);
       })
       .catch((error) => {
-        if (cancelled) {
-          return;
-        }
-
+        if (cancelled) return;
         setPreviewHtml('');
         setPreviewErrorMessage(
           error instanceof Error && error.message
@@ -133,42 +287,25 @@ export default function MarkdownEditorWorkspace({
         setIsPreviewLoading(false);
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [markdown, messages.markdownEditor.previewFailed, viewMode]);
 
+  /* ── File import screen reset ── */
+
   useEffect(() => {
-    if (!pendingScrollSyncRef.current) {
+    if (entryMode === 'edit') {
+      setShowFileImportScreen(!fileName.trim() && !markdown);
+      setViewMode('edit');
       return;
     }
+    setShowFileImportScreen(false);
+  }, [entryMode]);
 
-    const shouldWaitForPreviewRender = viewMode === 'preview'
-      && Boolean(markdown.trim())
-      && !previewErrorMessage
-      && lastRenderedPreviewMarkdownRef.current !== markdown;
-
-    if (shouldWaitForPreviewRender) {
-      return;
-    }
-
-    const targetElement = viewMode === 'edit' ? textareaRef.current : previewViewerRef.current;
-    if (!targetElement) {
-      return;
-    }
-
-    const frameId = window.requestAnimationFrame(() => {
-      applyScrollProgress(targetElement, scrollProgressRef.current);
-      pendingScrollSyncRef.current = false;
-    });
-
-    return () => window.cancelAnimationFrame(frameId);
-  }, [markdown, previewErrorMessage, previewHtml, viewMode]);
+  /* ── Handlers ── */
 
   async function handleOpenPdf() {
     setIsOpeningPdf(true);
     setActionErrorMessage(null);
-
     try {
       await onOpenPdf(markdown, resolvedFileName);
     } catch (error) {
@@ -185,24 +322,19 @@ export default function MarkdownEditorWorkspace({
   }
 
   function handleViewModeToggle() {
-    const activeElement = viewMode === 'edit' ? textareaRef.current : previewViewerRef.current;
-    scrollProgressRef.current = getScrollProgress(activeElement);
+    const active = viewMode === 'edit' ? textareaRef.current : previewViewerRef.current;
+    scrollProgressRef.current = getScrollProgress(active);
     pendingScrollSyncRef.current = true;
     setActionErrorMessage(null);
     setPreviewErrorMessage(null);
-    setViewMode((current) => current === 'edit' ? 'preview' : 'edit');
+    setViewMode((c) => (c === 'edit' ? 'preview' : 'edit'));
   }
 
   async function handleLoadFile(file: File | undefined) {
-    if (!file) {
-      return;
-    }
-
+    if (!file) return;
     setActionErrorMessage(null);
     setPreviewErrorMessage(null);
-
     await loadFile(file);
-
     if (!useMarkdownEditorStore.getState().error) {
       setShowFileImportScreen(false);
       setViewMode('edit');
@@ -220,9 +352,118 @@ export default function MarkdownEditorWorkspace({
     void handleLoadFile(file);
   }
 
+  /* ── Format toolbar actions ── */
+
+  const applyFormat = useCallback(
+    (fn: (value: string, start: number, end: number) => TextEditResult) => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      setActionErrorMessage(null);
+      setPreviewErrorMessage(null);
+      applyEditResult(ta, fn(ta.value, ta.selectionStart, ta.selectionEnd), setMarkdown);
+    },
+    [setMarkdown],
+  );
+
+  const handleBold = useCallback(() => {
+    applyFormat((v, s, e) => wrapSelection(v, s, e, '**', '**', 'bold'));
+  }, [applyFormat]);
+
+  const handleItalic = useCallback(() => {
+    applyFormat((v, s, e) => wrapSelection(v, s, e, '*', '*', 'italic'));
+  }, [applyFormat]);
+
+  const handleStrikethrough = useCallback(() => {
+    applyFormat((v, s, e) => wrapSelection(v, s, e, '~~', '~~', 'text'));
+  }, [applyFormat]);
+
+  const handleH1 = useCallback(() => {
+    applyFormat((v, s, e) => insertAtLineStart(v, s, e, '# '));
+  }, [applyFormat]);
+
+  const handleH2 = useCallback(() => {
+    applyFormat((v, s, e) => insertAtLineStart(v, s, e, '## '));
+  }, [applyFormat]);
+
+  const handleH3 = useCallback(() => {
+    applyFormat((v, s, e) => insertAtLineStart(v, s, e, '### '));
+  }, [applyFormat]);
+
+  const handleUl = useCallback(() => {
+    applyFormat((v, s, e) => insertAtLineStart(v, s, e, '- '));
+  }, [applyFormat]);
+
+  const handleOl = useCallback(() => {
+    applyFormat((v, s, e) => insertAtLineStart(v, s, e, '1. '));
+  }, [applyFormat]);
+
+  const handleQuote = useCallback(() => {
+    applyFormat((v, s, e) => insertAtLineStart(v, s, e, '> '));
+  }, [applyFormat]);
+
+  const handleInlineCode = useCallback(() => {
+    applyFormat((v, s, e) => wrapSelection(v, s, e, '`', '`', 'code'));
+  }, [applyFormat]);
+
+  const handleCodeBlock = useCallback(() => {
+    applyFormat((v, s, e) => insertBlock(v, s, e, '```\n', '\n```'));
+  }, [applyFormat]);
+
+  const handleLink = useCallback(() => {
+    applyFormat((v, s, e) => wrapSelection(v, s, e, '[', '](url)', 'link text'));
+  }, [applyFormat]);
+
+  const handleImage = useCallback(() => {
+    applyFormat((v, s, e) => insertBlock(v, s, e, '![alt](', 'url)'));
+  }, [applyFormat]);
+
+  const handleHr = useCallback(() => {
+    applyFormat((v, s, e) => insertBlock(v, s, e, '---\n', ''));
+  }, [applyFormat]);
+
+  /* ── Keyboard handling ── */
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+
+      if (event.key === 'Tab') {
+        event.preventDefault();
+        const fn = event.shiftKey ? handleTabOutdent : handleTabIndent;
+        applyEditResult(ta, fn(ta.value, ta.selectionStart, ta.selectionEnd), setMarkdown);
+        return;
+      }
+
+      if (event.key === 'Enter' && !event.shiftKey) {
+        const result = handleAutoIndent(ta.value, ta.selectionStart, ta.selectionEnd);
+        if (result) {
+          event.preventDefault();
+          applyEditResult(ta, result, setMarkdown);
+        }
+        return;
+      }
+
+      const mod = event.metaKey || event.ctrlKey;
+      if (mod && event.key === 'b') {
+        event.preventDefault();
+        handleBold();
+      } else if (mod && event.key === 'i') {
+        event.preventDefault();
+        handleItalic();
+      } else if (mod && event.key === 'k') {
+        event.preventDefault();
+        handleLink();
+      }
+    },
+    [handleBold, handleItalic, handleLink, setMarkdown],
+  );
+
+  /* ── Render: file import screen ── */
+
   if (showFileImportScreen) {
     return (
-      <div className="upload-page" onDrop={handleDrop} onDragOver={(event) => event.preventDefault()}>
+      <div className="upload-page" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
         <input
           ref={fileInputRef}
           id="markdown-editor-upload-input"
@@ -231,13 +472,11 @@ export default function MarkdownEditorWorkspace({
           onChange={handleChange}
           style={{ display: 'none' }}
         />
-
         <header className="upload-header">
           <button className="back-btn" onClick={onBack}>{messages.markdownEditor.backHome}</button>
           <div className="document-upload-title">{messages.modeSelect.documentOpenTitle}</div>
           <span className="tool-badge">MD</span>
         </header>
-
         <button
           type="button"
           className="upload-dropzone"
@@ -263,6 +502,10 @@ export default function MarkdownEditorWorkspace({
     );
   }
 
+  /* ── Render: editor ── */
+
+  const m = messages.markdownEditor;
+
   return (
     <div className="markdown-editor-page">
       <input
@@ -274,7 +517,7 @@ export default function MarkdownEditorWorkspace({
       />
 
       <header className="edit-header">
-        <button className="back-btn" onClick={onBack}>{messages.markdownEditor.backHome}</button>
+        <button className="back-btn" onClick={onBack}>{m.backHome}</button>
         <div className="document-header-copy">
           <strong>{editorTitle}</strong>
         </div>
@@ -294,7 +537,7 @@ export default function MarkdownEditorWorkspace({
                 className="re-edit-btn markdown-editor-toolbar-btn markdown-editor-mode-toggle"
                 onClick={handleViewModeToggle}
               >
-                {viewMode === 'edit' ? messages.markdownEditor.preview : messages.markdownEditor.edit}
+                {viewMode === 'edit' ? m.preview : m.edit}
               </button>
             </div>
             <div className="markdown-editor-toolbar-group markdown-editor-toolbar-actions">
@@ -306,7 +549,7 @@ export default function MarkdownEditorWorkspace({
                   downloadMarkdown(markdown, resolvedFileName);
                 }}
               >
-                {messages.markdownEditor.saveMarkdown}
+                {m.saveMarkdown}
               </button>
               <button
                 type="button"
@@ -314,48 +557,72 @@ export default function MarkdownEditorWorkspace({
                 onClick={() => void handleOpenPdf()}
                 disabled={isOpeningPdf}
               >
-                {isOpeningPdf ? messages.markdownEditor.openingPdf : messages.markdownEditor.savePdf}
+                {isOpeningPdf ? m.openingPdf : m.savePdf}
               </button>
             </div>
           </div>
 
+          {viewMode === 'edit' ? (
+            <div className="markdown-format-toolbar">
+              <button type="button" className="markdown-format-btn" title={`${m.bold} (Ctrl+B)`} onClick={handleBold}>{BOLD_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={`${m.italic} (Ctrl+I)`} onClick={handleItalic}>{ITALIC_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={m.strikethrough} onClick={handleStrikethrough}>{STRIKETHROUGH_ICON}</button>
+              <span className="markdown-format-divider" />
+              <button type="button" className="markdown-format-btn" title={m.heading1} onClick={handleH1}>{H1_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={m.heading2} onClick={handleH2}>{H2_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={m.heading3} onClick={handleH3}>{H3_ICON}</button>
+              <span className="markdown-format-divider" />
+              <button type="button" className="markdown-format-btn" title={m.unorderedList} onClick={handleUl}>{UL_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={m.orderedList} onClick={handleOl}>{OL_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={m.quote} onClick={handleQuote}>{QUOTE_ICON}</button>
+              <span className="markdown-format-divider" />
+              <button type="button" className="markdown-format-btn" title={m.inlineCode} onClick={handleInlineCode}>{CODE_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={m.codeBlock} onClick={handleCodeBlock}>{CODE_BLOCK_ICON}</button>
+              <span className="markdown-format-divider" />
+              <button type="button" className="markdown-format-btn" title={`${m.link} (Ctrl+K)`} onClick={handleLink}>{LINK_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={m.image} onClick={handleImage}>{IMAGE_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={m.horizontalRule} onClick={handleHr}>{HR_ICON}</button>
+            </div>
+          ) : null}
+
           <label className="markdown-editor-field">
-            <span className="markdown-editor-label">{messages.markdownEditor.fileNameLabel}</span>
+            <span className="markdown-editor-label">{m.fileNameLabel}</span>
             <input
               className="markdown-editor-input"
               type="text"
               value={fileName}
-              onChange={(event) => {
+              onChange={(e) => {
                 setActionErrorMessage(null);
-                setFileName(event.target.value);
+                setFileName(e.target.value);
               }}
-              placeholder={messages.markdownEditor.fileNamePlaceholder}
+              placeholder={m.fileNamePlaceholder}
               spellCheck={false}
             />
           </label>
 
           <div className="markdown-editor-field markdown-editor-field-grow">
             <span className="markdown-editor-label">
-              {viewMode === 'edit' ? messages.markdownEditor.sourceLabel : messages.markdownEditor.preview}
+              {viewMode === 'edit' ? m.sourceLabel : m.preview}
             </span>
             {viewMode === 'edit' ? (
               <textarea
                 ref={textareaRef}
                 className="markdown-editor-textarea"
                 value={markdown}
-                onChange={(event) => {
+                onChange={(e) => {
                   setActionErrorMessage(null);
                   setPreviewErrorMessage(null);
-                  setMarkdown(event.target.value);
+                  setMarkdown(e.target.value);
                 }}
-                placeholder={messages.markdownEditor.sourcePlaceholder}
+                onKeyDown={handleKeyDown}
+                placeholder={m.sourcePlaceholder}
                 spellCheck={false}
               />
             ) : (
               <div className="markdown-editor-view">
                 {isPreviewLoading ? (
                   <div ref={previewViewerRef} className="markdown-editor-viewer is-empty">
-                    <p>{messages.markdownEditor.previewLoading}</p>
+                    <p>{m.previewLoading}</p>
                   </div>
                 ) : previewErrorMessage ? (
                   <div ref={previewViewerRef} className="markdown-editor-viewer is-empty">
@@ -363,7 +630,7 @@ export default function MarkdownEditorWorkspace({
                   </div>
                 ) : !markdown.trim() ? (
                   <div ref={previewViewerRef} className="markdown-editor-viewer is-empty">
-                    <p>{messages.markdownEditor.previewEmpty}</p>
+                    <p>{m.previewEmpty}</p>
                   </div>
                 ) : (
                   <div ref={previewViewerRef} className="markdown-editor-viewer">
@@ -378,6 +645,11 @@ export default function MarkdownEditorWorkspace({
           </div>
 
           {errorMessage ? <p className="error-msg">{errorMessage}</p> : null}
+
+          <div className="markdown-editor-status-bar">
+            <span>{m.wordCount} {wordCount.toLocaleString()}</span>
+            <span>{m.charCount} {charCount.toLocaleString()}</span>
+          </div>
         </section>
       </div>
     </div>
