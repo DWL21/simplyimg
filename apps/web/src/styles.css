@@ -172,7 +172,7 @@ img {
 .select-title {
   margin: 0;
   font-size: clamp(2.1rem, 4.8vw, 4rem);
-  line-height: 0.94;
+  line-height: 1.05;
   letter-spacing: -0.06em;
 }
 
@@ -476,6 +476,11 @@ img {
   padding: 0 24px;
 }
 
+.upload-page > .error-msg,
+.upload-page > .error-list {
+  flex-shrink: 0;
+}
+
 .upload-header {
   display: flex;
   align-items: center;
@@ -623,7 +628,6 @@ img {
   font-size: 2rem;
   font-weight: 300;
   transition: background 140ms, border-color 140ms;
-  min-height: 120px;
 }
 
 .upload-thumb-add:hover {
@@ -1079,7 +1083,7 @@ img {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 180px;
+  max-width: 360px;
 }
 
 .meta-size {
@@ -2847,6 +2851,13 @@ img {
     overflow-x: auto;
     justify-content: flex-start;
     padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    position: relative;
+  }
+
+  .tool-tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .add-more-btn {
@@ -2869,6 +2880,17 @@ img {
     border-right: none;
     border-bottom: 1px solid var(--line);
     min-height: 0;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .file-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .file-strip > * {
+    scroll-snap-align: start;
   }
 
   .strip-item {
@@ -2983,6 +3005,17 @@ img {
     overflow-y: hidden;
     padding: 0 0 4px;
     gap: 8px;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .doc-page-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .doc-page-strip > * {
+    scroll-snap-align: start;
   }
 
   .doc-page-entry {

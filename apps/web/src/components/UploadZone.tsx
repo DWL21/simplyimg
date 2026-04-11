@@ -98,6 +98,14 @@ export default function UploadZone({ tool, onConfirm, onBack }: Props) {
         </div>
       )}
 
+      {error ? <p className="error-msg">{error.message}</p> : null}
+      {uploadErrors.length > 0 ? (
+        <ul className="error-list">
+          {uploadErrors.map((uploadError, index) => (
+            <li key={`${uploadError.fileName ?? 'upload'}-${index}`}>{uploadError.message}</li>
+          ))}
+        </ul>
+      ) : null}
       <footer className="upload-footer">
         {hasFiles && (
           <span className="upload-count">{formatSelectedCount(locale, files.length)}</span>
@@ -111,14 +119,6 @@ export default function UploadZone({ tool, onConfirm, onBack }: Props) {
           </button>
         )}
       </footer>
-      {error ? <p className="error-msg">{error.message}</p> : null}
-      {uploadErrors.length > 0 ? (
-        <ul className="error-list">
-          {uploadErrors.map((uploadError, index) => (
-            <li key={`${uploadError.fileName ?? 'upload'}-${index}`}>{uploadError.message}</li>
-          ))}
-        </ul>
-      ) : null}
     </div>
   );
 }
