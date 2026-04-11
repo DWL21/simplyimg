@@ -252,44 +252,31 @@ export default function MarkdownEditorWorkspace({
 
   const pastRef = useRef<string[]>([]);
   const futureRef = useRef<string[]>([]);
-  const lastCommittedRef = useRef(markdown);
-  const commitTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const flushCommit = useCallback(() => {
-    clearTimeout(commitTimerRef.current);
+  const pushToHistory = useCallback(() => {
     const current = useMarkdownEditorStore.getState().markdown;
-    if (current !== lastCommittedRef.current) {
-      pastRef.current.push(lastCommittedRef.current);
-      if (pastRef.current.length > 100) pastRef.current.shift();
-      futureRef.current = [];
-      lastCommittedRef.current = current;
-    }
+    pastRef.current.push(current);
+    if (pastRef.current.length > 200) pastRef.current.shift();
+    futureRef.current = [];
   }, []);
 
-  const scheduleCommit = useCallback(() => {
-    clearTimeout(commitTimerRef.current);
-    commitTimerRef.current = setTimeout(flushCommit, 400);
-  }, [flushCommit]);
-
   const handleUndo = useCallback(() => {
-    flushCommit();
     if (pastRef.current.length === 0) return;
+    const current = useMarkdownEditorStore.getState().markdown;
+    futureRef.current.push(current);
     const previous = pastRef.current.pop()!;
-    futureRef.current.push(lastCommittedRef.current);
-    lastCommittedRef.current = previous;
     setMarkdown(previous);
     requestAnimationFrame(() => textareaRef.current?.focus());
-  }, [flushCommit, setMarkdown]);
+  }, [setMarkdown]);
 
   const handleRedo = useCallback(() => {
-    flushCommit();
     if (futureRef.current.length === 0) return;
+    const current = useMarkdownEditorStore.getState().markdown;
+    pastRef.current.push(current);
     const next = futureRef.current.pop()!;
-    pastRef.current.push(lastCommittedRef.current);
-    lastCommittedRef.current = next;
     setMarkdown(next);
     requestAnimationFrame(() => textareaRef.current?.focus());
-  }, [flushCommit, setMarkdown]);
+  }, [setMarkdown]);
 
   const canUndo = pastRef.current.length > 0;
   const canRedo = futureRef.current.length > 0;
@@ -419,6 +406,8 @@ export default function MarkdownEditorWorkspace({
     setPreviewErrorMessage(null);
     await loadFile(file);
     if (!useMarkdownEditorStore.getState().error) {
+      pastRef.current = [];
+      futureRef.current = [];
       setShowFileImportScreen(false);
       setViewMode('edit');
     }
@@ -441,19 +430,18 @@ export default function MarkdownEditorWorkspace({
     (fn: (value: string, start: number, end: number) => TextEditResult) => {
       const ta = textareaRef.current;
       if (!ta) return;
-      flushCommit();
+      pushToHistory();
       setActionErrorMessage(null);
       setPreviewErrorMessage(null);
       const result = fn(ta.value, ta.selectionStart, ta.selectionEnd);
       setMarkdown(result.value);
-      scheduleCommit();
       requestAnimationFrame(() => {
         ta.selectionStart = result.selectionStart;
         ta.selectionEnd = result.selectionEnd;
         ta.focus();
       });
     },
-    [flushCommit, scheduleCommit, setMarkdown],
+    [pushToHistory, setMarkdown],
   );
 
   const handleBold = useCallback(() => {
@@ -542,6 +530,7 @@ export default function MarkdownEditorWorkspace({
       if (event.key === 'Tab') {
         event.preventDefault();
         const fn = event.shiftKey ? handleTabOutdent : handleTabIndent;
+        pushToHistory();
         applyEditResult(ta, fn(ta.value, ta.selectionStart, ta.selectionEnd), setMarkdown);
         return;
       }
@@ -551,6 +540,7 @@ export default function MarkdownEditorWorkspace({
         const result = handleAutoIndent(ta.value, ta.selectionStart, ta.selectionEnd);
         if (result) {
           event.preventDefault();
+          pushToHistory();
           applyEditResult(ta, result, setMarkdown);
         }
         return;
@@ -568,7 +558,7 @@ export default function MarkdownEditorWorkspace({
         handleLink();
       }
     },
-    [handleBold, handleItalic, handleLink, handleUndo, handleRedo, setMarkdown],
+    [handleBold, handleItalic, handleLink, handleUndo, handleRedo, pushToHistory, setMarkdown],
   );
 
   /* ── Render: file import screen ── */
@@ -738,8 +728,8 @@ export default function MarkdownEditorWorkspace({
                 onChange={(e) => {
                   setActionErrorMessage(null);
                   setPreviewErrorMessage(null);
+                  pushToHistory();
                   setMarkdown(e.target.value);
-                  scheduleCommit();
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder={m.sourcePlaceholder}
