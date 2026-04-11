@@ -266,7 +266,15 @@ export default function MarkdownEditorWorkspace({
     futureRef.current.push(current);
     const previous = pastRef.current.pop()!;
     setMarkdown(previous);
-    requestAnimationFrame(() => textareaRef.current?.focus());
+    requestAnimationFrame(() => {
+      const ta = textareaRef.current;
+      if (ta) {
+        const pos = previous.length;
+        ta.selectionStart = pos;
+        ta.selectionEnd = pos;
+        ta.focus();
+      }
+    });
   }, [setMarkdown]);
 
   const handleRedo = useCallback(() => {
@@ -275,7 +283,15 @@ export default function MarkdownEditorWorkspace({
     pastRef.current.push(current);
     const next = futureRef.current.pop()!;
     setMarkdown(next);
-    requestAnimationFrame(() => textareaRef.current?.focus());
+    requestAnimationFrame(() => {
+      const ta = textareaRef.current;
+      if (ta) {
+        const pos = next.length;
+        ta.selectionStart = pos;
+        ta.selectionEnd = pos;
+        ta.focus();
+      }
+    });
   }, [setMarkdown]);
 
   const canUndo = pastRef.current.length > 0;
