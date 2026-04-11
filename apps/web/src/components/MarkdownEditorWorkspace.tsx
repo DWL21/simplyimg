@@ -175,6 +175,11 @@ const HR_ICON = (
 
 /* ── Helpers ── */
 
+interface HistoryEntry {
+  value: string;
+  cursor: number;
+}
+
 interface MarkdownEditorWorkspaceProps {
   entryMode: 'new' | 'edit';
   onBack: () => void;
@@ -250,26 +255,30 @@ export default function MarkdownEditorWorkspace({
 
   /* ── Undo / Redo history (component-local refs) ── */
 
-  const pastRef = useRef<string[]>([]);
-  const futureRef = useRef<string[]>([]);
+  const pastRef = useRef<HistoryEntry[]>([]);
+  const futureRef = useRef<HistoryEntry[]>([]);
 
   const pushToHistory = useCallback(() => {
+    const ta = textareaRef.current;
     const current = useMarkdownEditorStore.getState().markdown;
-    pastRef.current.push(current);
+    const cursor = ta ? ta.selectionStart : current.length;
+    pastRef.current.push({ value: current, cursor });
     if (pastRef.current.length > 200) pastRef.current.shift();
     futureRef.current = [];
   }, []);
 
   const handleUndo = useCallback(() => {
     if (pastRef.current.length === 0) return;
+    const ta = textareaRef.current;
     const current = useMarkdownEditorStore.getState().markdown;
-    futureRef.current.push(current);
+    const cursor = ta ? ta.selectionStart : current.length;
+    futureRef.current.push({ value: current, cursor });
     const previous = pastRef.current.pop()!;
-    setMarkdown(previous);
+    setMarkdown(previous.value);
     requestAnimationFrame(() => {
       const ta = textareaRef.current;
       if (ta) {
-        const pos = previous.length;
+        const pos = Math.min(previous.cursor, previous.value.length);
         ta.selectionStart = pos;
         ta.selectionEnd = pos;
         ta.focus();
@@ -279,14 +288,16 @@ export default function MarkdownEditorWorkspace({
 
   const handleRedo = useCallback(() => {
     if (futureRef.current.length === 0) return;
+    const ta = textareaRef.current;
     const current = useMarkdownEditorStore.getState().markdown;
-    pastRef.current.push(current);
+    const cursor = ta ? ta.selectionStart : current.length;
+    pastRef.current.push({ value: current, cursor });
     const next = futureRef.current.pop()!;
-    setMarkdown(next);
+    setMarkdown(next.value);
     requestAnimationFrame(() => {
       const ta = textareaRef.current;
       if (ta) {
-        const pos = next.length;
+        const pos = Math.min(next.cursor, next.value.length);
         ta.selectionStart = pos;
         ta.selectionEnd = pos;
         ta.focus();
