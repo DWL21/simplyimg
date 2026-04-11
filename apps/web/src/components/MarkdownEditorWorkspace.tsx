@@ -255,7 +255,8 @@ export default function MarkdownEditorWorkspace({
   const lastCommittedRef = useRef(markdown);
   const commitTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const commitToHistory = useCallback(() => {
+  const flushCommit = useCallback(() => {
+    clearTimeout(commitTimerRef.current);
     const current = useMarkdownEditorStore.getState().markdown;
     if (current !== lastCommittedRef.current) {
       pastRef.current.push(lastCommittedRef.current);
@@ -267,29 +268,28 @@ export default function MarkdownEditorWorkspace({
 
   const scheduleCommit = useCallback(() => {
     clearTimeout(commitTimerRef.current);
-    commitTimerRef.current = setTimeout(commitToHistory, 400);
-  }, [commitToHistory]);
+    commitTimerRef.current = setTimeout(flushCommit, 400);
+  }, [flushCommit]);
 
   const handleUndo = useCallback(() => {
-    clearTimeout(commitTimerRef.current);
-    commitToHistory();
+    flushCommit();
     if (pastRef.current.length === 0) return;
     const previous = pastRef.current.pop()!;
     futureRef.current.push(lastCommittedRef.current);
     lastCommittedRef.current = previous;
     setMarkdown(previous);
     requestAnimationFrame(() => textareaRef.current?.focus());
-  }, [commitToHistory, setMarkdown]);
+  }, [flushCommit, setMarkdown]);
 
   const handleRedo = useCallback(() => {
-    clearTimeout(commitTimerRef.current);
+    flushCommit();
     if (futureRef.current.length === 0) return;
     const next = futureRef.current.pop()!;
     pastRef.current.push(lastCommittedRef.current);
     lastCommittedRef.current = next;
     setMarkdown(next);
     requestAnimationFrame(() => textareaRef.current?.focus());
-  }, [setMarkdown]);
+  }, [flushCommit, setMarkdown]);
 
   const canUndo = pastRef.current.length > 0;
   const canRedo = futureRef.current.length > 0;
@@ -374,11 +374,13 @@ export default function MarkdownEditorWorkspace({
 
   useEffect(() => {
     if (entryMode === 'edit') {
-      setShowFileImportScreen(!fileName.trim() && !markdown);
-      setViewMode('edit');
-      return;
+      if (!fileName.trim() && !markdown) {
+        setShowFileImportScreen(true);
+        setViewMode('edit');
+      }
+    } else {
+      setShowFileImportScreen(false);
     }
-    setShowFileImportScreen(false);
   }, [entryMode]);
 
   /* ── Handlers ── */
@@ -439,7 +441,7 @@ export default function MarkdownEditorWorkspace({
     (fn: (value: string, start: number, end: number) => TextEditResult) => {
       const ta = textareaRef.current;
       if (!ta) return;
-      commitToHistory();
+      flushCommit();
       setActionErrorMessage(null);
       setPreviewErrorMessage(null);
       const result = fn(ta.value, ta.selectionStart, ta.selectionEnd);
@@ -451,7 +453,7 @@ export default function MarkdownEditorWorkspace({
         ta.focus();
       });
     },
-    [commitToHistory, scheduleCommit, setMarkdown],
+    [flushCommit, scheduleCommit, setMarkdown],
   );
 
   const handleBold = useCallback(() => {
