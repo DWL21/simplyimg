@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useI18n } from '../i18n/messages';
+import { localeMessages, useI18n } from '../i18n/messages';
 import { normalizeMarkdownFileName } from '../lib/markdownFiles';
 import {
   type TextEditResult,
@@ -16,6 +16,19 @@ import { renderMarkdownMarkup } from '../lib/markdownRenderer';
 import { getErrorMessage } from '../lib/uiErrors';
 import { useMarkdownEditorStore } from '../store/markdownEditorStore';
 
+/* ── Platform detection ── */
+
+const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.userAgent);
+const MOD = isMac ? '⌘' : 'Ctrl';
+
+/* ── Bilingual tooltip helper ── */
+
+function bi(ko: string, en: string, shortcut?: string): string {
+  const parts = [ko, en];
+  if (shortcut) parts.push(shortcut);
+  return parts.join(' · ');
+}
+
 /* ── Inline SVG icons (stroke-based, 18×18) ── */
 
 const ICON_PROPS = {
@@ -29,6 +42,20 @@ const ICON_PROPS = {
   strokeLinejoin: 'round' as const,
   'aria-hidden': true,
 };
+
+const UNDO_ICON = (
+  <svg {...ICON_PROPS}>
+    <polyline points="1 4 1 10 7 10" />
+    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+  </svg>
+);
+
+const REDO_ICON = (
+  <svg {...ICON_PROPS}>
+    <polyline points="23 4 23 10 17 10" />
+    <path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10" />
+  </svg>
+);
 
 const BOLD_ICON = (
   <svg {...ICON_PROPS}>
@@ -146,7 +173,7 @@ const HR_ICON = (
   </svg>
 );
 
-/* ── Helper ── */
+/* ── Helpers ── */
 
 interface MarkdownEditorWorkspaceProps {
   entryMode: 'new' | 'edit';
@@ -221,6 +248,54 @@ export default function MarkdownEditorWorkspace({
   const scrollProgressRef = useRef(0);
   const lastRenderedPreviewMarkdownRef = useRef('');
 
+  /* ── Undo / Redo history (component-local refs) ── */
+
+  const pastRef = useRef<string[]>([]);
+  const futureRef = useRef<string[]>([]);
+  const lastCommittedRef = useRef(markdown);
+  const commitTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const commitToHistory = useCallback(() => {
+    const current = useMarkdownEditorStore.getState().markdown;
+    if (current !== lastCommittedRef.current) {
+      pastRef.current.push(lastCommittedRef.current);
+      if (pastRef.current.length > 100) pastRef.current.shift();
+      futureRef.current = [];
+      lastCommittedRef.current = current;
+    }
+  }, []);
+
+  const scheduleCommit = useCallback(() => {
+    clearTimeout(commitTimerRef.current);
+    commitTimerRef.current = setTimeout(commitToHistory, 400);
+  }, [commitToHistory]);
+
+  const handleUndo = useCallback(() => {
+    clearTimeout(commitTimerRef.current);
+    commitToHistory();
+    if (pastRef.current.length === 0) return;
+    const previous = pastRef.current.pop()!;
+    futureRef.current.push(lastCommittedRef.current);
+    lastCommittedRef.current = previous;
+    setMarkdown(previous);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }, [commitToHistory, setMarkdown]);
+
+  const handleRedo = useCallback(() => {
+    clearTimeout(commitTimerRef.current);
+    if (futureRef.current.length === 0) return;
+    const next = futureRef.current.pop()!;
+    pastRef.current.push(lastCommittedRef.current);
+    lastCommittedRef.current = next;
+    setMarkdown(next);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }, [setMarkdown]);
+
+  const canUndo = pastRef.current.length > 0;
+  const canRedo = futureRef.current.length > 0;
+
+  /* ── Derived state ── */
+
   const resolvedFileName = fileName.trim() || messages.markdownEditor.fileNamePlaceholder;
   const errorMessage = actionErrorMessage ?? getErrorMessage(uploadError);
   const editorTitle = entryMode === 'edit'
@@ -229,6 +304,11 @@ export default function MarkdownEditorWorkspace({
 
   const wordCount = useMemo(() => computeWordCount(markdown), [markdown]);
   const charCount = useMemo(() => computeCharCount(markdown), [markdown]);
+
+  /* Bilingual labels */
+  const ko = localeMessages.ko.markdownEditor;
+  const en = localeMessages.en.markdownEditor;
+  const m = messages.markdownEditor;
 
   /* ── Scroll sync ── */
 
@@ -321,13 +401,14 @@ export default function MarkdownEditorWorkspace({
     }
   }
 
-  function handleViewModeToggle() {
+  function switchViewMode(next: 'edit' | 'preview') {
+    if (next === viewMode) return;
     const active = viewMode === 'edit' ? textareaRef.current : previewViewerRef.current;
     scrollProgressRef.current = getScrollProgress(active);
     pendingScrollSyncRef.current = true;
     setActionErrorMessage(null);
     setPreviewErrorMessage(null);
-    setViewMode((c) => (c === 'edit' ? 'preview' : 'edit'));
+    setViewMode(next);
   }
 
   async function handleLoadFile(file: File | undefined) {
@@ -358,11 +439,19 @@ export default function MarkdownEditorWorkspace({
     (fn: (value: string, start: number, end: number) => TextEditResult) => {
       const ta = textareaRef.current;
       if (!ta) return;
+      commitToHistory();
       setActionErrorMessage(null);
       setPreviewErrorMessage(null);
-      applyEditResult(ta, fn(ta.value, ta.selectionStart, ta.selectionEnd), setMarkdown);
+      const result = fn(ta.value, ta.selectionStart, ta.selectionEnd);
+      setMarkdown(result.value);
+      scheduleCommit();
+      requestAnimationFrame(() => {
+        ta.selectionStart = result.selectionStart;
+        ta.selectionEnd = result.selectionEnd;
+        ta.focus();
+      });
     },
-    [setMarkdown],
+    [commitToHistory, scheduleCommit, setMarkdown],
   );
 
   const handleBold = useCallback(() => {
@@ -428,6 +517,26 @@ export default function MarkdownEditorWorkspace({
       const ta = textareaRef.current;
       if (!ta) return;
 
+      const mod = event.metaKey || event.ctrlKey;
+
+      /* Undo / Redo */
+      if (mod && event.key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        handleUndo();
+        return;
+      }
+      if (mod && event.key === 'z' && event.shiftKey) {
+        event.preventDefault();
+        handleRedo();
+        return;
+      }
+      if (mod && event.key === 'y') {
+        event.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      /* Tab */
       if (event.key === 'Tab') {
         event.preventDefault();
         const fn = event.shiftKey ? handleTabOutdent : handleTabIndent;
@@ -435,6 +544,7 @@ export default function MarkdownEditorWorkspace({
         return;
       }
 
+      /* Auto-indent */
       if (event.key === 'Enter' && !event.shiftKey) {
         const result = handleAutoIndent(ta.value, ta.selectionStart, ta.selectionEnd);
         if (result) {
@@ -444,7 +554,7 @@ export default function MarkdownEditorWorkspace({
         return;
       }
 
-      const mod = event.metaKey || event.ctrlKey;
+      /* Formatting shortcuts */
       if (mod && event.key === 'b') {
         event.preventDefault();
         handleBold();
@@ -456,7 +566,7 @@ export default function MarkdownEditorWorkspace({
         handleLink();
       }
     },
-    [handleBold, handleItalic, handleLink, setMarkdown],
+    [handleBold, handleItalic, handleLink, handleUndo, handleRedo, setMarkdown],
   );
 
   /* ── Render: file import screen ── */
@@ -473,7 +583,7 @@ export default function MarkdownEditorWorkspace({
           style={{ display: 'none' }}
         />
         <header className="upload-header">
-          <button className="back-btn" onClick={onBack}>{messages.markdownEditor.backHome}</button>
+          <button className="back-btn" onClick={onBack}>{m.backHome}</button>
           <div className="document-upload-title">{messages.modeSelect.documentOpenTitle}</div>
           <span className="tool-badge">MD</span>
         </header>
@@ -504,8 +614,6 @@ export default function MarkdownEditorWorkspace({
 
   /* ── Render: editor ── */
 
-  const m = messages.markdownEditor;
-
   return (
     <div className="markdown-editor-page">
       <input
@@ -530,15 +638,25 @@ export default function MarkdownEditorWorkspace({
 
       <div className="markdown-editor-shell">
         <section className="markdown-editor-panel panel-surface">
+          {/* Action toolbar */}
           <div className="markdown-editor-toolbar">
             <div className="markdown-editor-toolbar-group">
-              <button
-                type="button"
-                className="re-edit-btn markdown-editor-toolbar-btn markdown-editor-mode-toggle"
-                onClick={handleViewModeToggle}
-              >
-                {viewMode === 'edit' ? m.preview : m.edit}
-              </button>
+              <div className="markdown-editor-view-tabs">
+                <button
+                  type="button"
+                  className={`markdown-editor-view-tab${viewMode === 'edit' ? ' is-active' : ''}`}
+                  onClick={() => switchViewMode('edit')}
+                >
+                  {locale === 'ko' ? m.edit : m.edit}
+                </button>
+                <button
+                  type="button"
+                  className={`markdown-editor-view-tab${viewMode === 'preview' ? ' is-active' : ''}`}
+                  onClick={() => switchViewMode('preview')}
+                >
+                  {m.preview}
+                </button>
+              </div>
             </div>
             <div className="markdown-editor-toolbar-group markdown-editor-toolbar-actions">
               <button
@@ -562,29 +680,34 @@ export default function MarkdownEditorWorkspace({
             </div>
           </div>
 
+          {/* Format toolbar — edit mode only */}
           {viewMode === 'edit' ? (
             <div className="markdown-format-toolbar">
-              <button type="button" className="markdown-format-btn" title={`${m.bold} (Ctrl+B)`} onClick={handleBold}>{BOLD_ICON}</button>
-              <button type="button" className="markdown-format-btn" title={`${m.italic} (Ctrl+I)`} onClick={handleItalic}>{ITALIC_ICON}</button>
-              <button type="button" className="markdown-format-btn" title={m.strikethrough} onClick={handleStrikethrough}>{STRIKETHROUGH_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={bi(ko.undo, en.undo, `${MOD}Z`)} onClick={handleUndo} disabled={!canUndo}>{UNDO_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={bi(ko.redo, en.redo, `${MOD}⇧Z`)} onClick={handleRedo} disabled={!canRedo}>{REDO_ICON}</button>
               <span className="markdown-format-divider" />
-              <button type="button" className="markdown-format-btn" title={m.heading1} onClick={handleH1}>{H1_ICON}</button>
-              <button type="button" className="markdown-format-btn" title={m.heading2} onClick={handleH2}>{H2_ICON}</button>
-              <button type="button" className="markdown-format-btn" title={m.heading3} onClick={handleH3}>{H3_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={bi(ko.bold, en.bold, `${MOD}B`)} onClick={handleBold}>{BOLD_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={bi(ko.italic, en.italic, `${MOD}I`)} onClick={handleItalic}>{ITALIC_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={bi(ko.strikethrough, en.strikethrough)} onClick={handleStrikethrough}>{STRIKETHROUGH_ICON}</button>
               <span className="markdown-format-divider" />
-              <button type="button" className="markdown-format-btn" title={m.unorderedList} onClick={handleUl}>{UL_ICON}</button>
-              <button type="button" className="markdown-format-btn" title={m.orderedList} onClick={handleOl}>{OL_ICON}</button>
-              <button type="button" className="markdown-format-btn" title={m.quote} onClick={handleQuote}>{QUOTE_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={bi(ko.heading1, en.heading1)} onClick={handleH1}>{H1_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={bi(ko.heading2, en.heading2)} onClick={handleH2}>{H2_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={bi(ko.heading3, en.heading3)} onClick={handleH3}>{H3_ICON}</button>
               <span className="markdown-format-divider" />
-              <button type="button" className="markdown-format-btn" title={m.inlineCode} onClick={handleInlineCode}>{CODE_ICON}</button>
-              <button type="button" className="markdown-format-btn" title={m.codeBlock} onClick={handleCodeBlock}>{CODE_BLOCK_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={bi(ko.unorderedList, en.unorderedList)} onClick={handleUl}>{UL_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={bi(ko.orderedList, en.orderedList)} onClick={handleOl}>{OL_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={bi(ko.quote, en.quote)} onClick={handleQuote}>{QUOTE_ICON}</button>
               <span className="markdown-format-divider" />
-              <button type="button" className="markdown-format-btn" title={`${m.link} (Ctrl+K)`} onClick={handleLink}>{LINK_ICON}</button>
-              <button type="button" className="markdown-format-btn" title={m.image} onClick={handleImage}>{IMAGE_ICON}</button>
-              <button type="button" className="markdown-format-btn" title={m.horizontalRule} onClick={handleHr}>{HR_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={bi(ko.inlineCode, en.inlineCode)} onClick={handleInlineCode}>{CODE_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={bi(ko.codeBlock, en.codeBlock)} onClick={handleCodeBlock}>{CODE_BLOCK_ICON}</button>
+              <span className="markdown-format-divider" />
+              <button type="button" className="markdown-format-btn" title={bi(ko.link, en.link, `${MOD}K`)} onClick={handleLink}>{LINK_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={bi(ko.image, en.image)} onClick={handleImage}>{IMAGE_ICON}</button>
+              <button type="button" className="markdown-format-btn" title={bi(ko.horizontalRule, en.horizontalRule)} onClick={handleHr}>{HR_ICON}</button>
             </div>
           ) : null}
 
+          {/* File name */}
           <label className="markdown-editor-field">
             <span className="markdown-editor-label">{m.fileNameLabel}</span>
             <input
@@ -600,6 +723,7 @@ export default function MarkdownEditorWorkspace({
             />
           </label>
 
+          {/* Content */}
           <div className="markdown-editor-field markdown-editor-field-grow">
             <span className="markdown-editor-label">
               {viewMode === 'edit' ? m.sourceLabel : m.preview}
@@ -613,6 +737,7 @@ export default function MarkdownEditorWorkspace({
                   setActionErrorMessage(null);
                   setPreviewErrorMessage(null);
                   setMarkdown(e.target.value);
+                  scheduleCommit();
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder={m.sourcePlaceholder}
@@ -646,6 +771,7 @@ export default function MarkdownEditorWorkspace({
 
           {errorMessage ? <p className="error-msg">{errorMessage}</p> : null}
 
+          {/* Status bar */}
           <div className="markdown-editor-status-bar">
             <span>{m.wordCount} {wordCount.toLocaleString()}</span>
             <span>{m.charCount} {charCount.toLocaleString()}</span>

@@ -235,6 +235,8 @@ type LocaleMessages = {
     previewMode: string;
     wordCount: string;
     charCount: string;
+    undo: string;
+    redo: string;
   };
   imagePreview: {
     empty: string;
@@ -244,7 +246,7 @@ type LocaleMessages = {
   };
 };
 
-const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
+export const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
   ko: {
     brand: {
       name: 'SimplyImg',
@@ -497,6 +499,8 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       previewMode: '미리보기',
       wordCount: '단어',
       charCount: '글자',
+      undo: '실행 취소',
+      redo: '다시 실행',
     },
     imagePreview: {
       empty: '표시할 이미지가 없습니다.',
@@ -757,6 +761,8 @@ const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       previewMode: 'Preview',
       wordCount: 'Words',
       charCount: 'Characters',
+      undo: 'Undo',
+      redo: 'Redo',
     },
     imagePreview: {
       empty: 'No image to display.',

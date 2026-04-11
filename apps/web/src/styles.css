@@ -1965,7 +1965,7 @@ img {
 
 .markdown-editor-panel {
   width: 100%;
-  max-width: 980px;
+  max-width: 1100px;
   height: 100%;
   margin: 0 auto;
   padding: 18px;
@@ -2005,21 +2005,36 @@ img {
   min-width: 0;
 }
 
-.markdown-editor-mode-toggle {
-  min-width: 132px;
-  border: 1px solid rgba(27, 24, 20, 0.14);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 241, 233, 0.98));
-  box-shadow: 0 8px 20px rgba(40, 28, 10, 0.08);
-  color: var(--text);
-  font-weight: 800;
-  letter-spacing: -0.01em;
+.markdown-editor-view-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.6);
 }
 
-.markdown-editor-mode-toggle:hover {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(242, 236, 226, 1));
-  box-shadow: 0 10px 24px rgba(40, 28, 10, 0.12);
+.markdown-editor-view-tab {
+  padding: 0.3rem 0.7rem;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 140ms, color 140ms;
+  white-space: nowrap;
+}
+
+.markdown-editor-view-tab:hover {
+  color: var(--text);
+  background: rgba(25, 18, 8, 0.04);
+}
+
+.markdown-editor-view-tab.is-active {
+  background: var(--text);
+  color: #f0ece3;
 }
 
 .markdown-editor-field {
@@ -2057,7 +2072,7 @@ img {
 
 .markdown-editor-textarea {
   flex: 1;
-  min-height: 360px;
+  min-height: 260px;
   resize: none;
   padding: 16px 18px;
   line-height: 1.6;
@@ -2066,7 +2081,7 @@ img {
 
 .markdown-editor-view {
   flex: 1;
-  min-height: 360px;
+  min-height: 260px;
   overflow: hidden;
 }
 
@@ -2077,21 +2092,13 @@ img {
   }
 
   .markdown-editor-panel {
-    max-width: 1200px;
+    max-width: 1440px;
     padding: 22px 24px 24px;
   }
 
   .markdown-editor-textarea,
   .markdown-editor-view {
-    min-height: clamp(480px, 68dvh, 860px);
-  }
-
-  .markdown-editor-mode-toggle {
-    min-width: 164px;
-    min-height: 48px;
-    padding: 0.85rem 1.2rem;
-    font-size: 0.98rem;
-    box-shadow: 0 14px 30px rgba(40, 28, 10, 0.12);
+    min-height: clamp(320px, 55dvh, 600px);
   }
 }
 
@@ -3017,12 +3024,12 @@ img {
   }
 
   .markdown-editor-textarea {
-    min-height: 50svh;
+    min-height: 40svh;
     padding: 14px 12px;
   }
 
   .markdown-editor-view {
-    min-height: 50svh;
+    min-height: 40svh;
   }
 
   .markdown-editor-viewer {
