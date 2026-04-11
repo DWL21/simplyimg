@@ -296,7 +296,11 @@ export default function OptionsPanel({ tool, state, selectedFile, onChange }: Pr
             aria-label={locale === 'ko' ? '좌우 반전' : 'Flip horizontally'}
             title={locale === 'ko' ? '좌우 반전' : 'Flip horizontally'}
           >
-            ↔
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="3" y1="9" x2="15" y2="9" />
+              <polyline points="6,6 3,9 6,12" />
+              <polyline points="12,6 15,9 12,12" />
+            </svg>
           </button>
           <button
             className={`chip ${s.vertical ? 'is-active' : ''}`}
@@ -304,7 +308,11 @@ export default function OptionsPanel({ tool, state, selectedFile, onChange }: Pr
             aria-label={locale === 'ko' ? '상하 반전' : 'Flip vertically'}
             title={locale === 'ko' ? '상하 반전' : 'Flip vertically'}
           >
-            ↕
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="9" y1="3" x2="9" y2="15" />
+              <polyline points="6,6 9,3 12,6" />
+              <polyline points="6,12 9,15 12,12" />
+            </svg>
           </button>
         </div>
       </div>

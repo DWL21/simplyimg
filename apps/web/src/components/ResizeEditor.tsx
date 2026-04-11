@@ -1,26 +1,42 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { CropOptions } from '../types/image';
 import { CanvasControls } from './editor/CanvasControls';
 
 interface Props {
   imageUrl: string;
   width: number;
   height: number;
-  crop?: { x: number; y: number; width: number; height: number };
-  alignLabel: string;
-  zoomInLabel: string;
-  zoomOutLabel: string;
-  onChange: (next: { width: number; height: number; crop: { x: number; y: number; width: number; height: number } }) => void;
+  crop?: CropOptions;
+  zoom?: number;
+  pan?: { x: number; y: number };
+  showControls?: boolean;
+  alignLabel?: string;
+  zoomInLabel?: string;
+  zoomOutLabel?: string;
+  onViewportChange?: (zoom: number, pan: { x: number; y: number }) => void;
+  onImageLoad?: (naturalWidth: number, naturalHeight: number) => void;
+  onChange: (next: { width: number; height: number; crop: CropOptions }) => void;
 }
 
 type Handle = 'tl' | 'tr' | 'bl' | 'br' | 'tm' | 'bm' | 'ml' | 'mr';
 
-const MIN_SIZE = 1;
-const ZOOM_BUTTON_FACTOR = 1.15;
-const ZOOM_WHEEL_SPEED = 0.00085;
-const ZOOM_WHEEL_CTRL_SPEED = 0.0018;
-const PINCH_ZOOM_DAMPING = 0.4;
-const MIN_ZOOM = 0.02;
-const MAX_ZOOM = 16;
+interface PanDragState {
+  pointerId: number;
+  mode: 'pan';
+  startClientX: number;
+  startClientY: number;
+  startPanX: number;
+  startPanY: number;
+}
+
+interface MoveBoxDragState {
+  pointerId: number;
+  mode: 'move-box';
+  startClientX: number;
+  startClientY: number;
+  startBoxOffsetX: number;
+  startBoxOffsetY: number;
+}
 
 interface ResizeDragState {
   pointerId: number;
@@ -32,58 +48,42 @@ interface ResizeDragState {
   startHeight: number;
   anchorScreenX: number;
   anchorScreenY: number;
-  zoom: number;
   frameCenterScreenX: number;
   frameCenterScreenY: number;
-  panX: number;
-  panY: number;
-}
-
-interface CanvasDragState {
-  pointerId: number;
-  mode: 'canvas';
-  startClientX: number;
-  startClientY: number;
-  startPanX: number;
-  startPanY: number;
-}
-
-interface ImageMoveDragState {
-  pointerId: number;
-  mode: 'move';
-  startClientX: number;
-  startClientY: number;
-  startCropX: number;
-  startCropY: number;
-  cropWidth: number;
-  cropHeight: number;
-  scaleX: number;
-  scaleY: number;
+  baseImageWidth: number;
+  baseImageHeight: number;
 }
 
 interface PinchState {
   pointerIds: [number, number];
   lastDistance: number;
+  lastCenter: { x: number; y: number };
 }
 
-type DragState = ResizeDragState | CanvasDragState | ImageMoveDragState;
-
-function computeSafeCrop(
-  crop: Props['crop'],
-  nat: { width: number; height: number },
-) {
-  const maxW = Math.max(1, nat.width);
-  const maxH = Math.max(1, nat.height);
-  const c = crop ?? { x: 0, y: 0, width: maxW, height: maxH };
-  const sw = Math.max(1, Math.min(c.width, maxW));
-  const sh = Math.max(1, Math.min(c.height, maxH));
-  return {
-    x: Math.max(0, Math.min(c.x, maxW - sw)),
-    y: Math.max(0, Math.min(c.y, maxH - sh)),
-    width: sw,
-    height: sh,
-  };
+interface LayoutMetrics {
+  imageLeft: number;
+  imageTop: number;
+  imageWidth: number;
+  imageHeight: number;
+  boxLeft: number;
+  boxTop: number;
+  boxWidth: number;
+  boxHeight: number;
+  frameScale: number;
+  baseImageWidth: number;
+  baseImageHeight: number;
 }
+
+type DragState = PanDragState | MoveBoxDragState | ResizeDragState;
+
+const HANDLE_ORDER: readonly Handle[] = ['tl', 'tm', 'tr', 'mr', 'br', 'bm', 'bl', 'ml'];
+const MIN_SIZE = 1;
+const MIN_ZOOM = 0.25;
+const MAX_ZOOM = 8;
+const ZOOM_BUTTON_FACTOR = 1.15;
+const ZOOM_WHEEL_SPEED = 0.00085;
+const ZOOM_WHEEL_CTRL_SPEED = 0.0018;
+const PINCH_ZOOM_DAMPING = 0.4;
 
 function clampZoom(value: number) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
@@ -114,68 +114,259 @@ function applyPinchZoomDamping(rawScale: number) {
   return Math.exp(Math.log(rawScale) * PINCH_ZOOM_DAMPING);
 }
 
+function cropSignature(width: number, height: number, crop: CropOptions) {
+  return `${width}:${height}:${crop.x}:${crop.y}:${crop.width}:${crop.height}`;
+}
+
+function deriveCropFromLayout(
+  layout: LayoutMetrics,
+  naturalSize: { width: number; height: number },
+): CropOptions {
+  const left = Math.max(
+    0,
+    Math.min(
+      naturalSize.width - 1,
+      Math.round(((layout.boxLeft - layout.imageLeft) / layout.imageWidth) * naturalSize.width),
+    ),
+  );
+  const top = Math.max(
+    0,
+    Math.min(
+      naturalSize.height - 1,
+      Math.round(((layout.boxTop - layout.imageTop) / layout.imageHeight) * naturalSize.height),
+    ),
+  );
+  const right = Math.max(
+    0,
+    Math.min(
+      naturalSize.width,
+      Math.round((((layout.boxLeft + layout.boxWidth) - layout.imageLeft) / layout.imageWidth) * naturalSize.width),
+    ),
+  );
+  const bottom = Math.max(
+    0,
+    Math.min(
+      naturalSize.height,
+      Math.round((((layout.boxTop + layout.boxHeight) - layout.imageTop) / layout.imageHeight) * naturalSize.height),
+    ),
+  );
+
+  return {
+    x: left,
+    y: top,
+    width: Math.max(1, right - left),
+    height: Math.max(1, bottom - top),
+  };
+}
+
 export default function ResizeEditor({
   imageUrl,
   width,
   height,
   crop,
+  zoom,
+  pan,
+  showControls = true,
   alignLabel,
   zoomInLabel,
   zoomOutLabel,
+  onViewportChange,
+  onImageLoad,
   onChange,
 }: Props) {
   const frameRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const pinchRef = useRef<PinchState | null>(null);
   const activePointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const naturalSizeRef = useRef({ width: 0, height: 0 });
   const onChangeRef = useRef(onChange);
-  const cropRef = useRef(crop);
+  const onViewportChangeRef = useRef(onViewportChange);
+  const onImageLoadRef = useRef(onImageLoad);
   const widthRef = useRef(width);
   const heightRef = useRef(height);
+  const emittedSignatureRef = useRef('');
+
+  const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
-  const naturalSizeRef = useRef({ width: 0, height: 0 });
-
-  const [zoom, setZoom] = useState<number | null>(null);
-  const [canvasPan, setCanvasPan] = useState({ x: 0, y: 0 });
   const [boxOffset, setBoxOffset] = useState({ x: 0, y: 0 });
-  const zoomRef = useRef<number | null>(null);
-  const canvasPanRef = useRef({ x: 0, y: 0 });
-  const boxOffsetRef = useRef({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [internalZoom, setInternalZoom] = useState(1);
+  const [internalPan, setInternalPan] = useState({ x: 0, y: 0 });
 
-  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
-  useEffect(() => { cropRef.current = crop; }, [crop]);
-  useEffect(() => { widthRef.current = width; }, [width]);
-  useEffect(() => { heightRef.current = height; }, [height]);
-  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
-  useEffect(() => { canvasPanRef.current = canvasPan; }, [canvasPan]);
-  useEffect(() => { boxOffsetRef.current = boxOffset; }, [boxOffset]);
+  const controlledViewport = zoom !== undefined && pan !== undefined && onViewportChange !== undefined;
+  const effectiveZoom = controlledViewport ? zoom : internalZoom;
+  const effectivePan = controlledViewport ? pan : internalPan;
+  const zoomRef = useRef(effectiveZoom);
+  const panRef = useRef(effectivePan);
+  const boxOffsetRef = useRef(boxOffset);
+
+  onChangeRef.current = onChange;
+  onViewportChangeRef.current = onViewportChange;
+  onImageLoadRef.current = onImageLoad;
+  widthRef.current = width;
+  heightRef.current = height;
 
   useEffect(() => {
-    if (zoom !== null) return;
+    zoomRef.current = effectiveZoom;
+  }, [effectiveZoom]);
+
+  useEffect(() => {
+    panRef.current = effectivePan;
+  }, [effectivePan]);
+
+  useEffect(() => {
+    boxOffsetRef.current = boxOffset;
+  }, [boxOffset]);
+
+  useEffect(() => {
     const frame = frameRef.current;
-    if (!frame || !width || !height) return;
-    const { width: fw, height: fh } = frame.getBoundingClientRect();
-    if (!fw || !fh) return;
-    const fitted = Math.min((fw * 0.84) / width, (fh * 0.8) / height);
-    const safe = Number.isFinite(fitted) && fitted > 0 ? fitted : 1;
-    setZoom(safe);
-    zoomRef.current = safe;
-  }, [zoom, width, height]);
+    if (!frame) {
+      setFrameSize({ width: 0, height: 0 });
+      return undefined;
+    }
+
+    const observer = new ResizeObserver(([entry]) => {
+      const { width: nextWidth, height: nextHeight } = entry.contentRect;
+      setFrameSize((current) => (
+        current.width === nextWidth && current.height === nextHeight
+          ? current
+          : { width: nextWidth, height: nextHeight }
+      ));
+    });
+
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) {
+      return undefined;
+    }
+
+    function preventNativeGesture(event: Event) {
+      event.preventDefault();
+    }
+
+    frame.addEventListener('gesturestart', preventNativeGesture, { passive: false });
+    frame.addEventListener('gesturechange', preventNativeGesture, { passive: false });
+    frame.addEventListener('gestureend', preventNativeGesture, { passive: false });
+
+    return () => {
+      frame.removeEventListener('gesturestart', preventNativeGesture);
+      frame.removeEventListener('gesturechange', preventNativeGesture);
+      frame.removeEventListener('gestureend', preventNativeGesture);
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleWindowBlur() {
+      const frame = frameRef.current;
+      activePointersRef.current.forEach((_, pointerId) => {
+        if (frame?.hasPointerCapture(pointerId)) {
+          frame.releasePointerCapture(pointerId);
+        }
+      });
+      activePointersRef.current.clear();
+      dragRef.current = null;
+      pinchRef.current = null;
+      setIsPanning(false);
+      document.body.style.cursor = '';
+    }
+
+    window.addEventListener('blur', handleWindowBlur);
+    return () => window.removeEventListener('blur', handleWindowBlur);
+  }, []);
+
+  useEffect(() => {
+    emittedSignatureRef.current = '';
+    dragRef.current = null;
+    pinchRef.current = null;
+    activePointersRef.current.clear();
+    setIsPanning(false);
+    setBoxOffset({ x: 0, y: 0 });
+    boxOffsetRef.current = { x: 0, y: 0 };
+    setNaturalSize({ width: 0, height: 0 });
+    naturalSizeRef.current = { width: 0, height: 0 };
+    document.body.style.cursor = '';
+
+    if (!controlledViewport) {
+      setInternalZoom(1);
+      setInternalPan({ x: 0, y: 0 });
+      zoomRef.current = 1;
+      panRef.current = { x: 0, y: 0 };
+    }
+  }, [controlledViewport, imageUrl]);
+
+  const layout = useMemo<LayoutMetrics | null>(() => {
+    const natWidth = naturalSize.width;
+    const natHeight = naturalSize.height;
+    if (!natWidth || !natHeight || !frameSize.width || !frameSize.height || !width || !height) {
+      return null;
+    }
+
+    const baseImageScale = Math.min(frameSize.width / natWidth, frameSize.height / natHeight);
+    const baseImageWidth = natWidth * baseImageScale;
+    const baseImageHeight = natHeight * baseImageScale;
+    const frameScale = Math.min(baseImageWidth / width, baseImageHeight / height);
+    const boxWidth = Math.max(MIN_SIZE, width * frameScale);
+    const boxHeight = Math.max(MIN_SIZE, height * frameScale);
+    const imageWidth = baseImageWidth * effectiveZoom;
+    const imageHeight = baseImageHeight * effectiveZoom;
+
+    return {
+      imageLeft: (frameSize.width - imageWidth) / 2 + effectivePan.x,
+      imageTop: (frameSize.height - imageHeight) / 2 + effectivePan.y,
+      imageWidth,
+      imageHeight,
+      boxLeft: (frameSize.width - boxWidth) / 2 + boxOffset.x,
+      boxTop: (frameSize.height - boxHeight) / 2 + boxOffset.y,
+      boxWidth,
+      boxHeight,
+      frameScale,
+      baseImageWidth,
+      baseImageHeight,
+    };
+  }, [boxOffset.x, boxOffset.y, effectivePan.x, effectivePan.y, effectiveZoom, frameSize.height, frameSize.width, height, naturalSize.height, naturalSize.width, width]);
 
   useEffect(() => () => {
-    activePointersRef.current.clear();
-    pinchRef.current = null;
     document.body.style.cursor = '';
   }, []);
 
   useEffect(() => {
-    if (!naturalSize.width || !naturalSize.height || crop) return;
-    onChangeRef.current({
-      width,
-      height,
-      crop: { x: 0, y: 0, width: naturalSize.width, height: naturalSize.height },
-    });
-  }, [crop, height, naturalSize.height, naturalSize.width, width]);
+    if (!layout) {
+      return;
+    }
+
+    const nextCrop = deriveCropFromLayout(layout, naturalSize);
+    const nextSignature = cropSignature(width, height, nextCrop);
+    if (emittedSignatureRef.current === nextSignature) {
+      return;
+    }
+
+    emittedSignatureRef.current = nextSignature;
+    onChangeRef.current({ width, height, crop: nextCrop });
+  }, [height, layout, naturalSize.height, naturalSize.width, width]);
+
+  function setViewport(nextZoom: number, nextPan: { x: number; y: number }) {
+    const clampedZoom = clampZoom(nextZoom);
+    zoomRef.current = clampedZoom;
+    panRef.current = nextPan;
+
+    if (controlledViewport) {
+      onViewportChangeRef.current?.(clampedZoom, nextPan);
+      return;
+    }
+
+    setInternalZoom((current) => (current === clampedZoom ? current : clampedZoom));
+    setInternalPan((current) => (
+      current.x === nextPan.x && current.y === nextPan.y ? current : nextPan
+    ));
+  }
+
+  function alignCanvas() {
+    setViewport(zoomRef.current, { x: 0, y: 0 });
+  }
 
   function getFramePoint(clientX: number, clientY: number) {
     const frame = frameRef.current;
@@ -190,33 +381,6 @@ export default function ResizeEditor({
     };
   }
 
-  function setZoomAround(nextZoom: number, clientX?: number, clientY?: number) {
-    const clampedZoom = clampZoom(nextZoom);
-    const currentZoom = zoomRef.current ?? 1;
-    const focalPoint = clientX !== undefined && clientY !== undefined
-      ? getFramePoint(clientX, clientY)
-      : null;
-
-    const nextPan = focalPoint
-      ? scalePanAroundPoint(canvasPanRef.current, currentZoom, clampedZoom, focalPoint)
-      : canvasPanRef.current;
-
-    zoomRef.current = clampedZoom;
-    canvasPanRef.current = nextPan;
-
-    setZoom((current) => (current === clampedZoom ? current : clampedZoom));
-    setCanvasPan((current) => (
-      current.x === nextPan.x && current.y === nextPan.y ? current : nextPan
-    ));
-  }
-
-  function handleAlign() {
-    canvasPanRef.current = { x: 0, y: 0 };
-    boxOffsetRef.current = { x: 0, y: 0 };
-    setCanvasPan({ x: 0, y: 0 });
-    setBoxOffset({ x: 0, y: 0 });
-  }
-
   function startPinchGesture() {
     const [firstPointerId, secondPointerId] = Array.from(activePointersRef.current.keys());
     const firstPointer = activePointersRef.current.get(firstPointerId);
@@ -225,11 +389,22 @@ export default function ResizeEditor({
       return;
     }
 
+    const centerPoint = getFramePoint(
+      (firstPointer.x + secondPointer.x) / 2,
+      (firstPointer.y + secondPointer.y) / 2,
+    );
+
+    if (!centerPoint) {
+      return;
+    }
+
     pinchRef.current = {
       pointerIds: [firstPointerId, secondPointerId],
       lastDistance: Math.max(1, Math.hypot(firstPointer.x - secondPointer.x, firstPointer.y - secondPointer.y)),
+      lastCenter: centerPoint,
     };
     dragRef.current = null;
+    setIsPanning(false);
     document.body.style.cursor = '';
   }
 
@@ -241,18 +416,138 @@ export default function ResizeEditor({
 
     activePointersRef.current.delete(pointerId);
 
-    if (pinchRef.current?.pointerIds.includes(pointerId)) {
+    const pinch = pinchRef.current;
+    if (pinch?.pointerIds.includes(pointerId)) {
       pinchRef.current = null;
+      if (activePointersRef.current.size === 1) {
+        const [[remainingPointerId, remainingPointer]] = Array.from(activePointersRef.current.entries());
+        dragRef.current = {
+          pointerId: remainingPointerId,
+          mode: 'pan',
+          startClientX: remainingPointer.x,
+          startClientY: remainingPointer.y,
+          startPanX: panRef.current.x,
+          startPanY: panRef.current.y,
+        };
+        setIsPanning(true);
+        document.body.style.cursor = 'grabbing';
+        return;
+      }
     }
 
     if (dragRef.current?.pointerId === pointerId) {
       dragRef.current = null;
     }
 
+    setIsPanning(false);
     document.body.style.cursor = '';
   }
 
-  function handleFramePointerMove(event: React.PointerEvent<HTMLElement>) {
+  function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== 'touch' && event.button !== 0) {
+      return;
+    }
+
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.canvas-controls, .canvas-action-btn')) {
+      return;
+    }
+
+    const frame = event.currentTarget;
+    frame.setPointerCapture(event.pointerId);
+    activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (activePointersRef.current.size >= 2) {
+      startPinchGesture();
+      event.preventDefault();
+      return;
+    }
+
+    const handleButton = target?.closest('.resize-handle') as HTMLButtonElement | null;
+    if (handleButton && layout) {
+      const handle = handleButton.dataset.handle as Handle | undefined;
+      const rect = frame.getBoundingClientRect();
+      const boxCenterScreenX = rect.left + layout.boxLeft + layout.boxWidth / 2;
+      const boxCenterScreenY = rect.top + layout.boxTop + layout.boxHeight / 2;
+      let anchorScreenX = boxCenterScreenX;
+      let anchorScreenY = boxCenterScreenY;
+
+      if (handle === 'ml' || handle === 'tl' || handle === 'bl') {
+        anchorScreenX = boxCenterScreenX + layout.boxWidth / 2;
+      } else if (handle === 'mr' || handle === 'tr' || handle === 'br') {
+        anchorScreenX = boxCenterScreenX - layout.boxWidth / 2;
+      }
+
+      if (handle === 'tl' || handle === 'tm' || handle === 'tr') {
+        anchorScreenY = boxCenterScreenY + layout.boxHeight / 2;
+      } else if (handle === 'bl' || handle === 'bm' || handle === 'br') {
+        anchorScreenY = boxCenterScreenY - layout.boxHeight / 2;
+      }
+
+      if (handle) {
+        dragRef.current = {
+          pointerId: event.pointerId,
+          mode: 'resize',
+          handle,
+          startClientX: event.clientX,
+          startClientY: event.clientY,
+          startWidth: widthRef.current,
+          startHeight: heightRef.current,
+          anchorScreenX,
+          anchorScreenY,
+          frameCenterScreenX: rect.left + rect.width / 2,
+          frameCenterScreenY: rect.top + rect.height / 2,
+          baseImageWidth: layout.baseImageWidth,
+          baseImageHeight: layout.baseImageHeight,
+        };
+        document.body.style.cursor = window.getComputedStyle(handleButton).cursor;
+        event.preventDefault();
+        return;
+      }
+    }
+
+    // Drag inside the crop box → move the box over the image
+    if (layout) {
+      const rect = frame.getBoundingClientRect();
+      const frameX = event.clientX - rect.left;
+      const frameY = event.clientY - rect.top;
+      const insideBox = (
+        frameX >= layout.boxLeft &&
+        frameX <= layout.boxLeft + layout.boxWidth &&
+        frameY >= layout.boxTop &&
+        frameY <= layout.boxTop + layout.boxHeight
+      );
+
+      if (insideBox) {
+        dragRef.current = {
+          pointerId: event.pointerId,
+          mode: 'move-box',
+          startClientX: event.clientX,
+          startClientY: event.clientY,
+          startBoxOffsetX: boxOffsetRef.current.x,
+          startBoxOffsetY: boxOffsetRef.current.y,
+        };
+        document.body.style.cursor = 'move';
+        event.preventDefault();
+        return;
+      }
+    }
+
+    // Drag on canvas background → pan the image
+    dragRef.current = {
+      pointerId: event.pointerId,
+      mode: 'pan',
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startPanX: panRef.current.x,
+      startPanY: panRef.current.y,
+    };
+    setIsPanning(true);
+    document.body.style.cursor = 'grabbing';
+    event.preventDefault();
+  }
+
+  function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
     if (activePointersRef.current.has(event.pointerId)) {
       activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     }
@@ -265,12 +560,23 @@ export default function ResizeEditor({
 
       if (firstPointer && secondPointer) {
         const nextDistance = Math.max(1, Math.hypot(firstPointer.x - secondPointer.x, firstPointer.y - secondPointer.y));
-        const nextZoom = (zoomRef.current ?? 1) * applyPinchZoomDamping(nextDistance / pinch.lastDistance);
-        const centerX = (firstPointer.x + secondPointer.x) / 2;
-        const centerY = (firstPointer.y + secondPointer.y) / 2;
-        setZoomAround(nextZoom, centerX, centerY);
-        pinch.lastDistance = nextDistance;
-        event.preventDefault();
+        const nextCenter = getFramePoint(
+          (firstPointer.x + secondPointer.x) / 2,
+          (firstPointer.y + secondPointer.y) / 2,
+        );
+
+        if (nextCenter) {
+          const scale = applyPinchZoomDamping(nextDistance / pinch.lastDistance);
+          const nextZoom = zoomRef.current * scale;
+          const nextPan = {
+            x: nextCenter.x + scale * (panRef.current.x - pinch.lastCenter.x),
+            y: nextCenter.y + scale * (panRef.current.y - pinch.lastCenter.y),
+          };
+          setViewport(nextZoom, nextPan);
+          pinch.lastDistance = nextDistance;
+          pinch.lastCenter = nextCenter;
+          event.preventDefault();
+        }
       }
       return;
     }
@@ -280,296 +586,197 @@ export default function ResizeEditor({
       return;
     }
 
-    if (drag.mode === 'canvas') {
-      const nextPan = {
+    if (drag.mode === 'pan') {
+      setViewport(zoomRef.current, {
         x: drag.startPanX + event.clientX - drag.startClientX,
         y: drag.startPanY + event.clientY - drag.startClientY,
-      };
-      canvasPanRef.current = nextPan;
-      setCanvasPan(nextPan);
-      event.preventDefault();
-      return;
-    }
-
-    if (drag.mode === 'move') {
-      const nat = naturalSizeRef.current;
-      const dx = event.clientX - drag.startClientX;
-      const dy = event.clientY - drag.startClientY;
-      const nextX = Math.max(0, Math.min(drag.startCropX - Math.round(dx / drag.scaleX), nat.width - drag.cropWidth));
-      const nextY = Math.max(0, Math.min(drag.startCropY - Math.round(dy / drag.scaleY), nat.height - drag.cropHeight));
-      onChangeRef.current({
-        width: widthRef.current,
-        height: heightRef.current,
-        crop: { x: nextX, y: nextY, width: drag.cropWidth, height: drag.cropHeight },
       });
       event.preventDefault();
       return;
     }
 
-    const { handle, zoom: dragZoom, startWidth, startHeight } = drag;
+    if (drag.mode === 'move-box') {
+      const newOffset = {
+        x: drag.startBoxOffsetX + event.clientX - drag.startClientX,
+        y: drag.startBoxOffsetY + event.clientY - drag.startClientY,
+      };
+      setBoxOffset(newOffset);
+      boxOffsetRef.current = newOffset;
+      event.preventDefault();
+      return;
+    }
+
     const dx = event.clientX - drag.startClientX;
     const dy = event.clientY - drag.startClientY;
-    const ratio = startWidth / startHeight;
-    let nextWidth = startWidth;
-    let nextHeight = startHeight;
+    const ratio = drag.startWidth / drag.startHeight;
+    const startFrameScale = Math.min(drag.baseImageWidth / drag.startWidth, drag.baseImageHeight / drag.startHeight);
+    let nextWidth = drag.startWidth;
+    let nextHeight = drag.startHeight;
 
-    if (handle === 'mr') {
-      nextWidth = Math.max(MIN_SIZE, Math.round(startWidth + dx / dragZoom));
-    } else if (handle === 'ml') {
-      nextWidth = Math.max(MIN_SIZE, Math.round(startWidth - dx / dragZoom));
-    } else if (handle === 'bm') {
-      nextHeight = Math.max(MIN_SIZE, Math.round(startHeight + dy / dragZoom));
-    } else if (handle === 'tm') {
-      nextHeight = Math.max(MIN_SIZE, Math.round(startHeight - dy / dragZoom));
+    if (drag.handle === 'mr') {
+      nextWidth = Math.max(MIN_SIZE, Math.round(drag.startWidth + dx / startFrameScale));
+    } else if (drag.handle === 'ml') {
+      nextWidth = Math.max(MIN_SIZE, Math.round(drag.startWidth - dx / startFrameScale));
+    } else if (drag.handle === 'bm') {
+      nextHeight = Math.max(MIN_SIZE, Math.round(drag.startHeight + dy / startFrameScale));
+    } else if (drag.handle === 'tm') {
+      nextHeight = Math.max(MIN_SIZE, Math.round(drag.startHeight - dy / startFrameScale));
     } else {
-      const scaledDx = (handle === 'tl' || handle === 'bl') ? -dx / dragZoom : dx / dragZoom;
-      const scaledDy = (handle === 'tl' || handle === 'tr') ? -dy / dragZoom : dy / dragZoom;
+      const scaledDx = (drag.handle === 'tl' || drag.handle === 'bl') ? -dx / startFrameScale : dx / startFrameScale;
+      const scaledDy = (drag.handle === 'tl' || drag.handle === 'tr') ? -dy / startFrameScale : dy / startFrameScale;
       const widthFromHeight = scaledDy * ratio;
       const dominant = Math.abs(scaledDx) >= Math.abs(widthFromHeight) ? scaledDx : widthFromHeight;
-      nextWidth = Math.max(MIN_SIZE, Math.round(startWidth + dominant));
+      nextWidth = Math.max(MIN_SIZE, Math.round(drag.startWidth + dominant));
       nextHeight = Math.max(MIN_SIZE, Math.round(nextWidth / ratio));
     }
 
-    const nextBoxWidth = nextWidth * dragZoom;
-    const nextBoxHeight = nextHeight * dragZoom;
+    const nextFrameScale = Math.min(drag.baseImageWidth / nextWidth, drag.baseImageHeight / nextHeight);
+    const nextBoxWidth = nextWidth * nextFrameScale;
+    const nextBoxHeight = nextHeight * nextFrameScale;
+    let nextBoxCenterX = drag.anchorScreenX;
+    let nextBoxCenterY = drag.anchorScreenY;
 
-    let nextBoxCenterX: number;
-    let nextBoxCenterY: number;
-
-    if (handle === 'ml' || handle === 'tl' || handle === 'bl') {
+    if (drag.handle === 'ml' || drag.handle === 'tl' || drag.handle === 'bl') {
       nextBoxCenterX = drag.anchorScreenX - nextBoxWidth / 2;
-    } else if (handle === 'mr' || handle === 'tr' || handle === 'br') {
+    } else if (drag.handle === 'mr' || drag.handle === 'tr' || drag.handle === 'br') {
       nextBoxCenterX = drag.anchorScreenX + nextBoxWidth / 2;
-    } else {
-      nextBoxCenterX = drag.anchorScreenX;
     }
 
-    if (handle === 'tl' || handle === 'tm' || handle === 'tr') {
+    if (drag.handle === 'tl' || drag.handle === 'tm' || drag.handle === 'tr') {
       nextBoxCenterY = drag.anchorScreenY - nextBoxHeight / 2;
-    } else if (handle === 'bl' || handle === 'bm' || handle === 'br') {
+    } else if (drag.handle === 'bl' || drag.handle === 'bm' || drag.handle === 'br') {
       nextBoxCenterY = drag.anchorScreenY + nextBoxHeight / 2;
-    } else {
-      nextBoxCenterY = drag.anchorScreenY;
     }
 
     const nextOffset = {
-      x: nextBoxCenterX - drag.frameCenterScreenX - drag.panX,
-      y: nextBoxCenterY - drag.frameCenterScreenY - drag.panY,
+      x: nextBoxCenterX - drag.frameCenterScreenX,
+      y: nextBoxCenterY - drag.frameCenterScreenY,
     };
+    const currentLayout = layout;
+    if (!currentLayout) {
+      return;
+    }
+
     boxOffsetRef.current = nextOffset;
     setBoxOffset(nextOffset);
 
-    const nextCrop = computeSafeCrop(cropRef.current, naturalSizeRef.current);
-    onChangeRef.current({ width: nextWidth, height: nextHeight, crop: nextCrop });
+    const nextCrop = deriveCropFromLayout({
+      imageLeft: currentLayout.imageLeft,
+      imageTop: currentLayout.imageTop,
+      imageWidth: currentLayout.imageWidth,
+      imageHeight: currentLayout.imageHeight,
+      boxLeft: (frameSize.width - nextBoxWidth) / 2 + nextOffset.x,
+      boxTop: (frameSize.height - nextBoxHeight) / 2 + nextOffset.y,
+      boxWidth: nextBoxWidth,
+      boxHeight: nextBoxHeight,
+      frameScale: nextFrameScale,
+      baseImageWidth: drag.baseImageWidth,
+      baseImageHeight: drag.baseImageHeight,
+    }, naturalSizeRef.current);
+
+    const nextSignature = cropSignature(nextWidth, nextHeight, nextCrop);
+    emittedSignatureRef.current = nextSignature;
+    onChangeRef.current({
+      width: nextWidth,
+      height: nextHeight,
+      crop: nextCrop,
+    });
     event.preventDefault();
   }
 
-  const frameRect = frameRef.current?.getBoundingClientRect();
-  const frameWidth = frameRect?.width ?? 0;
-  const frameHeight = frameRect?.height ?? 0;
-  const effectiveZoom = zoom ?? 1;
-  const boxWidth = width * effectiveZoom;
-  const boxHeight = height * effectiveZoom;
-  const boxCenterX = frameWidth / 2 + canvasPan.x + boxOffset.x;
-  const boxCenterY = frameHeight / 2 + canvasPan.y + boxOffset.y;
-  const safeCrop = computeSafeCrop(crop, naturalSize);
-  const scaleX = boxWidth / safeCrop.width;
-  const scaleY = boxHeight / safeCrop.height;
+  function handlePointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    finishPointer(event.pointerId);
+  }
+
+  function handlePointerCancel(event: React.PointerEvent<HTMLDivElement>) {
+    finishPointer(event.pointerId);
+  }
+
+  function handleWheel(event: React.WheelEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const speed = event.ctrlKey ? ZOOM_WHEEL_CTRL_SPEED : ZOOM_WHEEL_SPEED;
+    const factor = Math.exp(-event.deltaY * speed);
+    const focalPoint = getFramePoint(event.clientX, event.clientY);
+    const nextZoom = zoomRef.current * factor;
+    const nextPan = focalPoint
+      ? scalePanAroundPoint(panRef.current, zoomRef.current, clampZoom(nextZoom), focalPoint)
+      : panRef.current;
+
+    setViewport(nextZoom, nextPan);
+  }
+
+  const imageStyle = layout
+    ? {
+        left: layout.imageLeft,
+        top: layout.imageTop,
+        width: layout.imageWidth,
+        height: layout.imageHeight,
+        visibility: 'visible' as const,
+      }
+    : {
+        visibility: 'hidden' as const,
+      };
 
   return (
     <div
-      className="resize-editor-frame"
       ref={frameRef}
-      onPointerDown={(event) => {
-        const target = event.target as HTMLElement;
-        if (
-          !target.classList.contains('resize-editor-frame') &&
-          !target.classList.contains('resize-editor-stage')
-        ) {
-          return;
-        }
-
-        if (event.pointerType !== 'touch' && event.button !== 0) {
-          return;
-        }
-
-        event.preventDefault();
-        event.currentTarget.setPointerCapture(event.pointerId);
-        activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-
-        if (activePointersRef.current.size >= 2) {
-          startPinchGesture();
-          return;
-        }
-
-        dragRef.current = {
-          pointerId: event.pointerId,
-          mode: 'canvas',
-          startClientX: event.clientX,
-          startClientY: event.clientY,
-          startPanX: canvasPanRef.current.x,
-          startPanY: canvasPanRef.current.y,
-        };
-        document.body.style.cursor = 'grabbing';
-      }}
-      onPointerMove={handleFramePointerMove}
-      onPointerUp={(event) => finishPointer(event.pointerId)}
-      onPointerCancel={(event) => finishPointer(event.pointerId)}
-      onWheel={(event) => {
-        event.preventDefault();
-        const speed = event.ctrlKey ? ZOOM_WHEEL_CTRL_SPEED : ZOOM_WHEEL_SPEED;
-        const factor = Math.exp(-event.deltaY * speed);
-        setZoomAround((zoomRef.current ?? 1) * factor, event.clientX, event.clientY);
-      }}
+      className={`resize-editor-frame ${isPanning ? 'is-panning' : ''}`}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onWheel={handleWheel}
     >
       <div className="resize-editor-stage" />
-      {zoom !== null && frameWidth > 0 ? (
+      <img
+        src={imageUrl}
+        className="resize-editor-image"
+        draggable={false}
+        alt=""
+        style={imageStyle}
+        onLoad={(event) => {
+          const nextSize = {
+            width: event.currentTarget.naturalWidth,
+            height: event.currentTarget.naturalHeight,
+          };
+          naturalSizeRef.current = nextSize;
+          setNaturalSize(nextSize);
+          onImageLoadRef.current?.(nextSize.width, nextSize.height);
+        }}
+      />
+      {layout ? (
         <div
           className="resize-frame-box"
-          style={{ left: boxCenterX - boxWidth / 2, top: boxCenterY - boxHeight / 2, width: boxWidth, height: boxHeight }}
+          style={{
+            left: layout.boxLeft,
+            top: layout.boxTop,
+            width: layout.boxWidth,
+            height: layout.boxHeight,
+          }}
         >
-          <div
-            className="resize-frame-canvas"
-            onPointerDown={(event) => {
-              const target = event.target as HTMLElement;
-              if (
-                !target.classList.contains('resize-frame-canvas') &&
-                !target.classList.contains('resize-object-image')
-              ) {
-                return;
-              }
-
-              if (event.pointerType !== 'touch' && event.button !== 0) {
-                return;
-              }
-
-              event.stopPropagation();
-              event.currentTarget.setPointerCapture(event.pointerId);
-              activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-              dragRef.current = {
-                pointerId: event.pointerId,
-                mode: 'move',
-                startClientX: event.clientX,
-                startClientY: event.clientY,
-                startCropX: safeCrop.x,
-                startCropY: safeCrop.y,
-                cropWidth: safeCrop.width,
-                cropHeight: safeCrop.height,
-                scaleX,
-                scaleY,
-              };
-              document.body.style.cursor = 'grabbing';
-            }}
-            onPointerMove={handleFramePointerMove}
-            onPointerUp={(event) => finishPointer(event.pointerId)}
-            onPointerCancel={(event) => finishPointer(event.pointerId)}
-          >
-            <img
-              src={imageUrl}
-              className="resize-object-image"
-              draggable={false}
-              alt=""
-              style={{
-                left: -safeCrop.x * scaleX,
-                top: -safeCrop.y * scaleY,
-                width: naturalSize.width * scaleX,
-                height: naturalSize.height * scaleY,
-              }}
-              onLoad={(event) => {
-                const nextSize = {
-                  width: event.currentTarget.naturalWidth,
-                  height: event.currentTarget.naturalHeight,
-                };
-                setNaturalSize(nextSize);
-                naturalSizeRef.current = nextSize;
-              }}
-            />
-          </div>
           <div className="resize-object-label">{width} × {height}</div>
-          {(['tl', 'tm', 'tr', 'mr', 'br', 'bm', 'bl', 'ml'] as const).map((handle) => (
+          {HANDLE_ORDER.map((handle) => (
             <button
               key={handle}
               type="button"
               className={`resize-handle resize-handle-${handle}`}
-              onPointerDown={(event) => {
-                if (event.pointerType !== 'touch' && event.button !== 0) {
-                  return;
-                }
-
-                event.preventDefault();
-                event.stopPropagation();
-                event.currentTarget.setPointerCapture(event.pointerId);
-                activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-
-                const frame = frameRef.current;
-                if (!frame) return;
-
-                const rect = frame.getBoundingClientRect();
-                const frameCenterScreenX = rect.left + rect.width / 2;
-                const frameCenterScreenY = rect.top + rect.height / 2;
-                const pan = canvasPanRef.current;
-                const offset = boxOffsetRef.current;
-                const activeZoom = zoomRef.current ?? effectiveZoom;
-                const activeBoxWidth = widthRef.current * activeZoom;
-                const activeBoxHeight = heightRef.current * activeZoom;
-                const activeBoxCenterX = frameCenterScreenX + pan.x + offset.x;
-                const activeBoxCenterY = frameCenterScreenY + pan.y + offset.y;
-
-                let anchorX: number;
-                let anchorY: number;
-
-                if (handle === 'ml' || handle === 'tl' || handle === 'bl') {
-                  anchorX = activeBoxCenterX + activeBoxWidth / 2;
-                } else if (handle === 'mr' || handle === 'tr' || handle === 'br') {
-                  anchorX = activeBoxCenterX - activeBoxWidth / 2;
-                } else {
-                  anchorX = activeBoxCenterX;
-                }
-
-                if (handle === 'tl' || handle === 'tm' || handle === 'tr') {
-                  anchorY = activeBoxCenterY + activeBoxHeight / 2;
-                } else if (handle === 'bl' || handle === 'bm' || handle === 'br') {
-                  anchorY = activeBoxCenterY - activeBoxHeight / 2;
-                } else {
-                  anchorY = activeBoxCenterY;
-                }
-
-                dragRef.current = {
-                  pointerId: event.pointerId,
-                  mode: 'resize',
-                  handle,
-                  startClientX: event.clientX,
-                  startClientY: event.clientY,
-                  startWidth: widthRef.current,
-                  startHeight: heightRef.current,
-                  anchorScreenX: anchorX,
-                  anchorScreenY: anchorY,
-                  zoom: activeZoom,
-                  frameCenterScreenX,
-                  frameCenterScreenY,
-                  panX: pan.x,
-                  panY: pan.y,
-                };
-                document.body.style.cursor = window.getComputedStyle(event.currentTarget).cursor;
-              }}
-              onPointerMove={handleFramePointerMove}
-              onPointerUp={(event) => finishPointer(event.pointerId)}
-              onPointerCancel={(event) => finishPointer(event.pointerId)}
+              data-handle={handle}
               aria-label={`Resize ${handle}`}
             />
           ))}
         </div>
       ) : null}
-
-      <CanvasControls
-        zoom={effectiveZoom}
-        alignLabel={alignLabel}
-        zoomInLabel={zoomInLabel}
-        zoomOutLabel={zoomOutLabel}
-        onAlign={handleAlign}
-        onZoomOut={() => setZoomAround((zoomRef.current ?? 1) / ZOOM_BUTTON_FACTOR)}
-        onZoomIn={() => setZoomAround((zoomRef.current ?? 1) * ZOOM_BUTTON_FACTOR)}
-      />
+      {showControls && alignLabel && zoomInLabel && zoomOutLabel ? (
+        <CanvasControls
+          zoom={effectiveZoom}
+          alignLabel={alignLabel}
+          zoomInLabel={zoomInLabel}
+          zoomOutLabel={zoomOutLabel}
+          onAlign={alignCanvas}
+          onZoomOut={() => setViewport(zoomRef.current / ZOOM_BUTTON_FACTOR, panRef.current)}
+          onZoomIn={() => setViewport(zoomRef.current * ZOOM_BUTTON_FACTOR, panRef.current)}
+        />
+      ) : null}
     </div>
   );
 }

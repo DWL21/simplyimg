@@ -106,7 +106,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const previewUrl = showResult && selectedResult ? selectedResult.url : basePreviewUrl;
   const isCropMode = tool === 'crop' && !showResult && !!selectedFile;
   const isResizeMode = tool === 'resize' && !!selectedFile;
-  const usesFreeCanvasViewport = !showResult && (tool === 'crop' || tool === 'rotate' || tool === 'flip');
+  const usesFreeCanvasViewport = !showResult && (tool === 'crop' || tool === 'resize' || tool === 'rotate' || tool === 'flip');
   const isCropPanEnabled = isCropMode;
 
   function getBasePreviewDisplaySize() {
@@ -980,16 +980,43 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               />
             </div>
           ) : isResizeMode ? (
-            <ResizeEditor
-              imageUrl={selectedFile.previewUrl}
-              width={options.resize.width}
-              height={options.resize.height}
-              crop={options.resize.crop}
-              alignLabel={messages.editor.alignCenter}
-              zoomInLabel={messages.editor.zoomIn}
-              zoomOutLabel={messages.editor.zoomOut}
-              onChange={(nextResize) => setOptions((current) => ({ ...current, resize: nextResize }))}
-            />
+            <div
+              ref={previewFrameRef}
+              className="preview-frame preview-frame-editor"
+              onDoubleClick={resetZoom}
+            >
+              <ResizeEditor
+                imageUrl={selectedFile.previewUrl}
+                width={options.resize.width}
+                height={options.resize.height}
+                crop={options.resize.crop}
+                zoom={zoom}
+                pan={pan}
+                showControls={false}
+                onViewportChange={(nextZoom, nextPan) => {
+                  setViewport(nextZoom, nextPan);
+                }}
+                onImageLoad={(naturalWidth, naturalHeight) => {
+                  setPreviewNaturalSize((current) => {
+                    if (current.width === naturalWidth && current.height === naturalHeight) {
+                      return current;
+                    }
+
+                    return { width: naturalWidth, height: naturalHeight };
+                  });
+                }}
+                onChange={(nextResize) => setOptions((current) => ({ ...current, resize: nextResize }))}
+              />
+              <CanvasControls
+                zoom={zoom}
+                alignLabel={messages.editor.alignCenter}
+                zoomInLabel={messages.editor.zoomIn}
+                zoomOutLabel={messages.editor.zoomOut}
+                onAlign={alignCanvas}
+                onZoomOut={() => updateZoom((currentZoom) => currentZoom / ZOOM_BUTTON_FACTOR)}
+                onZoomIn={() => updateZoom((currentZoom) => currentZoom * ZOOM_BUTTON_FACTOR)}
+              />
+            </div>
           ) : (
             <div
               ref={previewFrameRef}
