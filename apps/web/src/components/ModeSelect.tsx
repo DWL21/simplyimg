@@ -225,7 +225,6 @@ export default function ModeSelect({
 
         {/* Footer */}
         <footer className="home-footer">
-          <span>{ko ? '파일은 업로드되지 않습니다. 전부 브라우저에서 처리돼요.' : 'Files never leave your browser.'}</span>
           <div className="home-footer-links">
             <Link to="/privacy">{messages.footer.privacyPolicy}</Link>
             <Link to="/terms">{messages.footer.termsOfService}</Link>
