@@ -1,9 +1,10 @@
 import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { appMessages } from '../i18n/messages';
+import { useLocaleMessages } from '../i18n/messages';
 
 export function UserMenu() {
+  const messages = useLocaleMessages();
   const user = useAuthStore((s) => s.user);
   const login = useAuthStore((s) => s.login);
   const logout = useAuthStore((s) => s.logout);
@@ -22,7 +23,7 @@ export function UserMenu() {
   if (!user) {
     return (
       <button className="user-menu-login" onClick={login}>
-        {appMessages.auth.login}
+        {messages.auth.login}
       </button>
     );
   }
@@ -49,7 +50,7 @@ export function UserMenu() {
               navigate('/account');
             }}
           >
-            {appMessages.auth.account}
+            {messages.auth.account}
           </button>
           <button
             className="user-menu-item"
@@ -58,7 +59,7 @@ export function UserMenu() {
               navigate('/history');
             }}
           >
-            {appMessages.auth.history}
+            {messages.auth.history}
           </button>
           <hr className="user-menu-divider" />
           <button
@@ -68,7 +69,7 @@ export function UserMenu() {
               await logout();
             }}
           >
-            {appMessages.auth.logout}
+            {messages.auth.logout}
           </button>
         </div>
       )}
