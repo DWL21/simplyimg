@@ -185,7 +185,7 @@ export default function DocumentWorkspace({ onBack, returnToEditor = false }: Do
         />
 
         <header className="upload-header">
-          <button className="back-btn" onClick={onBack}>{emptyStateBackButtonLabel}</button>
+          <button className="upload-back-btn" onClick={onBack} style={{ fontSize: 12 }}>{emptyStateBackButtonLabel}</button>
           <div className="document-upload-title">{messages.document.title}</div>
           <span className="tool-badge">MD</span>
         </header>
@@ -233,9 +233,6 @@ export default function DocumentWorkspace({ onBack, returnToEditor = false }: Do
       <header className="edit-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button className="upload-back-btn" onClick={onBack} style={{ fontSize: 12 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
-            </svg>
             {backButtonLabel}
           </button>
           <div style={{ width: 1, height: 18, background: 'var(--line)' }} />
