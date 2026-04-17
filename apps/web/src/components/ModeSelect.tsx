@@ -11,7 +11,6 @@ import {
   FileEdit,
   FileOutput,
   ArrowRight,
-  Lock,
 } from 'lucide-react';
 import { useI18n } from '../i18n/messages';
 import type { ToolName } from '../types/image';
@@ -167,10 +166,6 @@ export default function ModeSelect({
           Simply<span className="wordmark-light">Img</span>
         </Link>
         <div className="home-nav-right">
-          <div className="home-nav-privacy">
-            <Lock size={12} />
-            <span>{ko ? '브라우저 내 처리' : 'Browser-only'}</span>
-          </div>
           <LangToggle />
         </div>
       </nav>
@@ -189,11 +184,13 @@ export default function ModeSelect({
               : 'Image editing to document conversion — all in the browser, no install.'}
           </p>
 
-          <div className="home-chips">
+          <div className="home-tabs" role="tablist">
             {(['all', 'image', 'doc'] as FilterKey[]).map(f => (
               <button
                 key={f}
-                className={`home-chip${filter === f ? ' is-active' : ''}`}
+                role="tab"
+                aria-selected={filter === f}
+                className={`home-tab${filter === f ? ' is-active' : ''}`}
                 onClick={() => setFilter(f)}
               >
                 {filterLabels[f]}

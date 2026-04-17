@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
 import {
   formatApplyToolLabel,
   formatDownloadAllLabel,
@@ -872,7 +871,6 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
             onClick={onBack}
             style={{ fontSize: 12 }}
           >
-            <ArrowLeft size={13} />
             {messages.editor.backHome}
           </button>
           <div style={{ width: 1, height: 18, background: 'var(--line)' }} />
@@ -1023,6 +1021,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
               onDoubleClick={resetZoom}
             >
               <ResizeEditor
+                key={selectedFile.id}
                 imageUrl={selectedFile.previewUrl}
                 width={options.resize.width}
                 height={options.resize.height}

@@ -249,34 +249,40 @@ img {
   letter-spacing: -0.2px;
 }
 
-/* Filter chips */
-.home-chips {
-  display: flex;
-  gap: 8px;
+/* Filter tabs */
+.home-tabs {
+  display: inline-flex;
+  gap: 0;
   margin-top: 32px;
-  flex-wrap: wrap;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-.home-chip {
-  padding: 7px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
+.home-tab {
+  padding: 8px 18px;
+  border: none;
+  border-right: 1px solid var(--line);
   background: transparent;
   color: var(--ink2);
   font-family: var(--sans);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.14s ease;
+  transition: background 0.14s ease, color 0.14s ease;
+  position: relative;
 }
 
-.home-chip:hover {
-  border-color: var(--ink2);
+.home-tab:last-child {
+  border-right: none;
+}
+
+.home-tab:hover {
+  background: var(--line2);
   color: var(--ink);
 }
 
-.home-chip.is-active {
-  border-color: var(--ink);
+.home-tab.is-active {
   background: var(--ink);
   color: var(--surface);
 }

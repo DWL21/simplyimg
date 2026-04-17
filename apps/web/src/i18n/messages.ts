@@ -262,7 +262,7 @@ export const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       termsOfService: '이용약관',
     },
     legal: {
-      backHome: '← 홈으로',
+      backHome: '« 홈으로',
     },
     home: {
       eyebrow: 'SIMPLYIMG',
@@ -417,7 +417,7 @@ export const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       },
     },
     editor: {
-      backHome: '← 처음으로',
+      backHome: '« 처음으로',
       addFiles: '+ 파일 추가',
       remove: '삭제',
       emptyDropTitle: '이미지를 끌어다 놓거나 클릭하여 추가',
@@ -438,7 +438,7 @@ export const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
     },
     document: {
       back: '← 뒤로',
-      backHome: '← 처음으로',
+      backHome: '« 처음으로',
       backEditor: '← 에디터로 돌아가기',
       title: 'Markdown → PDF',
       dropTitle: 'Markdown 파일을 끌어다 놓거나',
@@ -465,7 +465,7 @@ export const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       removeFile: '파일 제거',
     },
     markdownEditor: {
-      backHome: '← 처음으로',
+      backHome: '« 처음으로',
       title: 'Markdown 작성하기',
       fileNameLabel: '파일명',
       sourceLabel: '본문',
@@ -524,7 +524,7 @@ export const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       termsOfService: 'Terms of Service',
     },
     legal: {
-      backHome: '← Back home',
+      backHome: '« Back home',
     },
     home: {
       eyebrow: 'SIMPLYIMG',
@@ -679,7 +679,7 @@ export const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       },
     },
     editor: {
-      backHome: '← Home',
+      backHome: '« Home',
       addFiles: '+ Add files',
       remove: 'Remove',
       emptyDropTitle: 'Drag images here or click to add',
@@ -700,7 +700,7 @@ export const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
     },
     document: {
       back: '← Back',
-      backHome: '← Home',
+      backHome: '« Home',
       backEditor: '← Back to editor',
       title: 'Markdown → PDF',
       dropTitle: 'Drag and drop a Markdown file',
@@ -727,7 +727,7 @@ export const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
       removeFile: 'Remove file',
     },
     markdownEditor: {
-      backHome: '← Home',
+      backHome: '« Home',
       title: 'Write Markdown',
       fileNameLabel: 'File name',
       sourceLabel: 'Markdown source',
