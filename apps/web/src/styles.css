@@ -2396,17 +2396,15 @@ img {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background:
-    radial-gradient(circle at center, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0));
 }
 
 .resize-frame-box {
   position: absolute;
-  border: 1.5px solid var(--accent);
+  border: 1.5px solid rgba(255, 255, 255, 0.88);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.92),
-    0 20px 40px rgba(25, 18, 8, 0.12);
-  background: rgba(255, 255, 255, 0.88);
+    0 0 0 9999px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  background: transparent;
   overflow: visible;
   pointer-events: auto;
   cursor: move;
@@ -2423,16 +2421,16 @@ img {
 
 .resize-object-label {
   position: absolute;
-  top: -38px;
+  top: -34px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 6px 10px;
+  padding: 5px 10px;
   border-radius: 999px;
-  background: rgba(25, 18, 8, 0.88);
-  color: white;
+  background: rgba(0, 0, 0, 0.72);
+  color: rgba(255, 255, 255, 0.95);
   font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   pointer-events: none;
 }
@@ -2442,9 +2440,10 @@ img {
   width: 12px;
   height: 12px;
   padding: 0;
-  border: 2px solid var(--accent);
+  border: 2px solid white;
   border-radius: 2px;
-  background: white;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   transform: translate(-50%, -50%);
   touch-action: none;
   pointer-events: auto;
