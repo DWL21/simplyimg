@@ -10,6 +10,7 @@ import {
 import { useImageStore } from '../store/imageStore';
 import { useAuthStore } from '../store/authStore';
 import { UsageLimitModal } from './UsageLimitModal';
+import { UserMenu } from './UserMenu';
 import CropEditor from './CropEditor';
 import OptionsPanel, { type OptionsPanelState } from './OptionsPanel';
 import ResizeEditor from './ResizeEditor';
@@ -923,9 +924,12 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
             </button>
           ))}
         </nav>
-        <button className="add-more-btn" onClick={() => fileInputRef.current?.click()}>
-          {messages.editor.addFiles}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button className="add-more-btn" onClick={() => fileInputRef.current?.click()}>
+            {messages.editor.addFiles}
+          </button>
+          <UserMenu />
+        </div>
       </header>
 
       <div

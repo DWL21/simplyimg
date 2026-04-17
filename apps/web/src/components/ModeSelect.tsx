@@ -13,6 +13,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useI18n } from '../i18n/messages';
+import { UserMenu } from './UserMenu';
 import type { ToolName } from '../types/image';
 
 interface Props {
@@ -166,6 +167,7 @@ export default function ModeSelect({
         </Link>
         <div className="home-nav-right">
           <LangToggle />
+          <UserMenu />
         </div>
       </nav>
 
