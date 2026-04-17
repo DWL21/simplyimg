@@ -1,5 +1,5 @@
 use image::imageops::FilterType;
-use image::{DynamicImage, GenericImageView, ImageFormat};
+use image::{DynamicImage, GenericImageView, ImageFormat, RgbaImage};
 use serde::Serialize;
 use serde_wasm_bindgen::to_value;
 use std::io::Cursor;
@@ -78,7 +78,36 @@ pub fn crop(data: &[u8], x: u32, y: u32, w: u32, h: u32) -> Result<Vec<u8>, JsVa
     encode_preserving_input_format(cropped, data, None)
 }
 
+fn is_heic_data(data: &[u8]) -> bool {
+    if data.len() < 12 {
+        return false;
+    }
+    // HEIF/HEIC files start with a ftyp box.
+    // Bytes 4-7 contain "ftyp", bytes 8-11 contain the major brand.
+    let box_type = &data[4..8];
+    let major_brand = &data[8..12];
+    if box_type != b"ftyp" {
+        return false;
+    }
+    matches!(major_brand, b"heic" | b"heix" | b"hevc" | b"hevx" | b"heim" | b"heis" | b"hevm" | b"hevs" | b"mif1" | b"msf1")
+}
+
+fn decode_heic(data: &[u8]) -> Result<DynamicImage, JsValue> {
+    let config = heic::DecoderConfig::new();
+    let output = config
+        .decode(data, heic::PixelLayout::Rgba8)
+        .map_err(|e| js_error(format!("HEIC decode error: {e}")))?;
+
+    let rgba_image = RgbaImage::from_raw(output.width, output.height, output.data)
+        .ok_or_else(|| js_error("Failed to create RGBA image from HEIC decode output"))?;
+
+    Ok(DynamicImage::ImageRgba8(rgba_image))
+}
+
 fn decode_image(data: &[u8]) -> Result<DynamicImage, JsValue> {
+    if is_heic_data(data) {
+        return decode_heic(data);
+    }
     image::load_from_memory(data).map_err(js_error)
 }
 
@@ -87,7 +116,11 @@ fn encode_preserving_input_format(
     original_data: &[u8],
     quality: Option<u8>,
 ) -> Result<Vec<u8>, JsValue> {
-    let format = image::guess_format(original_data).unwrap_or(ImageFormat::Png);
+    let format = if is_heic_data(original_data) {
+        ImageFormat::Png
+    } else {
+        image::guess_format(original_data).unwrap_or(ImageFormat::Png)
+    };
     encode_image(image, format, quality)
 }
 
@@ -184,6 +217,10 @@ fn parse_format(value: &str) -> Result<ImageFormat, JsValue> {
 }
 
 fn guess_format_name(data: &[u8]) -> String {
+    if is_heic_data(data) {
+        return "heic".to_string();
+    }
+
     match image::guess_format(data) {
         Ok(ImageFormat::Jpeg) => "jpeg".to_string(),
         Ok(ImageFormat::Png) => "png".to_string(),

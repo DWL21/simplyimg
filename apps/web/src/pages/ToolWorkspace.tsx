@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { DownloadPanel } from '../components/download/DownloadPanel';
 import { ImagePreview } from '../components/editor/ImagePreview';
@@ -55,6 +55,7 @@ export function ToolWorkspace({
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [selectedInfo, setSelectedInfo] = useState<ImageInfo>(emptyInfo);
   const [livePreviewUrl, setLivePreviewUrl] = useState<string | null>(null);
+  const lastResizeFileIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     setActiveTool(tool);
@@ -227,6 +228,11 @@ export function ToolWorkspace({
                           alignLabel={appMessages.editor.alignCenter}
                           zoomInLabel={appMessages.editor.zoomIn}
                           zoomOutLabel={appMessages.editor.zoomOut}
+                          onImageLoad={(naturalWidth, naturalHeight) => {
+                            if (lastResizeFileIdRef.current === selectedFile.id) return;
+                            lastResizeFileIdRef.current = selectedFile.id;
+                            onOptionsChange({ ...resizeOptions, width: naturalWidth, height: naturalHeight });
+                          }}
                           onChange={(nextResize) => onOptionsChange({ ...resizeOptions, ...nextResize })}
                         />
                       </div>

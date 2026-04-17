@@ -94,11 +94,6 @@ export default function UploadZone({ tool, onConfirm, onBack }: Props) {
               <p className="upload-dropzone-sub">{messages.imageUpload.dropDescription}</p>
               <span className="upload-dropzone-hint">{messages.imageUpload.hint}</span>
             </label>
-
-            <div className="upload-privacy-note">
-              <Lock size={12} />
-              <span>{locale === 'ko' ? '파일은 업로드되지 않습니다. 전부 브라우저에서 처리돼요.' : 'Files never leave your browser.'}</span>
-            </div>
           </div>
         </div>
       ) : (
