@@ -289,12 +289,55 @@ img {
 
 /* Tool grid */
 .home-grid {
-  padding: 0 40px 64px;
+  padding: 0 40px;
   max-width: 1240px;
   margin: 0 auto;
   display: grid;
   gap: var(--gap);
   grid-template-columns: repeat(3, 1fr);
+}
+
+.home-grid-sectioned {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 40px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+.home-grid-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.home-grid-group .home-grid {
+  padding: 0;
+}
+
+.home-grid-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-left: 4px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.home-grid-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line2);
+}
+
+.home-grid--flat {
+  padding-bottom: 64px;
 }
 
 /* Tool tile */
@@ -980,17 +1023,6 @@ img {
   font-family: var(--mono);
   font-size: 11px;
   color: var(--muted);
-}
-
-.upload-privacy-note {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  justify-content: center;
-  margin-top: 14px;
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--hint);
 }
 
 /* Legacy dropzone (kept as fallback) */

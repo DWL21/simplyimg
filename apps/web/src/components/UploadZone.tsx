@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, ArrowLeft, Lock, Plus, X } from 'lucide-react';
+import { Upload, ArrowLeft, Plus, X } from 'lucide-react';
 import { formatSelectedCount, useI18n } from '../i18n/messages';
 import { acceptedImageInput } from '../lib/formatUtils';
 import { getToolDisplayLabel } from '../lib/toolConstants';

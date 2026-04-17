@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../i18n/messages';
 import type { ToolName } from '../types/image';
-import { Footer } from './layout/Footer';
 
 interface Props {
   onSelectImage: (tool: ToolName) => void;
@@ -200,28 +199,32 @@ export default function ModeSelect({
         </section>
 
         {/* Tool grid */}
-        <section className="home-grid">
-          {filtered.map(tool => (
-            <button
-              key={tool.id}
-              className="tool-tile"
-              onClick={tool.action}
-            >
-              <div className="tool-tile-icon">{tool.icon}</div>
-              <div className="tool-tile-body">
-                <div className="tool-tile-name">
-                  {toolName(tool.id)}
-                  {tool.tag && <span className="tool-tile-tag">{tool.tag}</span>}
-                </div>
-                <p className="tool-tile-desc">{toolDesc(tool.id)}</p>
+        {filter === 'all' ? (
+          <div className="home-grid-sectioned">
+            <div className="home-grid-group">
+              <div className="home-grid-label">{ko ? '이미지' : 'Image'}</div>
+              <div className="home-grid">
+                {tools.filter(t => t.cat === 'image').map(tool => (
+                  <ToolTile key={tool.id} tool={tool} toolName={toolName} toolDesc={toolDesc} />
+                ))}
               </div>
-              <div className="tool-tile-footer">
-                <span>{tool.meta}</span>
-                <span className="tool-tile-arrow"><ArrowRight size={14} /></span>
+            </div>
+            <div className="home-grid-group">
+              <div className="home-grid-label">{ko ? '문서' : 'Docs'}</div>
+              <div className="home-grid">
+                {tools.filter(t => t.cat === 'doc').map(tool => (
+                  <ToolTile key={tool.id} tool={tool} toolName={toolName} toolDesc={toolDesc} />
+                ))}
               </div>
-            </button>
-          ))}
-        </section>
+            </div>
+          </div>
+        ) : (
+          <section className="home-grid home-grid--flat">
+            {filtered.map(tool => (
+              <ToolTile key={tool.id} tool={tool} toolName={toolName} toolDesc={toolDesc} />
+            ))}
+          </section>
+        )}
 
         {/* Footer */}
         <footer className="home-footer">
@@ -253,5 +256,31 @@ function LangToggle() {
         {messages.language.english}
       </button>
     </div>
+  );
+}
+
+function ToolTile({ tool, toolName, toolDesc }: {
+  tool: ToolDef;
+  toolName: (id: string) => string;
+  toolDesc: (id: string) => string;
+}) {
+  return (
+    <button
+      className="tool-tile"
+      onClick={tool.action}
+    >
+      <div className="tool-tile-icon">{tool.icon}</div>
+      <div className="tool-tile-body">
+        <div className="tool-tile-name">
+          {toolName(tool.id)}
+          {tool.tag && <span className="tool-tile-tag">{tool.tag}</span>}
+        </div>
+        <p className="tool-tile-desc">{toolDesc(tool.id)}</p>
+      </div>
+      <div className="tool-tile-footer">
+        <span>{tool.meta}</span>
+        <span className="tool-tile-arrow"><ArrowRight size={14} /></span>
+      </div>
+    </button>
   );
 }
