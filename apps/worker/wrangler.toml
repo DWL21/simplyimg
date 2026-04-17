@@ -24,7 +24,7 @@ head_sampling_rate = 1
 [[d1_databases]]
 binding = "DB"
 database_name = "simplyimg-db"
-database_id = "TODO_REPLACE_AFTER_CREATE"
+database_id = "fdf2d0ad-460c-473f-8af2-9e7d0b54f657"
 
 [vars]
 MAX_UPLOAD_BYTES = "31457280"
