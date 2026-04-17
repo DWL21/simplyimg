@@ -865,6 +865,7 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   }, [selectedFile?.id, tool]);
 
   return (
+    <>
     <div className="edit-page">
       <input
         ref={fileInputRef}
@@ -1249,5 +1250,6 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
 
     </div>
     {showUsageModal && <UsageLimitModal onClose={() => setShowUsageModal(false)} />}
+    </>
   );
 }
