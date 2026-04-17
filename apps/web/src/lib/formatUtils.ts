@@ -79,6 +79,9 @@ export function extensionFromMime(mimeType: string): string {
       return 'webp';
     case 'image/svg+xml':
       return 'svg';
+    case 'image/heic':
+    case 'image/heif':
+      return 'heic';
     default:
       return 'bin';
   }

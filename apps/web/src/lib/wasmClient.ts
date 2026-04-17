@@ -1,5 +1,5 @@
 import type { ImageInfo, ProcessedImage, ToolName, ToolOptions } from '../types/image';
-import { isSvgFile } from './formatUtils';
+import { inferMimeType, isSvgFile } from './formatUtils';
 import { getSvgInfo, processSvgLocally } from './localSvgProcessor';
 import { postToWorker } from './workerClient';
 
@@ -55,6 +55,26 @@ function postToBrowserWorker<T>(message: Record<string, unknown>) {
   });
 }
 
+function isHeicFile(file: File): boolean {
+  const mimeType = inferMimeType(file);
+  return mimeType === 'image/heic' || mimeType === 'image/heif';
+}
+
+async function convertHeicToRaster(file: File): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  try {
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas context unavailable');
+    ctx.drawImage(bitmap, 0, 0);
+    const blob = await canvas.convertToBlob({ type: 'image/png' });
+    const name = file.name.replace(/\.hei[cf]$/i, '.png');
+    return new File([blob], name, { type: 'image/png' });
+  } finally {
+    bitmap.close();
+  }
+}
+
 export function createWasmClient(): WasmClient {
   return {
     isReady:
@@ -89,15 +109,24 @@ export function createWasmClient(): WasmClient {
         return processSvgLocally(tool, file, options);
       }
 
+      let processableFile = file;
+      if (isHeicFile(file) && typeof OffscreenCanvas !== 'undefined' && typeof createImageBitmap !== 'undefined') {
+        try {
+          processableFile = await convertHeicToRaster(file);
+        } catch {
+          // Browser can't decode HEIC — will try remote worker as-is
+        }
+      }
+
       if (this.isReady) {
         try {
-          return await postToBrowserWorker<ProcessedImage>({ type: 'process', tool, file, options });
+          return await postToBrowserWorker<ProcessedImage>({ type: 'process', tool, file: processableFile, options });
         } catch {
           // Fall back to the remote worker when browser processing fails.
         }
       }
 
-      return postToWorker(tool, file, options);
+      return postToWorker(tool, processableFile, options);
     },
   };
 }
