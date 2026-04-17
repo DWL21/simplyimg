@@ -1,10 +1,11 @@
 import type { Hono } from "hono";
+import type { Env } from "../lib/env";
 import { infoResponse } from "../lib/response";
 import { parseFileMultipart } from "../lib/validation";
 import type { ImageProcessor } from "../lib/processor";
 import { errorResponse } from "../lib/errors";
 
-export const registerInfoRoute = (app: Hono, processor: ImageProcessor) => {
+export const registerInfoRoute = (app: Hono<{ Bindings: Env }>, processor: ImageProcessor) => {
   app.post("/api/info", async (c) => {
     try {
       const file = await parseFileMultipart(c.req.raw, c.env);

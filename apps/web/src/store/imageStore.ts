@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import { create } from 'zustand';
 import { getCurrentLocale } from '../i18n/messages';
+import { postHistory } from '../lib/authClient';
 import { createImageUrl, revokeImageUrl } from '../lib/canvasUtils';
 import {
   bytesToHuman,
@@ -221,6 +222,7 @@ export const useImageStore = create<ImageStoreState>((set, get) => ({
             sourceFileId: uploaded.id,
             sourceSize: sourceFile.size,
           });
+          postHistory({ tool, fileName: sourceFile.name, inputSize: sourceFile.size, outputSize: blob.size }).catch(() => {});
           nextFiles.set(uploaded.id, {
             ...uploaded,
             file: nextFile,

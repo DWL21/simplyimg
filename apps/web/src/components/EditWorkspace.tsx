@@ -8,6 +8,8 @@ import {
   useI18n,
 } from '../i18n/messages';
 import { useImageStore } from '../store/imageStore';
+import { useAuthStore } from '../store/authStore';
+import { UsageLimitModal } from './UsageLimitModal';
 import CropEditor from './CropEditor';
 import OptionsPanel, { type OptionsPanelState } from './OptionsPanel';
 import ResizeEditor from './ResizeEditor';
@@ -68,8 +70,11 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
   const removeFile = useImageStore((s) => s.removeFile);
   const resetFile = useImageStore((s) => s.resetFile);
   const addFiles = useImageStore((s) => s.addFiles);
+  const authCanProcess = useAuthStore((s) => s.canProcess);
+  const incrementUsage = useAuthStore((s) => s.incrementUsage);
 
   const [selectedId, setSelectedId] = useState<string>(() => files[0]?.id ?? '');
+  const [showUsageModal, setShowUsageModal] = useState(false);
   const [options, setOptions] = useState<OptionsPanelState>(DEFAULT_OPTIONS);
   const [cropMap, setCropMap] = useState<Record<string, import('../types/image').CropOptions | null>>({});
   const [rotateMap, setRotateMap] = useState<Record<string, number>>({});
@@ -734,11 +739,17 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
     if (!selectedFile) {
       return;
     }
+    if (!authCanProcess()) {
+      setShowUsageModal(true);
+      return;
+    }
     const id = selectedFile.id;
     const completed = await processSingle(id, tool, getToolOptions());
     if (!completed) {
       return;
     }
+
+    incrementUsage();
 
     // Clear the per-file pending state — it's now committed in the store
     if (tool === 'rotate') setRotateMap((m) => { const n = { ...m }; delete n[id]; return n; });
@@ -1237,5 +1248,6 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
       </div>
 
     </div>
+    {showUsageModal && <UsageLimitModal onClose={() => setShowUsageModal(false)} />}
   );
 }

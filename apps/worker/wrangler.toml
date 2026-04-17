@@ -21,6 +21,13 @@ enabled = false
 persist = true
 head_sampling_rate = 1
 
+[[d1_databases]]
+binding = "DB"
+database_name = "simplyimg-db"
+database_id = "TODO_REPLACE_AFTER_CREATE"
+
 [vars]
 MAX_UPLOAD_BYTES = "31457280"
 MAX_DOCUMENT_UPLOAD_BYTES = "52428800"
+DAILY_FREE_LIMIT = "10"
+DAILY_LOGGED_LIMIT = "50"

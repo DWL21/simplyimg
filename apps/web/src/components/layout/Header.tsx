@@ -2,6 +2,7 @@ import { Link, NavLink } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { appMessages } from '../../i18n/messages';
 import { toolCards } from './ToolCard';
+import { UserMenu } from '../UserMenu';
 
 export function Header() {
   return (
@@ -33,6 +34,7 @@ export function Header() {
             <Lock size={12} />
             <span>{appMessages.brand.tagline}</span>
           </div>
+          <UserMenu />
         </div>
       </div>
     </header>

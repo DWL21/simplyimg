@@ -1,10 +1,11 @@
 import type { Hono } from "hono";
+import type { Env } from "../lib/env";
 import { errorResponse } from "../lib/errors";
 import { buildBinaryResponse, inferFormat } from "../lib/response";
 import { parseFlipOptions, parseMultipart, requireOptions } from "../lib/validation";
 import type { ImageProcessor } from "../lib/processor";
 
-export const registerFlipRoute = (app: Hono, processor: ImageProcessor) => {
+export const registerFlipRoute = (app: Hono<{ Bindings: Env }>, processor: ImageProcessor) => {
   app.post("/api/flip", async (c) => {
     try {
       const { file, options } = await parseMultipart(c.req.raw, c.env);

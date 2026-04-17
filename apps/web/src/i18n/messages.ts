@@ -241,6 +241,34 @@ type LocaleMessages = {
   imagePreview: {
     empty: string;
   };
+  auth: {
+    login: string;
+    logout: string;
+    loginPrompt: string;
+    dailyLimit: string;
+    dailyLimitReached: string;
+    dailyLimitDescription: string;
+    remainingToday: string;
+    upgradePrompt: string;
+    plan: string;
+    planFree: string;
+    planPro: string;
+    statusActive: string;
+    statusCancelled: string;
+    statusExpired: string;
+    startedAt: string;
+    expiresAt: string;
+    noExpiry: string;
+    remainingMonths: string;
+    subscriptionInfo: string;
+    account: string;
+    history: string;
+    historyEmpty: string;
+    historyDate: string;
+    historyTool: string;
+    historyFile: string;
+    historyDelete: string;
+  };
   common: {
     none: string;
   };
@@ -505,6 +533,34 @@ export const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
     imagePreview: {
       empty: '표시할 이미지가 없습니다.',
     },
+    auth: {
+      login: '로그인',
+      logout: '로그아웃',
+      loginPrompt: 'Google로 로그인하면 처리 기록이 저장됩니다.',
+      dailyLimit: '일일 무료 한도',
+      dailyLimitReached: '오늘 무료 처리 한도에 도달했습니다',
+      dailyLimitDescription: '로그인하면 더 많은 이미지를 처리할 수 있습니다.',
+      remainingToday: '오늘 남은 횟수',
+      upgradePrompt: 'Pro 플랜으로 무제한 처리',
+      plan: '플랜',
+      planFree: '무료',
+      planPro: 'Pro',
+      statusActive: '활성',
+      statusCancelled: '해지됨',
+      statusExpired: '만료됨',
+      startedAt: '구독 시작일',
+      expiresAt: '만료일',
+      noExpiry: '무기한',
+      remainingMonths: '남은 개월',
+      subscriptionInfo: '구독 정보',
+      account: '계정',
+      history: '처리 기록',
+      historyEmpty: '처리 기록이 없습니다.',
+      historyDate: '날짜',
+      historyTool: '작업',
+      historyFile: '파일명',
+      historyDelete: '삭제',
+    },
     common: {
       none: '-',
     },
@@ -766,6 +822,34 @@ export const localeMessages: Record<'ko' | 'en', LocaleMessages> = {
     },
     imagePreview: {
       empty: 'No image to display.',
+    },
+    auth: {
+      login: 'Sign in',
+      logout: 'Sign out',
+      loginPrompt: 'Sign in with Google to save your processing history.',
+      dailyLimit: 'Daily free limit',
+      dailyLimitReached: 'Daily free limit reached',
+      dailyLimitDescription: 'Sign in to process more images.',
+      remainingToday: 'Remaining today',
+      upgradePrompt: 'Upgrade to Pro for unlimited processing',
+      plan: 'Plan',
+      planFree: 'Free',
+      planPro: 'Pro',
+      statusActive: 'Active',
+      statusCancelled: 'Cancelled',
+      statusExpired: 'Expired',
+      startedAt: 'Subscription started',
+      expiresAt: 'Expires',
+      noExpiry: 'No expiry',
+      remainingMonths: 'Months remaining',
+      subscriptionInfo: 'Subscription',
+      account: 'Account',
+      history: 'History',
+      historyEmpty: 'No processing history yet.',
+      historyDate: 'Date',
+      historyTool: 'Tool',
+      historyFile: 'File',
+      historyDelete: 'Delete',
     },
     common: {
       none: '-',

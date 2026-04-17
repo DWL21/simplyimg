@@ -6,6 +6,8 @@ import MarkdownEditorWorkspace from './components/MarkdownEditorWorkspace';
 import { useAppLocale } from './i18n/messages';
 import { getPrivacyPolicyContent, getTermsContent } from './lib/legalContent';
 import { LegalDocumentPage } from './pages/LegalDocumentPage';
+import { AccountPage } from './pages/AccountPage';
+import { HistoryPage } from './pages/HistoryPage';
 import { useDocumentStore } from './store/documentStore';
 import { useMarkdownEditorStore } from './store/markdownEditorStore';
 import type { ToolName } from './types/image';
@@ -105,6 +107,8 @@ export default function App() {
         <Route path="/image/:tool" element={<ToolFlow />} />
         <Route path="/document/pdf" element={<DocumentRoute />} />
         <Route path="/document/write" element={<MarkdownEditorRoute />} />
+        <Route path="/account" element={<AccountPage />} />
+        <Route path="/history" element={<HistoryPage />} />
         <Route path="/privacy" element={<PrivacyRoute />} />
         <Route path="/terms" element={<TermsRoute />} />
         <Route path="/:tool" element={<LegacyToolRoute />} />
