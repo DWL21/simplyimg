@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import {
   formatApplyToolLabel,
   formatDownloadAllLabel,
@@ -864,7 +866,42 @@ export default function EditWorkspace({ tool, onChangeTool, onBack }: Props) {
       />
 
       <header className="edit-header">
-        <button className="back-btn" onClick={onBack}>{messages.editor.backHome}</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            className="upload-back-btn"
+            onClick={onBack}
+            style={{ fontSize: 12 }}
+          >
+            <ArrowLeft size={13} />
+            {messages.editor.backHome}
+          </button>
+          <div style={{ width: 1, height: 18, background: 'var(--line)' }} />
+          <Link to="/" className="wordmark" style={{ fontSize: 15 }}>
+            <span className="wordmark-icon">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                <rect x="2" y="2" width="20" height="20" rx="6" stroke="currentColor" strokeWidth="1.6" />
+                <path d="M6 16l4-4 3 3 5-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="9" cy="9" r="1.4" fill="currentColor" />
+              </svg>
+            </span>
+            Simply<span className="wordmark-light">Img</span>
+          </Link>
+          <span
+            style={{
+              padding: '3px 8px',
+              borderRadius: 999,
+              background: 'var(--accent-soft)',
+              color: 'var(--accent)',
+              fontFamily: 'var(--mono)',
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: 0.5,
+              textTransform: 'uppercase',
+            }}
+          >
+            {toolLabel}
+          </span>
+        </div>
         <nav className="tool-tabs">
           {ALL_TOOLS.map((t) => (
             <button

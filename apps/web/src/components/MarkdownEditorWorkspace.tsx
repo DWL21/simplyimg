@@ -644,9 +644,17 @@ export default function MarkdownEditorWorkspace({
       />
 
       <header className="edit-header">
-        <button className="back-btn" onClick={onBack}>{m.backHome}</button>
-        <div className="document-header-copy">
-          <strong>{editorTitle}</strong>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button className="upload-back-btn" onClick={onBack} style={{ fontSize: 12 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+            </svg>
+            {m.backHome}
+          </button>
+          <div style={{ width: 1, height: 18, background: 'var(--line)' }} />
+          <div className="document-header-copy">
+            <strong>{editorTitle}</strong>
+          </div>
         </div>
         {entryMode === 'edit' ? (
           <button className="add-more-btn" onClick={() => fileInputRef.current?.click()}>
