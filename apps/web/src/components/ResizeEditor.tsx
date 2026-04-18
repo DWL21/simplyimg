@@ -273,21 +273,11 @@ export default function ResizeEditor({
       return null;
     }
 
-    const imageRatio = width / height;
-    const containerRatio = frameSize.width / frameSize.height;
-    let baseWidth = 0;
-    let baseHeight = 0;
+    // Establishes a constant "camera" scale to map targeted dimension pixels mapping into screen
+    const baseImageScale = Math.min(frameSize.width / natWidth, frameSize.height / natHeight);
 
-    if (imageRatio > containerRatio) {
-      baseWidth = frameSize.width;
-      baseHeight = frameSize.width / imageRatio;
-    } else {
-      baseWidth = frameSize.height * imageRatio;
-      baseHeight = frameSize.height;
-    }
-
-    const rw = Math.max(MIN_SIZE, baseWidth * effectiveZoom);
-    const rh = Math.max(MIN_SIZE, baseHeight * effectiveZoom);
+    const rw = Math.max(MIN_SIZE, width * baseImageScale * effectiveZoom);
+    const rh = Math.max(MIN_SIZE, height * baseImageScale * effectiveZoom);
 
     // Image visually matches the target resize box
     const ox = (frameSize.width - rw) / 2 + effectivePan.x + boxOffset.x;
@@ -302,9 +292,9 @@ export default function ResizeEditor({
       boxTop: oy,
       boxWidth: rw,
       boxHeight: rh,
-      frameScale: baseWidth / width,
-      baseImageWidth: baseWidth,
-      baseImageHeight: baseHeight,
+      frameScale: baseImageScale * effectiveZoom,
+      baseImageWidth: natWidth * baseImageScale,
+      baseImageHeight: natHeight * baseImageScale,
     };
   }, [boxOffset.x, boxOffset.y, effectivePan.x, effectivePan.y, effectiveZoom, frameSize.height, frameSize.width, height, naturalSize.height, naturalSize.width, width]);
 
@@ -585,10 +575,15 @@ export default function ResizeEditor({
       return;
     }
 
+    const currentLayout = layout;
+    if (!currentLayout) {
+      return;
+    }
+
     const dx = event.clientX - drag.startClientX;
     const dy = event.clientY - drag.startClientY;
     const ratio = drag.startWidth / drag.startHeight;
-    const startFrameScale = Math.min(drag.baseImageWidth / drag.startWidth, drag.baseImageHeight / drag.startHeight);
+    const startFrameScale = currentLayout.frameScale;
     let nextWidth = drag.startWidth;
     let nextHeight = drag.startHeight;
 
@@ -609,7 +604,7 @@ export default function ResizeEditor({
       nextHeight = Math.max(MIN_SIZE, Math.round(nextWidth / ratio));
     }
 
-    const nextFrameScale = Math.min(drag.baseImageWidth / nextWidth, drag.baseImageHeight / nextHeight);
+    const nextFrameScale = currentLayout.frameScale;
     const nextBoxWidth = nextWidth * nextFrameScale;
     const nextBoxHeight = nextHeight * nextFrameScale;
     let nextBoxCenterX = drag.anchorScreenX;
@@ -631,10 +626,6 @@ export default function ResizeEditor({
       x: nextBoxCenterX - drag.frameCenterScreenX,
       y: nextBoxCenterY - drag.frameCenterScreenY,
     };
-    const currentLayout = layout;
-    if (!currentLayout) {
-      return;
-    }
 
     boxOffsetRef.current = nextOffset;
     setBoxOffset(nextOffset);
