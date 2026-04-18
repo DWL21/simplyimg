@@ -118,44 +118,12 @@ function cropSignature(width: number, height: number, crop: CropOptions) {
   return `${width}:${height}:${crop.x}:${crop.y}:${crop.width}:${crop.height}`;
 }
 
-function deriveCropFromLayout(
-  layout: LayoutMetrics,
-  naturalSize: { width: number; height: number },
-): CropOptions {
-  const left = Math.max(
-    0,
-    Math.min(
-      naturalSize.width - 1,
-      Math.round(((layout.boxLeft - layout.imageLeft) / layout.imageWidth) * naturalSize.width),
-    ),
-  );
-  const top = Math.max(
-    0,
-    Math.min(
-      naturalSize.height - 1,
-      Math.round(((layout.boxTop - layout.imageTop) / layout.imageHeight) * naturalSize.height),
-    ),
-  );
-  const right = Math.max(
-    0,
-    Math.min(
-      naturalSize.width,
-      Math.round((((layout.boxLeft + layout.boxWidth) - layout.imageLeft) / layout.imageWidth) * naturalSize.width),
-    ),
-  );
-  const bottom = Math.max(
-    0,
-    Math.min(
-      naturalSize.height,
-      Math.round((((layout.boxTop + layout.boxHeight) - layout.imageTop) / layout.imageHeight) * naturalSize.height),
-    ),
-  );
-
+function deriveFullCrop(naturalSize: { width: number; height: number }): CropOptions {
   return {
-    x: left,
-    y: top,
-    width: Math.max(1, right - left),
-    height: Math.max(1, bottom - top),
+    x: 0,
+    y: 0,
+    width: Math.max(1, naturalSize.width),
+    height: Math.max(1, naturalSize.height),
   };
 }
 
@@ -305,27 +273,38 @@ export default function ResizeEditor({
       return null;
     }
 
-    const baseImageScale = Math.min(frameSize.width / natWidth, frameSize.height / natHeight);
-    const baseImageWidth = natWidth * baseImageScale;
-    const baseImageHeight = natHeight * baseImageScale;
-    const frameScale = Math.min(baseImageWidth / width, baseImageHeight / height);
-    const boxWidth = Math.max(MIN_SIZE, width * frameScale);
-    const boxHeight = Math.max(MIN_SIZE, height * frameScale);
-    const imageWidth = baseImageWidth * effectiveZoom;
-    const imageHeight = baseImageHeight * effectiveZoom;
+    const imageRatio = width / height;
+    const containerRatio = frameSize.width / frameSize.height;
+    let baseWidth = 0;
+    let baseHeight = 0;
+
+    if (imageRatio > containerRatio) {
+      baseWidth = frameSize.width;
+      baseHeight = frameSize.width / imageRatio;
+    } else {
+      baseWidth = frameSize.height * imageRatio;
+      baseHeight = frameSize.height;
+    }
+
+    const rw = Math.max(MIN_SIZE, baseWidth * effectiveZoom);
+    const rh = Math.max(MIN_SIZE, baseHeight * effectiveZoom);
+
+    // Image visually matches the target resize box
+    const ox = (frameSize.width - rw) / 2 + effectivePan.x + boxOffset.x;
+    const oy = (frameSize.height - rh) / 2 + effectivePan.y + boxOffset.y;
 
     return {
-      imageLeft: (frameSize.width - imageWidth) / 2 + effectivePan.x,
-      imageTop: (frameSize.height - imageHeight) / 2 + effectivePan.y,
-      imageWidth,
-      imageHeight,
-      boxLeft: (frameSize.width - boxWidth) / 2 + boxOffset.x,
-      boxTop: (frameSize.height - boxHeight) / 2 + boxOffset.y,
-      boxWidth,
-      boxHeight,
-      frameScale,
-      baseImageWidth,
-      baseImageHeight,
+      imageLeft: ox,
+      imageTop: oy,
+      imageWidth: rw,
+      imageHeight: rh,
+      boxLeft: ox,
+      boxTop: oy,
+      boxWidth: rw,
+      boxHeight: rh,
+      frameScale: baseWidth / width,
+      baseImageWidth: baseWidth,
+      baseImageHeight: baseHeight,
     };
   }, [boxOffset.x, boxOffset.y, effectivePan.x, effectivePan.y, effectiveZoom, frameSize.height, frameSize.width, height, naturalSize.height, naturalSize.width, width]);
 
@@ -338,7 +317,7 @@ export default function ResizeEditor({
       return;
     }
 
-    const nextCrop = deriveCropFromLayout(layout, naturalSize);
+    const nextCrop = deriveFullCrop(naturalSize);
     const nextSignature = cropSignature(width, height, nextCrop);
     if (emittedSignatureRef.current === nextSignature) {
       return;
@@ -660,19 +639,7 @@ export default function ResizeEditor({
     boxOffsetRef.current = nextOffset;
     setBoxOffset(nextOffset);
 
-    const nextCrop = deriveCropFromLayout({
-      imageLeft: currentLayout.imageLeft,
-      imageTop: currentLayout.imageTop,
-      imageWidth: currentLayout.imageWidth,
-      imageHeight: currentLayout.imageHeight,
-      boxLeft: (frameSize.width - nextBoxWidth) / 2 + nextOffset.x,
-      boxTop: (frameSize.height - nextBoxHeight) / 2 + nextOffset.y,
-      boxWidth: nextBoxWidth,
-      boxHeight: nextBoxHeight,
-      frameScale: nextFrameScale,
-      baseImageWidth: drag.baseImageWidth,
-      baseImageHeight: drag.baseImageHeight,
-    }, naturalSizeRef.current);
+    const nextCrop = deriveFullCrop(naturalSizeRef.current);
 
     const nextSignature = cropSignature(nextWidth, nextHeight, nextCrop);
     emittedSignatureRef.current = nextSignature;
